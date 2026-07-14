@@ -1,0 +1,23 @@
+{
+  "mapId": "r1_stage1_fixed",
+  "name": "Stage 1 - Lumberjack Area",
+  "width": 7,
+  "height": 5,
+  "tiles": [
+    [".", ".", ".", "O30", ".", "E1", "."],
+    [".", "P1", ".", ".", ".", ".", "."],
+    [".", ".", "O70", ".", "OF", ".", "."],
+    [".", "P2", ".", ".", ".", ".", "."],
+    [".", ".", ".", "O30", ".", "E2", "."]
+  ],
+  "legend": {
+    ".": "empty",
+    "P1": "player_spawn_1",
+    "P2": "player_spawn_2",
+    "E1": "enemy_spawn_1",
+    "E2": "enemy_spawn_2",
+    "O30": "partial_cover_30",
+    "O70": "partial_cover_70",
+    "OF": "full_cover"
+  }
+}

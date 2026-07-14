@@ -1,0 +1,21 @@
+{
+  "units": [
+    {
+      "unitId": "sword_enemy",
+      "name": "Sword Enemy",
+      "side": "enemy",
+      "role": "basic_melee_pressure",
+      "maxHP": 16,
+      "baseATK": 6,
+      "baseDEF": 2,
+      "move": 3,
+      "atr": 1.5,
+      "attackType": "melee",
+      "targetPattern": "single",
+      "targetCategory": "player",
+      "usesProjectile": false,
+      "requiresPathCheck": true,
+      "aiTags": ["melee", "basic", "frontline_pressure"]
+    }
+  ]
+}

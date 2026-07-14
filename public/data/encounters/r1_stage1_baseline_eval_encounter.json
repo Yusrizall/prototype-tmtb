@@ -1,0 +1,32 @@
+{
+  "encounterId": "r1_stage1_baseline_eval",
+  "name": "Stage 1 Baseline Evaluation",
+  "stageSlot": "stage_1",
+  "mapId": "r1_stage1_fixed",
+  "objectiveType": "eliminate_all",
+  "victoryCondition": "all_required_enemies_defeated",
+  "defeatCondition": "all_players_defeated",
+  "playerSpawns": [
+    {
+      "unitId": "guard",
+      "spawnLabel": "P1"
+    },
+    {
+      "unitId": "archer",
+      "spawnLabel": "P2"
+    }
+  ],
+  "enemySpawns": [
+    {
+      "unitId": "sword_enemy",
+      "spawnLabel": "E1"
+    },
+    {
+      "unitId": "sword_enemy",
+      "spawnLabel": "E2"
+    }
+  ],
+  "crystalReward": 20,
+  "difficultyTag": "Normal Ringan",
+  "notes": "Baseline evaluation encounter untuk menguji Guard + Archer vs 2 Sword Enemy."
+}

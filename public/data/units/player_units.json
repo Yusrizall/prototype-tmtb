@@ -1,0 +1,36 @@
+{
+  "units": [
+    {
+      "unitId": "guard",
+      "name": "Guard",
+      "side": "player",
+      "role": "frontline",
+      "maxHP": 25,
+      "baseATK": 5,
+      "baseDEF": 4,
+      "move": 3,
+      "atr": 1.5,
+      "attackType": "melee",
+      "targetPattern": "single",
+      "targetCategory": "enemy",
+      "usesProjectile": false,
+      "requiresPathCheck": true
+    },
+    {
+      "unitId": "archer",
+      "name": "Archer",
+      "side": "player",
+      "role": "ranged",
+      "maxHP": 18,
+      "baseATK": 7,
+      "baseDEF": 1,
+      "move": 4,
+      "atr": 3.0,
+      "attackType": "ranged",
+      "targetPattern": "single",
+      "targetCategory": "enemy",
+      "usesProjectile": true,
+      "requiresPathCheck": false
+    }
+  ]
+}
