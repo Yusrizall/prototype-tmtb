@@ -1,19 +1,32 @@
 export async function loadJson(relativePath) {
-  const response = await fetch(relativePath);
+  const baseUrl = import.meta.env.BASE_URL;
+  const normalizedPath = relativePath.replace(/^\/+/, "");
+  const url = `${baseUrl}${normalizedPath}`;
+
+  const response = await fetch(url);
 
   if (!response.ok) {
-    throw new Error(`Gagal membaca file JSON: ${relativePath}`);
+    throw new Error(`Gagal membaca file JSON: ${url}`);
   }
 
   return response.json();
 }
 
 export async function loadInitialPrototypeData() {
-  const playerUnits = await loadJson("/public/data/units/player_units.json");
-  const enemyUnits = await loadJson("/public/data/units/enemy_units.json");
-  const stage1Map = await loadJson("/public/data/maps/r1_stage1_fixed.json");
+  const playerUnits = await loadJson(
+    "data/units/player_units.json"
+  );
+
+  const enemyUnits = await loadJson(
+    "data/units/enemy_units.json"
+  );
+
+  const stage1Map = await loadJson(
+    "data/maps/r1_stage1_fixed.json"
+  );
+
   const stage1Encounter = await loadJson(
-    "/public/data/encounters/r1_stage1_baseline_eval_encounter.json"
+    "data/encounters/r1_stage1_baseline_eval_encounter.json"
   );
 
   return {
