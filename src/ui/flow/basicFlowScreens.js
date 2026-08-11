@@ -3,9 +3,9 @@ import {
   MAX_PERMANENT_UPGRADE_LEVEL
 } from "../../logic/profile/profileStorage.js";
 const MAIN_MENU_ITEMS = [
-  {
+    {
     id: "start_journey",
-    label: "Start Journey",
+    label: "Play",
     action: "start-journey",
     enabled: true
   },
@@ -588,9 +588,10 @@ function renderShopUpgradeCard(
       </div>
 
       <p>
-        Permanent stat effect will be
-        activated in Checkpoint 2.5D.
-      </p>
+  Upgrade ini diterapkan pada
+  run-stage battle berikutnya.
+  Tutorial tetap menggunakan base stat.
+</p>
 
       <button
         type="button"
@@ -701,8 +702,212 @@ export function renderMainMenuScreen() {
         </nav>
 
         <p class="flow-screen-hint">
-          Enter / Space / E = Start Journey
-          · R = Reset Data
+          Enter / Space / E = Play
+· R = Reset Data
+        </p>
+      </section>
+    </main>
+  `;
+}
+
+export function renderRunOverviewScreen(
+  profileState
+) {
+  const metaCrystal =
+    Math.max(
+      0,
+      Math.floor(
+        Number(
+          profileState?.metaCrystal
+        ) || 0
+      )
+    );
+
+  const tutorialStatus =
+    profileState?.tutorialCompleted
+      ? "Completed"
+      : "Not Completed";
+
+  return `
+    <main
+      class="
+        flow-screen
+        run-overview-screen
+      "
+    >
+      <section
+        class="
+          flow-card
+          run-overview-card
+        "
+      >
+        <header class="run-overview-header">
+          <div>
+            <p class="eyebrow">
+              Journey Progress
+            </p>
+
+            <h1>Run Overview</h1>
+
+            <p class="description">
+              Review region progression,
+              prepare permanent upgrades,
+              and begin a new journey.
+            </p>
+          </div>
+
+          <div class="run-overview-crystal">
+            <span>Meta Crystal</span>
+
+            <strong>
+              ${metaCrystal}
+            </strong>
+
+            <small>
+              Permanent Currency
+            </small>
+          </div>
+        </header>
+
+        <section
+          class="run-overview-region-grid"
+          aria-label="Region Progress"
+        >
+          <article
+            class="
+              run-overview-region-card
+              run-overview-region-unlocked
+            "
+          >
+            <div class="run-overview-region-number">
+              Region 1
+            </div>
+
+            <h2>Village</h2>
+
+            <p>
+              Current playable prototype
+              region.
+            </p>
+
+            <span
+              class="
+                run-overview-region-status
+                run-overview-status-unlocked
+              "
+            >
+              Unlocked
+            </span>
+          </article>
+
+          <article
+            class="
+              run-overview-region-card
+              run-overview-region-locked
+            "
+          >
+            <div class="run-overview-region-number">
+              Region 2
+            </div>
+
+            <h2>Town</h2>
+
+            <p>
+              Future progression region.
+            </p>
+
+            <span
+              class="
+                run-overview-region-status
+                run-overview-status-locked
+              "
+            >
+              Locked
+            </span>
+          </article>
+
+          <article
+            class="
+              run-overview-region-card
+              run-overview-region-locked
+            "
+          >
+            <div class="run-overview-region-number">
+              Region 3
+            </div>
+
+            <h2>Castle</h2>
+
+            <p>
+              Future final progression
+              region.
+            </p>
+
+            <span
+              class="
+                run-overview-region-status
+                run-overview-status-locked
+              "
+            >
+              Locked
+            </span>
+          </article>
+        </section>
+
+        <section class="run-overview-profile-status">
+          <span>Tutorial Status</span>
+
+          <strong>
+            ${tutorialStatus}
+          </strong>
+        </section>
+
+        <div class="run-overview-actions">
+          <button
+            type="button"
+            class="
+              main-menu-button
+              main-menu-button-active
+            "
+            data-action="start-run-from-overview"
+          >
+            <span>Start Journey</span>
+
+            <small>
+              Region 1 — Stage 1
+            </small>
+          </button>
+
+          <button
+            type="button"
+            class="
+              main-menu-button
+              main-menu-button-active
+            "
+            data-action="open-post-run-shop"
+          >
+            <span>Shop</span>
+
+            <small>
+              ${metaCrystal} Meta Crystal
+            </small>
+          </button>
+
+          <button
+            type="button"
+            class="
+              main-menu-button
+              main-menu-button-active
+            "
+            data-action="back-main-menu"
+          >
+            <span>Back to Main Menu</span>
+          </button>
+        </div>
+
+        <p class="flow-screen-hint">
+          Start Journey selalu memulai run
+          dari Region 1 — Stage 1.
         </p>
       </section>
     </main>
@@ -841,9 +1046,9 @@ ${renderSelectedNodePreview(
             main-menu-button
             main-menu-button-active
           "
-          data-action="back-main-menu"
+          data-action="back-run-overview"
         >
-          <span>Back to Main Menu</span>
+          <span>Back to Run Overview</span>
         </button>
       </section>
     </main>
@@ -1379,30 +1584,36 @@ export function renderRunCompletionScreen(
         </section>
 
         <div class="run-completion-actions">
-          <button
-  type="button"
-  class="
-    main-menu-button
-    main-menu-button-active
-  "
-  data-action="open-post-run-shop"
->
-  <span>Continue to Shop</span>
-  <small>Post-Run Only</small>
-</button>
+  <button
+    type="button"
+    class="
+      main-menu-button
+      main-menu-button-active
+    "
+    data-action="run-completion-overview"
+  >
+    <span>Return to Run Overview</span>
 
-          <button
-            type="button"
-            class="
-              main-menu-button
-              main-menu-button-active
-            "
-            data-action="run-completion-main-menu"
-          >
-            <span>Return to Main Menu</span>
-            <small>Enter / E / Space</small>
-          </button>
-        </div>
+    <small>
+      Enter / E / Space
+    </small>
+  </button>
+
+  <button
+    type="button"
+    class="
+      main-menu-button
+      main-menu-button-active
+    "
+    data-action="open-post-run-shop"
+  >
+    <span>Open Shop</span>
+
+    <small>
+      Optional
+    </small>
+  </button>
+</div>
       </section>
     </main>
   `;
@@ -1622,30 +1833,36 @@ export function renderRunDefeatScreen(
         </section>
 
         <div class="run-completion-actions">
-          <button
-  type="button"
-  class="
-    main-menu-button
-    main-menu-button-active
-  "
-  data-action="open-post-run-shop"
->
-  <span>Continue to Shop</span>
-  <small>Post-Run Only</small>
-</button>
+  <button
+    type="button"
+    class="
+      main-menu-button
+      main-menu-button-active
+    "
+    data-action="run-defeat-overview"
+  >
+    <span>Return to Run Overview</span>
 
-          <button
-            type="button"
-            class="
-              main-menu-button
-              main-menu-button-active
-            "
-            data-action="run-defeat-main-menu"
-          >
-            <span>Return to Main Menu</span>
-            <small>Enter / E / Space</small>
-          </button>
-        </div>
+    <small>
+      Enter / E / Space
+    </small>
+  </button>
+
+  <button
+    type="button"
+    class="
+      main-menu-button
+      main-menu-button-active
+    "
+    data-action="open-post-run-shop"
+  >
+    <span>Open Shop</span>
+
+    <small>
+      Optional
+    </small>
+  </button>
+</div>
       </section>
     </main>
   `;
@@ -1655,42 +1872,7 @@ export function renderPostRunShopScreen(
   profileState,
   runState
 ) {
-  const hasValidSettledRun =
-    (
-      runState?.runStatus ===
-        "completed" ||
-      runState?.runStatus ===
-        "defeated"
-    ) &&
-    runState
-      ?.crystalConversionCompleted ===
-      true;
-
-  if (!hasValidSettledRun) {
-    return `
-      <main class="flow-screen">
-        <section
-          class="
-            flow-card
-            post-run-shop-card
-            error-card
-          "
-        >
-          <p class="eyebrow">
-            Shop Access Error
-          </p>
-
-          <h1>Shop tidak tersedia</h1>
-
-          <p class="description">
-            Post-Run Shop hanya dapat
-            dibuka setelah run diselesaikan
-            atau dikalahkan.
-          </p>
-        </section>
-      </main>
-    `;
-  }
+  
 
   const shopGroups =
     POST_RUN_SHOP_GROUPS
@@ -1724,11 +1906,14 @@ export function renderPostRunShopScreen(
       })
       .join("");
 
-  const resultLabel =
-    runState.runStatus ===
-      "completed"
-      ? "Run Completed"
-      : "Run Defeated";
+  const sourceLabel =
+  runState?.runStatus ===
+    "completed"
+    ? "Run Completed"
+    : runState?.runStatus ===
+        "defeated"
+      ? "Run Defeated"
+      : "Journey Preparation";
 
   return `
     <main class="flow-screen">
@@ -1741,7 +1926,7 @@ export function renderPostRunShopScreen(
         <header class="post-run-shop-header">
           <div>
             <p class="eyebrow">
-              ${resultLabel}
+              ${sourceLabel}
             </p>
 
             <h1>Post-Run Shop</h1>
@@ -1767,16 +1952,16 @@ export function renderPostRunShopScreen(
         </section>
 
         <section class="post-run-shop-notice">
-          <strong>
-            Upgrade levels are saved.
-          </strong>
+  <strong>
+    Upgrade levels are saved.
+  </strong>
 
-          <p>
-            Efek stat belum diterapkan ke
-            battle. Efek tersebut akan
-            diaktifkan pada Checkpoint 2.5D.
-          </p>
-        </section>
+  <p>
+    Permanent upgrade diterapkan pada
+    future run-stage battles. Tutorial
+    tetap menggunakan base stats.
+  </p>
+</section>
 
         <div class="post-run-shop-actions">
           <button
@@ -1785,9 +1970,9 @@ export function renderPostRunShopScreen(
               main-menu-button
               main-menu-button-active
             "
-            data-action="post-run-shop-main-menu"
+            data-action="post-run-shop-run-overview"
           >
-            <span>Return to Main Menu</span>
+            <span>Return to Run Overview</span>
             <small>Escape</small>
           </button>
         </div>

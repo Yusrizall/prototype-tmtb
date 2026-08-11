@@ -42,6 +42,7 @@ import { renderBattleHud } from "./ui/battle/battleHud.js";
 import {
   renderTitleScreen,
   renderMainMenuScreen,
+  renderRunOverviewScreen,
   renderMapSelectionScreen,
   renderBattleIntroScreen,
   renderRewardSelectionScreen,
@@ -727,6 +728,18 @@ function openMainMenu() {
   renderApp();
 }
 
+function openRunOverview() {
+  clearEnemyPhaseTimer();
+
+  runState = null;
+  battleIntroNodeId = null;
+  battleState = null;
+
+  currentScene = "run_overview";
+
+  renderApp();
+}
+
 function resetPrototypeData() {
   const resetConfirmed =
     window.confirm(
@@ -941,12 +954,23 @@ function startJourney() {
   if (
     profileState?.tutorialCompleted
   ) {
-    createNewRun();
-    openMapSelection();
+    openRunOverview();
     return;
   }
 
   startTutorialBattle();
+}
+
+function startRunFromOverview() {
+  if (
+    currentScene !==
+      "run_overview"
+  ) {
+    return;
+  }
+
+  createNewRun();
+  openMapSelection();
 }
 
 function openRunStageRewardSelection() {
@@ -1167,7 +1191,7 @@ function openRunStageDefeatSummary() {
   renderApp();
 }
 
-function finishCompletedRunToMainMenu() {
+function finishCompletedRunToRunOverview() {
   if (
     currentScene !==
       "run_completion"
@@ -1175,18 +1199,10 @@ function finishCompletedRunToMainMenu() {
     return;
   }
 
-  clearEnemyPhaseTimer();
-
-  runState = null;
-  battleIntroNodeId = null;
-  battleState = null;
-
-  currentScene = "main_menu";
-
-  renderApp();
+  openRunOverview();
 }
 
-function finishDefeatedRunToMainMenu() {
+function finishDefeatedRunToRunOverview() {
   if (
     currentScene !==
       "run_defeat"
@@ -1194,18 +1210,14 @@ function finishDefeatedRunToMainMenu() {
     return;
   }
 
-  clearEnemyPhaseTimer();
-
-  runState = null;
-  battleIntroNodeId = null;
-  battleState = null;
-
-  currentScene = "main_menu";
-
-  renderApp();
+  openRunOverview();
 }
 
 function openPostRunShop() {
+  const isRunOverviewScene =
+    currentScene ===
+      "run_overview";
+
   const isResultScene =
     currentScene ===
       "run_completion" ||
@@ -1224,9 +1236,13 @@ function openPostRunShop() {
       .crystalConversionCompleted ===
       true;
 
+  const canOpenFromResult =
+    isResultScene &&
+    hasSettledRun;
+
   if (
-    !isResultScene ||
-    !hasSettledRun
+    !isRunOverviewScene &&
+    !canOpenFromResult
   ) {
     return;
   }
@@ -1280,7 +1296,7 @@ function buyPermanentUpgrade(
   renderApp();
 }
 
-function finishPostRunShopToMainMenu() {
+function finishPostRunShopToRunOverview() {
   if (
     currentScene !==
       "post_run_shop"
@@ -1288,15 +1304,7 @@ function finishPostRunShopToMainMenu() {
     return;
   }
 
-  clearEnemyPhaseTimer();
-
-  runState = null;
-  battleIntroNodeId = null;
-  battleState = null;
-
-  currentScene = "main_menu";
-
-  renderApp();
+  openRunOverview();
 }
 
 function choosePendingRunReward(
@@ -1387,10 +1395,9 @@ function handleBattleResultPrimaryAction() {
         profileState
       );
 
-      createNewRun();
-      openMapSelection();
+      openRunOverview();
 
-      return;
+return;
     }
 
     if (
@@ -1447,6 +1454,21 @@ function attachFlowEvents() {
       '[data-action="start-journey"]'
     );
 
+    const startRunFromOverviewButton =
+  document.querySelector(
+    '[data-action="start-run-from-overview"]'
+  );
+
+if (startRunFromOverviewButton) {
+  startRunFromOverviewButton
+    .addEventListener(
+      "click",
+      () => {
+        startRunFromOverview();
+      }
+    );
+}
+
   if (startJourneyButton) {
     startJourneyButton.addEventListener(
       "click",
@@ -1472,6 +1494,21 @@ function attachFlowEvents() {
     document.querySelector(
       '[data-action="back-main-menu"]'
     );
+
+    const backRunOverviewButton =
+  document.querySelector(
+    '[data-action="back-run-overview"]'
+  );
+
+if (backRunOverviewButton) {
+  backRunOverviewButton
+    .addEventListener(
+      "click",
+      () => {
+        openRunOverview();
+      }
+    );
+}
 
   if (backMainMenuButton) {
     backMainMenuButton.addEventListener(
@@ -1561,22 +1598,36 @@ function attachFlowEvents() {
       );
     }
   );
-    const runCompletionMainMenuButton =
-    document.querySelector(
-      '[data-action="run-completion-main-menu"]'
-    );
+    const runCompletionOverviewButton =
+  document.querySelector(
+    '[data-action="run-completion-overview"]'
+  );
 
-  if (
-    runCompletionMainMenuButton
-  ) {
-    runCompletionMainMenuButton
-      .addEventListener(
-        "click",
-        () => {
-          finishCompletedRunToMainMenu();
-        }
-      );
-  }
+if (runCompletionOverviewButton) {
+  runCompletionOverviewButton
+    .addEventListener(
+      "click",
+      () => {
+        finishCompletedRunToRunOverview();
+      }
+    );
+}
+
+const runDefeatOverviewButton =
+  document.querySelector(
+    '[data-action="run-defeat-overview"]'
+  );
+
+if (runDefeatOverviewButton) {
+  runDefeatOverviewButton
+    .addEventListener(
+      "click",
+      () => {
+        finishDefeatedRunToRunOverview();
+      }
+    );
+}
+
   const runDefeatMainMenuButton =
   document.querySelector(
     '[data-action="run-defeat-main-menu"]'
@@ -1641,20 +1692,22 @@ if (runDefeatMainMenuButton) {
     }
   );
 
-  const shopMainMenuButton =
-    document.querySelector(
-      '[data-action="post-run-shop-main-menu"]'
-    );
+  const shopRunOverviewButton =
+  document.querySelector(
+    '[data-action="post-run-shop-run-overview"]'
+  );
 
-  if (shopMainMenuButton) {
-    shopMainMenuButton
-      .addEventListener(
-        "click",
-        () => {
-          finishPostRunShopToMainMenu();
-        }
-      );
-  }
+if (shopRunOverviewButton) {
+  shopRunOverviewButton
+    .addEventListener(
+      "click",
+      () => {
+        finishPostRunShopToRunOverview();
+      }
+    );
+}
+
+  
 }
 
 function attachBattleEvents() {
@@ -1774,6 +1827,19 @@ function renderApp() {
     attachFlowEvents();
     return;
   }
+
+  if (
+  currentScene ===
+    "run_overview"
+) {
+  appElement.innerHTML =
+    renderRunOverviewScreen(
+      profileState
+    );
+
+  attachFlowEvents();
+  return;
+}
 
     if (
     currentScene ===
@@ -2028,6 +2094,35 @@ function handleKeyboardInput(event) {
   }
 
   if (
+  currentScene ===
+    "run_overview"
+) {
+  const isStartRunInput =
+    key === "enter" ||
+    key === "e" ||
+    event.code === "Space";
+
+  const isBackInput =
+    key === "escape" ||
+    key === "z";
+
+  if (isStartRunInput) {
+    event.preventDefault();
+
+    startRunFromOverview();
+    return;
+  }
+
+  if (isBackInput) {
+    event.preventDefault();
+
+    openMainMenu();
+  }
+
+  return;
+}
+
+  if (
     currentScene ===
     "map_selection"
   ) {
@@ -2107,37 +2202,37 @@ function handleKeyboardInput(event) {
     return;
   }
 
-    if (
-    currentScene ===
-    "run_completion"
-  ) {
-    const isReturnToMenuInput =
-      key === "enter" ||
-      key === "e" ||
-      event.code === "Space";
-
-    if (isReturnToMenuInput) {
-      event.preventDefault();
-
-      finishCompletedRunToMainMenu();
-    }
-
-    return;
-  }
-
-  if (
+   if (
   currentScene ===
-  "run_defeat"
+    "run_completion"
 ) {
-  const isReturnToMenuInput =
+  const isReturnToOverviewInput =
     key === "enter" ||
     key === "e" ||
     event.code === "Space";
 
-  if (isReturnToMenuInput) {
+  if (isReturnToOverviewInput) {
     event.preventDefault();
 
-    finishDefeatedRunToMainMenu();
+    finishCompletedRunToRunOverview();
+  }
+
+  return;
+}
+
+  if (
+  currentScene ===
+    "run_defeat"
+) {
+  const isReturnToOverviewInput =
+    key === "enter" ||
+    key === "e" ||
+    event.code === "Space";
+
+  if (isReturnToOverviewInput) {
+    event.preventDefault();
+
+    finishDefeatedRunToRunOverview();
   }
 
   return;
@@ -2150,7 +2245,7 @@ function handleKeyboardInput(event) {
     if (key === "escape") {
       event.preventDefault();
 
-      finishPostRunShopToMainMenu();
+      finishPostRunShopToRunOverview();
     }
 
     return;
