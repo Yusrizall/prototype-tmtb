@@ -1,11 +1,13 @@
 # TMTB Game Design Context
 
-**Document Type:** Canonical Living Game Design Context  
-**Project / Game Code:** TMTB  
-**Development Group:** BeCan  
-**Primary Game:** 3D Turn-Based Tactics  
-**Target Production Environment:** Unity  
-**Last Updated:** 17 July 2026
+**Document Type:** Canonical Living Game Design Context
+**Project / Game Code:** TMTB
+**Development Group:** BeCan
+**Primary Game:** 3D Turn-Based Tactics
+**Target Production Environment:** Unity
+**Version:** 3.1
+**Last Updated:** 11 August 2026
+**Status:** **CANONICAL LIVING GAME DESIGN DOCUMENT**
 
 ---
 
@@ -19,7 +21,12 @@ This document is **not** a technical design document, prototype architecture doc
 
 The main TMTB game is a **3D Turn-Based Tactics game intended for production in Unity**.
 
-The current 2D/simulative prototype exists as a **Game Designer validation tool**. It helps test combat rules, progression, balancing assumptions, risk–reward relationships, and other design questions. Prototype behavior must not automatically be interpreted as final main-game design.
+The current 2D/simulative prototype has two parallel roles:
+
+1. **Game Designer Validation Tool** — it helps test combat rules, progression, balancing assumptions, difficulty, run flow, risk–reward relationships, enemy behaviour, tutorial requirements, and other design questions.
+2. **Unity Functional Flow Reference** — it preserves important intended game/tutorial flow so a future Unity implementer can understand what should happen even when the web prototype does not reproduce the final 3D mechanic itself.
+
+Prototype behavior must not automatically be interpreted as final main-game design. A prototype step may be a real systemic validation, a deliberate flow simulation, a prototype-only evaluation device, or a temporary development exception.
 
 ---
 
@@ -33,9 +40,23 @@ The intended design of TMTB as a full game.
 
 ### 2.2 Prototype Validation Scope
 
-A simplified representation used to test selected game-design questions.
+A simplified representation used to test selected game-design questions and preserve important intended Unity flow.
 
-Examples include Region 1 functioning as a temporary validation loop, grid-based movement replacing free 3D locomotion, duplicated Stage 1 battle content, simplified enemy AI, and placeholder tutorial flow.
+The prototype does not need to reproduce every final 3D interaction mechanically. However, an important final-game onboarding or flow step must not disappear merely because the web prototype cannot reproduce the real Unity mechanic.
+
+Current tutorial/prototype representation classes are:
+
+```text
+REAL SYSTEM VALIDATION
+FLOW SIMULATION
+DEFERRED / NOT READY
+```
+
+- **REAL SYSTEM VALIDATION** — the prototype must actually execute the relevant gameplay rule because incorrect implementation would invalidate the design test.
+- **FLOW SIMULATION** — an important Unity-facing step remains present in the prototype flow through instruction/simulated confirmation even though the final mechanic is not reproduced.
+- **DEFERRED / NOT READY** — the rule/content is not sufficiently decided to teach accurately and should not be faked merely to complete the flow.
+
+Examples of prototype simplification include Region 1 functioning as a temporary validation loop, direct grid/BFS movement replacing free 3D locomotion, simplified presentation, and simulated camera/control onboarding.
 
 Prototype behavior is evidence or validation material, not automatic game-design canon.
 
@@ -56,18 +77,26 @@ This document consolidates design context from:
 - previous architecture, state/data, UI-flow, control, progress, and chat-summary documents where they contain relevant game-design intent;
 - `TMTB_GAME_DESIGN_DECISIONS_v2.5.md`;
 - `TMTB_PROJECT_CONTEXT_v2.5.md`;
-- decisions clarified during development of Prototype v2.5;
-- the six-batch Game Design Migration Audit completed before this document was written.
+- `TMTB_GAME_DESIGN_AND_IMPLEMENTATION_HANDOFF_2026-07-30.md`;
+- `TMTB_ENEMY_DESIGN_DISCUSSION_HANDOFF_2026-08-09_v4.md`;
+- `TMTB_TUTORIAL_DESIGN_CORRECTED_HANDOFF_2026-08-11_v1.md`;
+- explicit Game Designer decisions made after those documents;
+- the six-batch Game Design Migration Audit completed on 9 August 2026;
+- the Tutorial T1–T3 / Prototype Validation Scope correction pass completed on 11 August 2026.
+
+This v3.1 document carries forward the v3.0 migration and deliberately migrates the later corrected tutorial/prototype-flow direction while preserving older design details that were not superseded.
 
 Migration rules:
 
 1. A newer explicit Game Designer decision overrides an older conflicting design.
-2. A legacy design that was never superseded may be carried forward.
-3. A prototype implementation does not automatically become full-game canon.
-4. An unfinished or uncertain design remains marked as planned, tentative, or open.
-5. Historical drafts may be preserved as design seeds without being treated as current plans.
+2. A newer domain-specific handoff is used to migrate details that had not yet reached the canonical context.
+3. A legacy design that was never superseded is carried forward.
+4. A prototype implementation does not automatically become full-game canon.
+5. An unfinished or uncertain design remains marked as `PLANNED`, `TENTATIVE`, or `OPEN`.
+6. A replaced design is preserved where useful as `SUPERSEDED` or `HISTORICAL DESIGN SEED`.
+7. Main-game design and prototype implementation truth remain separate.
 
----
+After this migration, working handoffs remain historical/supporting references. The latest explicit Game Designer decision remains the highest design source of truth.
 
 ## 4. Design Status Language
 
@@ -101,11 +130,11 @@ An older idea preserved for reference but no longer treated as the current plan.
 
 ## 5. Game Identity
 
-**Game / Project Code:** TMTB  
-**Development Group:** BeCan  
-**Genre:** 3D Turn-Based Tactics  
-**Target Production Environment:** Unity  
-**Progression Structure:** Semi-Roguelite / Light Roguelite  
+**Game / Project Code:** TMTB
+**Development Group:** BeCan
+**Genre:** 3D Turn-Based Tactics
+**Target Production Environment:** Unity
+**Progression Structure:** Semi-Roguelite / Light Roguelite
 **Meta Progression:** Permanent progression across runs
 
 ### Status
@@ -123,55 +152,148 @@ An older idea preserved for reference but no longer treated as the current plan.
 
 TMTB is fundamentally a 3D Unity game.
 
-The prototype is a simplified Game Designer tool used to validate tactical positioning, attack range and cover, action commitment, encounter pressure, branching progression, risk and reward, temporary and permanent growth, difficulty assumptions, and player behavior.
+The prototype is intentionally a simplified 2D/simulative tool. It serves both as:
 
-The prototype is not expected to reproduce every final-game interaction.
+```text
+Game Designer Validation Tool
++
+Unity Functional Flow Reference
+```
+
+The prototype is not expected to reproduce every final-game interaction mechanically.
 
 A central example is movement.
 
 **Main game**
 - units move freely through the 3D tactical environment using direct controls such as WASD;
 - movement is not restricted to tile-by-tile traversal;
-- when the player enters an action state, the unit snaps to the center of the tactical grid cell it currently occupies;
+- when the player enters an Action State, the unit snaps to the center of the tactical grid cell it currently occupies;
 - combat resolution is evaluated from that discrete tactical position.
 
 **Prototype**
-- continuous locomotion is omitted;
-- tactical positions are represented directly as grid positions.
+- continuous 3D locomotion may be mechanically replaced by direct grid/BFS repositioning;
+- final 3D camera/control feel is not validated by the web build;
+- important Unity onboarding beats such as camera/control instructions may still appear through **FLOW SIMULATION**;
+- tactical rules that are the object of validation must use **REAL SYSTEM VALIDATION** rather than tutorial-only text.
 
-The prototype therefore remains relevant for validating positional combat even though its locomotion model is simplified.
+Therefore:
+
+```text
+not mechanically implemented in the web prototype
+≠
+allowed to disappear from intended Unity flow
+```
+
+The prototype remains relevant because it can validate tactical rules and decision flow while also acting as a readable functional reference for future Unity implementation.
+
+Prototype-specific mechanics, shortcuts, evaluation devices, or navigation remain non-canonical unless explicitly adopted into the main-game design.
 
 ---
 
 ## 7. Core Player Experience
 
-**Status: OPEN**
+TMTB is a tactical roguelite about:
 
-The project has strong mechanical themes, but the canonical Core Player Experience statement has not yet been finalized.
+- reading enemy goals, intent, and learnable behaviour;
+- arranging party position in a tactical environment;
+- allocating a shared pool of Action Points across the party;
+- deciding when to keep positional flexibility and when to commit a unit's position through action;
+- adapting the party through temporary run growth, route decisions, resources, and persistent progression;
+- preserving party condition across the run.
 
-Candidate themes include tactical positioning, meaningful action commitment, route risk–reward decisions, adaptation during a run, attrition management, permanent growth, and readable/fair difficulty.
+The intended depth comes primarily from the interaction between readable enemy pressure, shared tactical resources, positional commitment, and party development across a run.
 
-These remain candidate interpretations until formally defined.
+### Status
+
+**TENTATIVE CANONICAL DIRECTION**
+
+The formulation may still be refined after prototype validation, but it is now sufficiently strong to guide tutorial, encounter, enemy, and progression design.
 
 ---
 
 ## 8. Core Design Pillars
 
-**Status: OPEN**
+### 8.1 Readable Threats
 
-Possible pillar directions include:
+Enemy pressure should be readable enough for the player to make informed decisions.
 
-- Tactical Positioning
-- Meaningful Unit Activation
-- Risk–Reward Route Choice
-- Adaptation During a Run
-- Attrition Management
-- Permanent Progression
-- Readable Difficulty
+Player-facing information may include:
 
-These remain unconfirmed and should be revisited alongside academic/game-design discussion.
+- Current Intent;
+- Current Target when relevant;
+- important State / Status information;
+- multi-activation progress such as `CHARGE X/Y`;
+- spatial threat areas when an action requires them;
+- incoming spawn telegraphs.
 
----
+The game should not normally reveal:
+
+- exact enemy path;
+- exact enemy destination;
+- exact ending grid;
+- the complete future Pattern;
+- the optimal solution for the player.
+
+Principle:
+
+> **Informasikan ancamannya, bukan jawabannya.**
+
+Status: **TENTATIVE CANONICAL DIRECTION / STRONG**
+
+### 8.2 Shared Tactical Economy
+
+Action Points are a party resource rather than isolated per-unit turns.
+
+The player decides which unit is currently the most valuable user of the shared resource.
+
+The design does **not** require every unit to act every Player Turn. Instead, encounter pressure should create situations where the best AP user changes according to position, enemy behaviour, Status, objective, range, party role, and other tactical conditions.
+
+Status: **TENTATIVE CANONICAL DIRECTION / STRONG**
+
+### 8.3 Position Commitment
+
+Positioning is not only about reaching the best tile or tactical area.
+
+The player also decides:
+
+- whether to reposition;
+- whether to preserve the ability to return to the turn's StartGrid;
+- when to commit a unit's position by using Attack or Skill;
+- whether movement AP is worth spending to answer current/future pressure.
+
+Status: **TENTATIVE CANONICAL DIRECTION / STRONG**
+
+### 8.4 Adaptive Party Development
+
+Combat outcomes, HP condition, temporary rewards, route decisions, resources, and permanent progression change the party's future options.
+
+The tactical layer and roguelite layer should reinforce each other:
+
+Combat Result
+→ Party Condition / Reward
+→ Route / Build Adaptation
+→ Future Encounter Capability
+→ Run Settlement
+→ Permanent Growth
+→ Future Run Capability
+
+Status: **TENTATIVE CANONICAL DIRECTION**
+
+### 8.5 Migration of Earlier Pillar Candidates
+
+Earlier candidate themes remain represented, but are consolidated:
+
+| Earlier Theme | Current Home |
+|---|---|
+| Tactical Positioning | Position Commitment |
+| Meaningful Unit Activation | Shared Tactical Economy + Position Commitment |
+| Risk–Reward Route Choice | Adaptive Party Development |
+| Adaptation During a Run | Adaptive Party Development |
+| Attrition Management | Adaptive Party Development |
+| Permanent Progression | Adaptive Party Development |
+| Readable Difficulty | Readable Threats + Difficulty/Balance Framework |
+
+The earlier list is therefore not treated as a second competing pillar set.
 
 # Part II — Macro Progression and Run Structure
 
@@ -179,11 +301,11 @@ These remain unconfirmed and should be revisited alongside academic/game-design 
 
 A full run is intended to continue across multiple regions.
 
-Village  
-→ Town  
-→ Castle  
-→ Final Run Resolution  
-→ Run Settlement  
+Village
+→ Town
+→ Castle
+→ Final Run Resolution
+→ Run Settlement
 → Meta Progression
 
 Completing Village does **not** represent the intended end of a full run.
@@ -203,22 +325,22 @@ Region 2 — Town and Region 3 — Castle remain locked while core systems are d
 
 The current prototype therefore uses:
 
-Region 1 Clear / Defeat  
-→ Temporary Development Settlement  
-→ Meta Progression  
+Region 1 Clear / Defeat
+→ Temporary Development Settlement
+→ Meta Progression
 → New Journey
 
 This is a **DEVELOPMENT EXCEPTION**.
 
 In the intended full game:
 
-Village Clear  
+Village Clear
 → Town
 
-Town Clear  
+Town Clear
 → Castle
 
-Castle / Final Resolution  
+Castle / Final Resolution
 → Full Run Settlement
 
 The prototype term `Run Completion` after Village should not be interpreted as the canonical full-game run boundary.
@@ -261,9 +383,9 @@ A region may eventually contain:
 
 ## 12. Region 1 — Village Structure
 
-Stage 1 — Fixed  
-→ 2 unique nodes generated from Stage 2 A/B/C  
-→ 2 unique nodes generated from Stage 3 A/B/C  
+Stage 1 — Fixed
+→ 2 unique nodes generated from Stage 2 A/B/C
+→ 2 unique nodes generated from Stage 3 A/B/C
 → Stage 4 — Fixed Mini-Boss climax
 
 ### Status
@@ -324,116 +446,329 @@ Future randomization may use weighted pools, controlled selection, conditional r
 
 # Part III — Tactical Combat
 
-## 16. Combat Phase Structure
+## 16. Combat Turn Structure
 
-Player Phase  
-→ Enemy Phase  
-→ Next Player Phase  
+Baseline battle flow:
+
+Player Turn
+→ Enemy Turn
+→ Next Player Turn
 → repeat until victory or defeat
 
-During the Player Phase, the player may select any living player unit that has not become exhausted.
+The **Player Turn belongs to the party**, not to one isolated unit activation.
 
-The Player Phase ends when all living player units are exhausted.
+The player may freely select and reselect usable player units, spend the shared AP pool, and decide when to end the Player Turn.
+
+The Player Turn ends through the global **END TURN** command.
+
+On End Turn:
+
+- remaining Team AP is discarded;
+- Enemy Turn begins.
+
+The Player Turn does not require every living player unit to act and does not require AP to reach zero.
 
 ### Status
 
-**LOCKED**
+- Player Turn → Enemy Turn structure: **LOCKED / CARRIED FORWARD**
+- Exhaustion-based Player Turn ending: **SUPERSEDED**
+- Global End Turn: **CURRENT DESIGN DECISION**
 
 ---
 
-## 17. Unit Activation
+## 17. Shared Action Point Economy
 
-Baseline unit activation:
+At the start of each Player Turn:
 
-1. reposition within movement allowance;
-2. perform one action.
+`Team AP = Living Player Units × 2`
 
-Baseline actions:
+Example:
 
+Guard + Archer alive
+→ Team AP = 4
+
+AP belongs to the party pool, not to individual units.
+
+A single unit may use several or all available AP if its actions remain legal and the player considers that the best tactical decision.
+
+The design does not enforce equal AP distribution across party members.
+
+### Status
+
+- Shared party AP: **CURRENT DESIGN DECISION**
+- 2 AP contribution per living Player Unit: **CURRENT DESIGN DECISION**
+- Forced equal AP distribution: **NOT PART OF CURRENT DESIGN**
+
+---
+
+## 18. AP Refresh and Carry-Over
+
+Team AP is a per-Player-Turn resource.
+
+At End Turn:
+
+`Remaining AP → discarded`
+
+At the next Player Turn:
+
+`Team AP → recalculated from living Player Units`
+
+AP does not carry between turns.
+
+### Status
+
+**CURRENT DESIGN DECISION**
+
+---
+
+## 19. Unit Selection and Switching
+
+Selection is not ownership of a one-time activation.
+
+The player may switch between usable units throughout the Player Turn.
+
+Example:
+
+Guard Move
+→ switch Archer
+→ Archer Attack
+→ switch Guard
+→ Guard Attack or Hold if legal
+→ switch Archer again
+
+A unit that has already attacked is not automatically "done"; only the actions prohibited by current rules become unavailable.
+
+### Status
+
+**CARRIED FORWARD / EXPANDED BY SHARED AP SYSTEM**
+
+---
+
+## 20. StartGrid and Movement Commitment
+
+At the start of each Player Turn, every living Player Unit records its tactical reference position for that turn:
+
+`StartGrid`
+
+StartGrid is not the permanent spawn position. It is refreshed each Player Turn based on the unit's current tactical position.
+
+Leaving StartGrid creates a movement commitment:
+
+`Leave StartGrid → spend 1 Team AP`
+
+Movement is **not** paid per tile.
+
+After the 1 AP movement commitment has been paid, the unit may continue repositioning within its movement allowance, subject to movement and occupancy rules.
+
+### Status
+
+- StartGrid: **CURRENT DESIGN DECISION**
+- Leaving StartGrid costs 1 AP: **CURRENT DESIGN DECISION**
+- Per-tile AP movement cost: **NOT CURRENT DESIGN**
+
+---
+
+## 21. Movement Refund and Scouting
+
+If a unit leaves StartGrid and later returns to StartGrid **before using Attack or Skill and before movement becomes locked**, the movement AP is refunded.
+
+Example:
+
+Team AP = 4
+→ Guard leaves StartGrid
+→ AP = 3
+→ Guard returns to StartGrid
+→ AP = 4
+
+A consequence of this rule is that a player may temporarily reposition, observe readable battlefield changes such as Dynamic Intent, and return to StartGrid for a refund.
+
+This movement-scouting consequence is currently allowed and should be tested rather than pre-emptively removed.
+
+### Status
+
+- Return-to-StartGrid refund: **CURRENT DESIGN DECISION**
+- Movement scouting: **CURRENTLY ALLOWED CONSEQUENCE / NEEDS PLAYTEST**
+
+---
+
+## 22. Attack / Skill Position Commitment
+
+Using **Attack** or **Skill** commits the acting unit's current position for the remainder of that Player Turn.
+
+After Attack or Skill:
+
+- Movement becomes unavailable for that unit for the remainder of the Player Turn;
+- Attack may still be used again if AP and action requirements allow;
+- Skill may still be used again if AP and skill requirements allow.
+
+This also applies when the unit attacks without first leaving StartGrid.
+
+Working conceptual terminology:
+
+`Movement Locked After Action`
+
+Avoid treating this as the same thing as the gameplay Status `Stun` or a future `Immobilize` Status.
+
+### Status
+
+- Attack/Skill locks further movement: **CURRENT DESIGN DECISION**
+- Final player-facing/code terminology: **OPEN**
+
+---
+
+## 23. Repeated Attack and Skill
+
+The old rule:
+
+`one baseline action → Exhausted`
+
+is **SUPERSEDED**.
+
+Current core rule:
+
+- Attack may be repeated while AP and action requirements allow.
+- Skill may be repeated while AP and skill-specific requirements allow.
+- There is no universal `one Attack per unit per turn` rule.
+- There is no universal `one Skill use per turn` rule.
+
+Individual Skills may later define explicit restrictions such as cooldown, once-per-turn use, resources, or other conditions.
+
+### Status
+
+- Repeated Attack/Skill allowed by the core system: **CURRENT DESIGN DECISION**
+- Per-skill restrictions: **OPEN DESIGN SPACE**
+
+---
+
+## 24. Player Action Categories
+
+Current conceptual action space includes:
+
+- Move / Reposition
 - Attack
 - Skill
-- Wait
+- Hold
+- End Turn
 
-After resolving the baseline action, the unit becomes exhausted.
+### Attack
 
-### Status
+Attack is an AP-consuming action.
 
-- Reposition + one baseline action: **LOCKED**
-- Attack: **LOCKED**
-- Wait: **LOCKED**
-- Skill action category: **PLANNED**
-- Individual skill mechanics: **OPEN**
+Exact universal AP cost remains a balancing/design parameter unless explicitly defined for a specific implementation or action.
+
+Historical/current candidate baseline:
+
+`Normal Attack = 1 AP`
+
+Status: **TENTATIVE BALANCING DIRECTION**
+
+### Skill
+
+Skill is an AP-consuming action category.
+
+Exact Skill costs, cooldowns, resources, and individual restrictions remain skill-specific and **OPEN** until those skills are designed.
+
+### Hold
+
+Hold is an active preparation action, not an automatic reward for standing still.
+
+Current eligibility:
+
+- unit remains at StartGrid;
+- unit has not used Attack;
+- unit has not used Skill.
+
+Current cost:
+
+`Hold = 1 AP`
+
+Leaving StartGrid makes Hold unavailable. Returning to StartGrid before Attack/Skill restores eligibility.
+
+Still OPEN:
+
+- exact Hold effect;
+- whether Hold ends further actions;
+- whether Hold itself locks movement;
+- repeatability;
+- once-per-turn restriction;
+- duration/timing;
+- unit-specific Hold results.
+
+### Wait
+
+The old individual `Wait → Exhausted` behaviour is **SUPERSEDED** by the new action economy.
+
+Whether a separate player-facing Wait command survives in another form remains **OPEN / LIKELY REMOVED**.
+
+### End Turn
+
+Global system action:
+
+`END TURN → discard remaining AP → Enemy Turn`
+
+End Turn is valid even when AP remains.
+
+Exact warning/confirmation presentation is UI/UX-specific and remains **OPEN**.
 
 ---
 
-## 18. Action Economy
+## 25. Player Turn Conceptual Flow
 
-Baseline:
+START PLAYER TURN
+→ determine living Player Units
+→ generate Team AP (`living units × 2`)
+→ store each unit StartGrid
+→ reset relevant per-turn movement/action state
 
-One activation  
-→ one action  
-→ exhausted
+PLAYER DECISION LOOP
+→ select any usable Player Unit
+→ Move / Attack / Skill / Hold as legal
+→ resolve AP cost and action consequences
+→ switch/reselect units freely
+→ repeat as desired
 
-The system should allow controlled exceptions.
+END TURN
+→ discard remaining Team AP
+→ begin Enemy Turn
 
-Possible future effects may grant additional actions, refund actions, modify exhaustion, or alter activation flow.
-
-A kill-triggered additional action is only an example of possible design space.
-
-### Status
-
-- One baseline action: **LOCKED**
-- Additional action mechanics: **OPEN DESIGN SPACE**
-
-### Design Principle
-
-**Core rules define default behavior. Skills, traits, buffs, and special effects may create controlled exceptions.**
+This is a **game-design flow**, not a required technical state-machine implementation.
 
 ---
 
-## 19. Repositioning and Unit Switching
-
-Repositioning alone does not exhaust the unit.
-
-A player may reposition a unit, switch to another non-exhausted unit, and later return to the first unit before committing its action.
-
-Movement allowance remains constrained by the activation starting position. Temporary repositioning should not reset or extend that allowance.
-
-### Status
-
-- Move-only does not exhaust: **LOCKED**
-- Switching between available units before committing actions: **LOCKED**
-- Movement allowance does not reset from temporary positions: **LOCKED CURRENT DESIGN**
-
----
-
-## 20. Continuous Movement and Tactical Grid Resolution
+## 26. Continuous 3D Movement and Tactical Grid Resolution
 
 The full Unity game uses free movement.
 
 Players move the active character continuously through the 3D tactical space using direct controls such as WASD.
 
-Movement is not restricted to discrete grid steps.
+Movement is not restricted to discrete tile-by-tile steps.
 
 When the player enters the Action Menu / Action State:
 
-Current World Position  
-→ determine occupied tactical grid cell  
-→ snap unit to grid center  
-→ resolve combat position from that point
+Current World Position
+→ determine occupied tactical grid cell
+→ snap unit to grid center
+→ resolve tactical position from that point
 
-This grid-resolved position is used for targeting, ATR, path interaction, cover, and action resolution.
+The grid-resolved position is used for targeting, ATR, path interaction, cover, occupancy, and action resolution.
+
+The Shared AP / StartGrid system does not replace movement allowance.
+
+- **Movement allowance** = how far a unit may reposition.
+- **Movement AP commitment** = resource cost for choosing to leave StartGrid.
+
+Exact Unity detection for when continuous movement counts as leaving StartGrid remains implementation-dependent.
 
 ### Status
 
-- Continuous WASD movement: **LOCKED**
+- Continuous direct movement: **LOCKED**
 - Tactical grid reference: **LOCKED**
-- Snap to grid center on Action State: **LOCKED**
-- Exact movement measurement implementation in Unity: **OPEN / IMPLEMENTATION-DEPENDENT**
+- Snap to grid center on Action State: **LOCKED CURRENT DESIGN**
+- Exact Unity movement measurement / StartGrid boundary detection: **OPEN IMPLEMENTATION DETAIL**
 
 ---
 
-## 21. Movement and Occupancy Rules
+## 27. Movement and Occupancy Rules
 
 At the tactical resolution layer:
 
@@ -441,19 +776,20 @@ At the tactical resolution layer:
 - opposing units block traversal;
 - allied units may be traversed;
 - units may not end on an occupied tactical position;
-- two units may not occupy the same final tactical position.
+- two units may not occupy the same final tactical position;
+- a reserved Wave Telegraph spawn tile may be traversed but may not be used as a final position.
+
+The prototype's BFS pathfinding and four-direction traversal remain implementation simplifications and are not main-game canon.
 
 ### Status
 
-**LOCKED CURRENT DESIGN**
-
-The prototype's BFS pathfinding and four-direction traversal are implementation simplifications and are not main-game canon.
+**LOCKED / CURRENT DESIGN**, except exact pathfinding implementation.
 
 ---
 
-## 22. ATR — Attack Range
+## 28. ATR — Attack Range
 
-`Range` terminology has been replaced by **ATR — Attack Range**.
+`ATR` means **Attack Range**.
 
 ATR describes the attackable radius from the attacker's tactical position.
 
@@ -464,67 +800,125 @@ ATR should not be interpreted as movement-step distance.
 ### Status
 
 - ATR terminology: **LOCKED**
-- Center-to-center tactical distance: **LOCKED**
+- Center-to-center tactical distance principle: **LOCKED**
+- Exact future Unity combat-distance implementation where still unresolved: **OPEN IMPLEMENTATION DETAIL**
 
 ---
 
-## 23. Melee Path Interaction
+## 28A. Melee Path Interaction
 
-A melee attack requires the target to be within ATR and the attack path not to cross the interior of a blocking obstacle.
+A melee attack requires:
 
-Touching only an obstacle edge or corner does not invalidate the attack.
+- target within ATR;
+- attack path not crossing the interior of a blocking obstacle.
+
+Touching only an obstacle edge or corner does not invalidate the attack under the current design.
 
 ### Status
 
-**LOCKED**
+**LOCKED CARRIED-FORWARD RULE**
 
 ---
 
-## 24. Ranged Targeting and Cover
+## 28B. Ranged Attack, Line of Sight, and Cover
 
-A ranged target may remain valid even when cover lies between attacker and target.
+All **ranged attacks** in TMTB require Line of Sight.
 
-Cover modifies effectiveness rather than automatically invalidating target selection.
+`LOS ≠ Cover`
 
-Clear path  
-→ normal attack effectiveness
+LOS answers whether the attack line is legally available.
 
-Partial Cover  
-→ reduced attack effectiveness
+Cover modifies the result/effectiveness of an otherwise targetable interaction.
 
-Full Cover  
-→ target remains valid  
-→ baseline damaging attack resolves as 0 damage  
-→ action is still consumed
+A target behind Cover may remain targetable.
+
+Clear path
+→ normal baseline effectiveness
+
+Partial Cover
+→ reduced baseline effectiveness
+
+Full Cover
+→ target may remain targetable
+→ a baseline damaging attack may legally be selected
+→ final damage may resolve as 0
+→ if the player executes that attack, its action/AP cost is consumed
+
+This preserves design space for abilities that:
+
+- ignore Cover;
+- penetrate Cover;
+- reduce/remove Cover;
+- apply non-damage effects;
+- interact with the environment.
 
 ### Status
 
-- Ranged targeting through cover: **LOCKED**
-- Full Cover target remains targetable: **LOCKED**
-- Baseline attack into Full Cover = 0 damage: **LOCKED**
-- Action consumed: **LOCKED**
+- All ranged attacks require LOS: **LATEST DESIGN DECISION**
+- Cover does not automatically cancel targetability: **LOCKED / RECONFIRMED**
+- Full Cover may produce 0 baseline damage while target remains targetable: **LOCKED CURRENT DESIGN**
+- Exact LOS implementation: **OPEN IMPLEMENTATION DETAIL**
 
 ---
 
-## 25. Target Validity vs Action Effectiveness
+## 28C. Range-Limited Non-Attack Abilities
 
-**Target Validity ≠ Action Effectiveness**
+The universal LOS rule applies to **ranged attacks**, not automatically to every action with a range.
 
-A unit may be a valid target even when a particular action is ineffective.
+Each non-attack ability defines its own:
 
-This preserves design space for future skills that may ignore cover, reduce cover, apply non-damage effects, mark targets, displace targets, or interact with the environment.
+- range requirement;
+- LOS requirement;
+- Cover interaction;
+- target type;
+- effect.
 
-These are possibilities, not confirmed features.
+Confirmed special-enemy examples:
+
+Orange Buff
+→ range-limited
+→ LOS not required
+→ Cover ignored
+
+Purple Vulnerable Curse
+→ range-limited
+→ LOS not required
+→ Cover ignored
 
 ### Status
 
-**LOCKED DESIGN PRINCIPLE**
+**LATEST DESIGN DECISION / ACTION-GRAMMAR PRINCIPLE**
 
 ---
 
-## 26. Cover Model
+## 28D. Target Validity, Action Validity, and Action Effectiveness
 
-Current cover categories:
+These are separate design concepts.
+
+**Target Validity**
+Is this entity still a legal target under the relevant Target Rule?
+
+**Action Validity**
+Can this action legally be performed on that target from the current state/position?
+
+**Action Effectiveness**
+Would the action produce a relevant result?
+
+A target may be valid while a particular action is ineffective.
+
+This distinction is especially important for enemy AI. For example, a Basic Spear should not intentionally spend its one action on a Full-Cover target when its basic damaging attack would produce no relevant effect.
+
+The player may still be allowed to select and execute a legal but ineffective attack when the rules intentionally permit it.
+
+### Status
+
+**LOCKED / CURRENT DESIGN PRINCIPLE**
+
+---
+
+## 28E. Cover Model and Damage Model
+
+Current Cover categories:
 
 - partial cover;
 - stronger partial cover;
@@ -536,50 +930,77 @@ Current working values:
 - O70 = 70%
 - Full Cover = 100%
 
-### Status
-
-- Cover mechanic: **LOCKED**
-- Multiple partial-cover strengths: **LOCKED**
-- O30 / O70 numerical values: **TENTATIVE**
-- Full Cover baseline model: **LOCKED CURRENT DESIGN**
-
----
-
-## 27. Damage Model
-
-Current working formula:
+Current working damage formula:
 
 `Final Damage = floor(max(0, ATK × (1 - Cover Percentage) - DEF))`
 
 Conceptually:
 
-Attack Power  
-→ modified by Cover  
-→ reduced by Defense  
+Attack Power
+→ modified by Cover
+→ reduced by Defense
 → final non-negative damage
 
 ### Status
 
-**TENTATIVE WORKING BALANCE FORMULA**
+- Cover mechanic: **LOCKED**
+- Multiple partial-cover strengths: **LOCKED**
+- O30 / O70 values: **TENTATIVE**
+- Full Cover baseline model: **LOCKED CURRENT DESIGN**
+- Damage formula: **TENTATIVE WORKING BALANCE FORMULA**
 
 ---
 
-## 28. Combat State Terminology
+## 28F. Player Stun
 
-### Ready
-Unit remains available to reposition and act.
+Current Player `STUN` behaviour:
 
-### Positioned
-Unit has repositioned but has not yet committed its action.
+- Movement: disabled
+- Normal Attack: disabled
+- Skill: disabled
+- Hold: disabled
+- Unit selection / switch control: allowed
+- Shared AP contribution: unchanged
+- AP may still be used by other non-Stunned units
 
-### Exhausted
-Unit has resolved its action and cannot perform another normal activation during the current Player Phase.
+A Stunned unit is therefore an **unit-action denial**, not automatic party-resource denial.
+
+Example:
+
+Guard = Stunned
+Archer = Normal
+Living Units = 2
+→ Team AP = 4
+→ Archer may use the shared pool
+
+If all Player Units are Stunned:
+
+- Team AP may still exist;
+- units may still be selected;
+- no unit can Move / Attack / Skill / Hold;
+- practically, End Turn is the remaining progression action.
 
 ### Status
 
-**CARRIED FORWARD AS COMBAT TERMINOLOGY**
+**LATEST DESIGN DECISION**
+
+Exact Stun duration depends on the source/effect and remains separately defined.
 
 ---
+
+## 28G. Player Combat Edge Cases Still Open
+
+The following should **not** be silently decided by implementation:
+
+- AP handling when a unit that contributed AP dies during the same Player Turn;
+- behaviour if Team AP reaches zero while a unit is already in an active reposition state;
+- exact final terminology for movement lock after Attack/Skill;
+- exact individual Skill costs/restrictions;
+- final Hold behaviour;
+- final presence or removal of a separate Wait command;
+- exact status-duration tick convention.
+
+These remain **OPEN** until explicitly decided.
 
 # Part IV — Units and Enemies
 
@@ -675,21 +1096,172 @@ These are design spaces, not guaranteed production features.
 
 Enemy difficulty should not be defined only by raw stats.
 
-Enemy pressure may emerge from quantity, archetype combination, offensive capability, survivability, mobility, ATR/threat reach, behavior, target priority, and spatial placement.
+Enemy or enemy composition should act as a **source of tactical pressure** that forces meaningful decisions.
 
-Enemy archetypes should contribute distinct tactical pressure rather than functioning only as alternative stat blocks.
+Relevant questions include:
+
+- Which target should be prioritized?
+- Should the player approach or retreat?
+- Which party member should receive Shared AP?
+- Is a setup/payoff threat worth interrupting?
+- Should a unit keep its current position or reposition?
+- Is an enemy worth bursting now, or should it be left alone temporarily?
+- Is a Status or special condition changing the best response?
+
+Enemy depth may emerge from:
+
+- quantity;
+- archetype combination;
+- offensive capability;
+- survivability;
+- mobility;
+- ATR / threat reach;
+- Target Rule;
+- Movement Rule;
+- Action;
+- Intent;
+- State;
+- Status;
+- Pattern;
+- Conditional Override;
+- synergy;
+- spatial placement;
+- Wave timing.
+
+### Systemic Counterplay
+
+Counterplay should generally be systemic rather than a hard character lock.
+
+Less preferred:
+
+`Enemy X can only be solved by Guard.`
+
+Preferred direction:
+
+`Enemy X creates a condition for which Guard may be a natural answer, while other answers may still exist through position, skill, Status, environment, resource commitment, or another system.`
+
+### Anti-AP-Funnel Goal
+
+Shared AP intentionally allows AP funneling.
+
+The design goal is **not** to force every party member to act every turn.
+
+Instead, encounters should create situations where one unit is not always the best AP sink.
 
 ### Status
 
-**CORE ENCOUNTER DESIGN PRINCIPLE**
+**CORE ENEMY / ENCOUNTER DESIGN PRINCIPLE**
 
 ---
 
-## 36. Sword Enemy
+## 36. Enemy Complexity Principle
+
+Not every enemy should use the complete enemy grammar.
+
+Basic enemies remain intentionally simple.
+
+Complexity such as State changes, Status interactions, Conditional Override, Pattern, or special Action rules should only be added when it creates a useful tactical decision.
+
+### Status
+
+**CURRENT DESIGN DIRECTION**
+
+---
+
+## 37. Universal Enemy Design Grammar
+
+Conceptual enemy definition:
+
+- Target Rule
+- Movement Rule
+- Action Set / Action Rule
+- Intent
+- Fallback Rule
+- State Set [optional]
+- Status Interaction
+- Conditional Override [optional]
+- Pattern [optional]
+
+This is a **game-design grammar**, not a required Unity class structure.
+
+### Role-Consistent AI
+
+Enemy behaviour may use deterministic/mathematical evaluation, but what counts as a "good" position/action is defined by the enemy's role.
+
+Examples:
+
+- Sword values melee engagement.
+- Spear values effective ranged engagement at preferred distance.
+- A future Support enemy may value ally support rather than global damage optimization.
+
+The baseline does not require a squad-level tactical mastermind.
+
+Status: **TENTATIVE / STRONG DESIGN DIRECTION**
+
+---
+
+## 38. Dynamic Enemy Intent
+
+Intent is the enemy's current readable plan based on the latest relevant battle state.
+
+Intent is **not** an exact path lock or destination reservation.
+
+Conceptually:
+
+`Intent Rule = Attack Nearest Player Unit`
+
+`Current Target = Guard`
+
+If battle state changes and Archer becomes the nearest valid target:
+
+`Intent Rule remains Attack Nearest Player Unit`
+
+`Current Target may change to Archer`
+
+Intent is dynamic in gameplay and should update after relevant battle-state changes. Technical implementation may be event-driven rather than recalculated every render frame.
+
+Relevant state changes may include:
+
+- player movement completion / tactical position changes;
+- action resolution;
+- HP changes;
+- Status changes;
+- unit death;
+- objective changes;
+- Wave/phase changes.
+
+### Player-Facing Communication
+
+Normally show:
+
+- Action / Behaviour icon;
+- Current Target icon if the action has a target;
+- important State / Status;
+- current multi-activation progress;
+- relevant threat area.
+
+Normally hide:
+
+- exact path;
+- exact destination;
+- exact ending grid;
+- full future Pattern.
+
+Principle:
+
+> **Informasikan ancamannya, bukan jawabannya.**
+
+### Status
+
+**LATEST / CURRENT DESIGN DIRECTION**
+
+---
+
+## 39. Baseline Sword Enemy
 
 Role: **Basic Melee Enemy**
 
-Current baseline:
+Current numerical baseline:
 
 - HP: 16
 - ATK: 6
@@ -697,34 +1269,702 @@ Current baseline:
 - Move: 3
 - ATR: 1.5
 
+Behaviour:
+
+**Target Rule**
+`Nearest Valid Player Unit`
+
+**Movement Rule**
+Seek a valid melee engagement position against Current Target.
+
+If the ideal engagement tile cannot be reached this activation:
+
+- approach the valid melee engagement area;
+- keep Current Target if it remains valid;
+- Stay if no useful/legal movement exists.
+
+Temporary occupancy does not automatically invalidate Current Target.
+
+**Action**
+Maximum one Basic Melee Attack in its activation.
+
+**Pattern**
+None.
+
 ### Status
 
-- Basic melee role: **LOCKED CURRENT DESIGN**
-- Current stats: **TENTATIVE BALANCE BASELINE**
+- Basic melee identity: **LOCKED CURRENT DESIGN**
+- Behaviour package: **CURRENT DESIGN DIRECTION**
+- Numerical stats: **TENTATIVE BALANCE BASELINE**
 
 ---
 
-## 37. Spear Enemy
+## 39A. Baseline Spear Enemy
 
 Role: **Basic Ranged Enemy**
 
-Spear Enemy remains part of the intended enemy roster.
-
-It was intentionally removed from the Stage 1 baseline to keep early onboarding simpler, not removed from the overall design.
-
-### Status
-
-**PLANNED / DEFERRED FROM CURRENT PROTOTYPE**
+Spear remains part of the intended enemy roster.
 
 Historical ATR reference: approximately 3.0, subject to balancing.
 
+Behaviour:
+
+**Target Rule**
+`Nearest Valid Player Unit`
+
+**Preferred Engagement Distance**
+`Maximum Effective ATR`
+
+**Movement Rule**
+
+Spear seeks an effective ranged engagement position against Current Target.
+
+- If too close, it prefers to move farther away.
+- If too far, it approaches.
+- If it can already attack but a reachable position better matches preferred maximum effective ATR, it may still reposition.
+- Cover-seeking is **not** a default baseline preference.
+
+Movement priority concept:
+
+1. find a valid/effective firing position;
+2. prefer a position closest to maximum effective ATR;
+3. prefer less movement when otherwise tied;
+4. use deterministic stable ordering if still tied.
+
+**Action**
+
+Maximum one Basic Ranged Attack.
+
+Ranged Attack requires LOS.
+
+If current attack would produce no relevant effect and a better effective firing position is unavailable:
+
+- do not waste the action;
+- End Activation.
+
+**Pattern**
+None.
+
+### Status
+
+- Basic ranged identity: **PLANNED / CURRENT ROSTER DIRECTION**
+- Behaviour package: **CURRENT DESIGN DIRECTION**
+- Historical removal from old Stage 1 onboarding: **CARRIED, TUTORIAL PLACEMENT REQUIRES NEW CURRICULUM DECISION**
+- Exact numerical stats: **TENTATIVE / OPEN**
+
 ---
 
-## 38. Mini-Boss Design
+## 39B. Target Selection and Nearest Rule
 
-Region 1 Stage 4 is intended as a fixed Mini-Boss climax.
+Baseline conceptual selection:
 
-Intended objective direction: **Defeat Mini-Boss**
+All candidate Player Units
+→ Validity Filter
+→ Nearest Evaluation
+→ Tie-Break
+→ Current Target
+
+Candidate target validity includes:
+
+- alive;
+- still in the encounter;
+- targetable under the relevant rule;
+- structurally engageable by that enemy's capability.
+
+Temporary blocking does not make a target invalid.
+
+`Cannot reach target this activation ≠ structurally unreachable target`
+
+For baseline Sword and Spear:
+
+`Nearest = combat-distance metric consistent with ATR/range`
+
+not automatically path distance or easiest engagement.
+
+Tie direction:
+
+1. minimum combat distance;
+2. if Current Target remains tied, keep it;
+3. if still tied/no Current Target, use deterministic stable ordering.
+
+### Status
+
+- Principle: **CURRENT DESIGN DIRECTION**
+- Exact final Unity combat-distance/tie implementation: **OPEN**
+
+---
+
+## 39C. Sequential Enemy Resolution
+
+The old model:
+
+`all living enemies move → all living enemies attack`
+
+is **SUPERSEDED**.
+
+Current direction:
+
+Enemies resolve one activation at a time.
+
+Enemy A
+→ Movement
+→ Action
+→ resolve battle state
+
+Enemy B
+→ reads the updated battle state
+→ Movement
+→ Action
+
+and so on.
+
+Current execution order:
+
+`Spawn Order`
+
+Earlier-spawned living enemies act earlier.
+
+### Status
+
+- Sequential activation: **LATEST DESIGN DIRECTION**
+- Spawn Order execution: **CURRENT DESIGN DIRECTION**
+- Initiative/speed-based ordering: **NOT CURRENT BASELINE / FUTURE DESIGN SPACE**
+
+---
+
+## 39D. Enemy Activation Economy
+
+Baseline:
+
+`1 Enemy Activation = maximum 1 Movement Resolution + maximum 1 Action Resolution`
+
+Movement may be 0.
+
+Action may be 0.
+
+There is no baseline:
+
+- Move → Attack → Move;
+- multiple Action resolutions;
+- enemy Shared AP system.
+
+Special enemies or bosses may create explicit exceptions later.
+
+### Status
+
+**CURRENT DESIGN DIRECTION**
+
+---
+
+## 39E. Retarget, Fallback, and Execution-Time Revalidation
+
+Three situations are distinct:
+
+**Target Invalid**
+→ Retarget using Target Rule.
+
+**Target Valid, ideal position unavailable**
+→ Movement Fallback while keeping Current Target.
+
+**Target Valid, Action unavailable/ineffective after movement**
+→ End Activation without Action.
+
+Conceptual activation flow:
+
+Activation Start
+→ revalidate State / Conditional Override
+→ revalidate Intent / Target
+→ determine movement from latest board
+→ resolve maximum one Movement
+→ revalidate Action Validity / Effectiveness
+→ commit maximum one Action
+→ resolve
+→ update State / Status / Pattern
+→ next enemy
+
+Enemy destination is not reserved during Player Turn.
+
+### Status
+
+**CURRENT DESIGN DIRECTION**
+
+---
+
+## 39F. State, Status, and Conditional Override
+
+### State
+
+Primary behaviour mode.
+
+Examples for grammar only:
+
+- Normal
+- Charging
+- Recovering
+- Fleeing
+- Guarding
+- Enraged
+
+Current direction:
+
+`maximum one Primary Behaviour State at a time`
+
+Status: **TENTATIVE / CURRENT DESIGN DIRECTION**
+
+### Status
+
+Attached effect/modifier that may change capability, stat, targetability, or interaction without necessarily replacing the enemy's overall behaviour mode.
+
+Multiple Status effects may coexist.
+
+Examples for grammar only:
+
+- Concealed
+- Rooted
+- Marked
+- Weakened
+- Exposed
+- Guarded
+
+Not every named example is a confirmed production Status.
+
+Status system: **STRONG DIRECTION**
+
+### Conditional Override
+
+Decision rule activated by battle conditions.
+
+Examples:
+
+`IF HP <= threshold → enter Fleeing`
+
+`IF ally critical → Heal ally`
+
+An override may:
+
+- change Intent;
+- change target;
+- choose an Action;
+- change State;
+- apply/remove Status.
+
+Not every override requires a new State.
+
+Status: **TENTATIVE / CURRENT DESIGN DIRECTION**
+
+---
+
+## 39G. Enemy Pattern
+
+Pattern is a temporal sequence of behaviour steps across activations.
+
+Example grammar:
+
+Attack
+→ Charge
+→ Heavy Attack
+→ Recover
+→ loop
+
+Pattern does **not** normally lock:
+
+- exact target;
+- exact path;
+- exact destination.
+
+Dynamic Intent and Current Target remain active unless a mechanic explicitly creates Target Lock.
+
+Basic Sword and Spear have no Pattern.
+
+Pattern is mainly intended for:
+
+- special enemies;
+- Mini-Boss;
+- Boss;
+- enemies requiring setup/payoff or learnable rhythm.
+
+### Deterministic Default
+
+Current direction prefers deterministic Patterns by default rather than random action selection.
+
+Random branches remain possible as explicit special mechanics.
+
+Status: **TENTATIVE / CURRENT DESIGN DIRECTION**
+
+---
+
+## 39H. Pattern Communication
+
+Full future Pattern is not shown by default.
+
+Current Intent is the main player-facing information.
+
+Example:
+
+`[HEAVY ATTACK] [Guard]`
+
+Multi-activation behaviour may show progress:
+
+`CHARGE 1/3`
+`CHARGE 2/3`
+`CHARGE 3/3`
+
+Important rule:
+
+`CHARGE 3/3` still means Charge is the Current Intent for that upcoming enemy activation.
+
+Do **not** automatically show:
+
+`NEXT: HEAVY ATTACK`
+
+The payoff becomes visible only when it becomes the Current Intent on a later Player Turn.
+
+Future target is not shown before payoff Intent unless a mechanic explicitly creates Target Lock.
+
+Threat area may be shown when the current action requires spatial telegraphing.
+
+### Status
+
+**LATEST DESIGN DECISION**
+
+---
+
+## 39I. Pattern Progression, Override, and Status Interaction
+
+Pattern Step may define its own Advance Rule.
+
+Candidate families:
+
+- On Activation End
+- On Action Resolved
+- On Condition Complete
+
+For important payoff actions, `On Action Resolved` may keep the step pending if the action could not successfully happen.
+
+### Conditional Override
+
+Temporary decision override default:
+
+`PAUSE current Pattern Step`
+
+`Consume` is not default.
+
+`Reset` is an explicit Pattern interaction.
+
+A major State/Phase transition may `SWITCH` the active Pattern.
+
+Override priority is defined per enemy/archetype, not by one universal hierarchy.
+
+### Status Interaction
+
+Status restrictions normally change capability first; they do not automatically edit Pattern.
+
+Example:
+
+`ROOTED → movement disabled`
+
+A stationary Charge may still continue.
+
+If activation is fully denied:
+
+`STUNNED → no normal activation → Pattern progress pauses`
+
+`CHARGE X/Y` counts **successful Charge activations**, not global world turns.
+
+An explicit effect such as `BREAK CHARGE` may reset/cancel/redirect Pattern only if the mechanic says so.
+
+### Status
+
+**CURRENT DESIGN DIRECTION**
+
+---
+
+## 39J. Special Enemy Design Template
+
+Reusable Game Designer template:
+
+- Enemy Name
+- Enemy Identity
+- Encounter Purpose
+- Archetype / Role
+- Target Rule
+- Movement Rule
+- Action Set
+- Primary Behaviour State
+- Status Interaction
+- Conditional Override
+- Pattern
+- Pattern Advance Rule
+- Intent / Telegraph
+- Fallback
+- Special Interaction
+- Counterplay
+- Failure Case
+
+Principle:
+
+`Pressure / Decision → Role → Behaviour → Action / Status / Pattern → Numbers`
+
+Special enemy is only justified if it adds meaningful decision pressure, not merely higher HP/damage.
+
+### Status
+
+**CURRENT DESIGN TOOL / FRAMEWORK**
+
+---
+
+## 39K. Special Enemy Candidate — ORANGE Charger Buffer
+
+**Status:** **TENTATIVE SPECIAL ENEMY CANDIDATE / STRONG DESIGN DIRECTION**
+
+**Role:** Support / Temporal Threat
+
+**Encounter Purpose:** create target-priority and kill-commitment pressure.
+
+Core question:
+
+> **Can the player kill Orange now, or is careless chip damage making the situation worse?**
+
+### Pattern Candidate
+
+`CHARGE 1/3 → CHARGE 2/3 → CHARGE 3/3 → BUFF ALLY → RESET`
+
+Charge count remains **TENTATIVE**.
+
+### Charging Behaviour
+
+Normally stationary.
+
+No baseline player-damaging Basic Attack.
+
+### Terrified
+
+During Charging:
+
+First successful damaging hit in the Player Turn
+→ Fear Source = first damaging Player Unit
+→ Terrified
+
+Fear Source is locked to that first successful damaging attacker for the Player Turn.
+
+Further attackers do not replace it.
+
+On Orange activation while Terrified:
+
+- move to a legal reachable position that maximizes distance from Fear Source;
+- then still perform Charge;
+- Charge progress advances;
+- Terrified expires after that activation;
+- Fear Source clears;
+- Orange returns to stationary Charging.
+
+If it cannot move farther, it chooses the best legal available distance; if it cannot move, it Stays and still Charges.
+
+Terrified only applies while Charging. When Buff is the active payoff, taking damage does not trigger Terrified.
+
+### Buff Payoff
+
+Action: Damage Buff
+Target: Nearest Valid Ally
+Range: Orange Buff ATR
+LOS: not required
+Cover: ignored
+
+If nearest valid ally is outside Buff ATR:
+
+- Orange approaches that ally;
+- if the target enters Buff ATR after Movement, Buff in the same activation;
+- otherwise Buff remains pending.
+
+Already-buffed allies remain valid targets.
+
+Buff stacking is currently allowed for prototype simplicity.
+
+After successful Buff:
+
+- reset Charge;
+- Orange becomes stationary at its **current** position.
+
+Current candidate Buff duration:
+
+`3 turns`
+
+### Open / Tentative
+
+- HP;
+- Movement;
+- Buff ATR;
+- exact Buff strength;
+- exact stacking formula/timer;
+- exact Charge count;
+- balance of Terrified flee distance.
+
+---
+
+## 39L. Special Enemy Candidate — PURPLE Charger Debuffer
+
+**Status:** **TENTATIVE SPECIAL ENEMY CANDIDATE / STRONG DESIGN DIRECTION**
+
+Old melee/ranged adaptive immunity concept: **SUPERSEDED**
+
+**Role:** Debuff / AP Commitment Pressure
+
+Core question:
+
+> **Which Player Unit should make the first damaging hit, and is funneling AP into that unit worth it this turn?**
+
+### Attunement
+
+First successful damaging hit during Player Turn
+→ Purple becomes Attuned to that Player Unit.
+
+For the remainder of that Player Turn:
+
+- only that exact Player Unit can deal damage to Purple;
+- Purple remains targetable by other units;
+- damaging actions from other units resolve 0 damage;
+- source does not switch.
+
+Attunement clears at End Player Turn.
+
+Working mechanic name `Attuned` / `Focused` remains **OPEN**.
+
+### Charging
+
+Purple is stationary while Charging.
+
+Attunement does not stop Charge.
+
+Exact Charge count remains **OPEN / TENTATIVE**.
+
+### Vulnerable Payoff
+
+Intent:
+
+`[VULNERABLE] [Nearest Player Unit]`
+
+Target Rule:
+
+`Nearest Valid Player Unit`
+
+Candidate Debuff ATR:
+
+`2 ATR`
+
+Vulnerable is a Curse:
+
+- LOS not required;
+- Cover ignored;
+- obstacle does not block the Curse when target remains within Debuff ATR.
+
+When payoff is ready:
+
+- if Current Target is in Debuff ATR, Stay and apply Vulnerable;
+- otherwise approach Current Target;
+- if movement reaches Debuff ATR, apply in the same activation;
+- if still out of range, keep payoff pending.
+
+After successful Vulnerable:
+
+- reset Charge;
+- Purple becomes stationary at current position.
+
+### Vulnerable Prototype Rule
+
+Current tentative baseline:
+
+- duration: 2 turns;
+- stacking allowed;
+- reapplication: `+1 stack`;
+- reapplication refreshes shared duration to 2;
+- effect strength intended to scale additively/linearly;
+- target already Vulnerable remains valid.
+
+Exact `+X% incoming damage`, tick timing, max stack, and final duration remain **TENTATIVE / OPEN**.
+
+---
+
+## 39M. Special Enemy Candidate — BLUE Shockwave Charger
+
+**Status:** **TENTATIVE SPECIAL ENEMY CANDIDATE / STRONG DESIGN DIRECTION**
+
+**Role:** Timed Spatial Hazard
+
+Interpretation:
+
+> **Blue functions like a readable living mine whose detonation timing is visible to the player.**
+
+### Baseline Behaviour
+
+- permanently stationary;
+- no Basic Attack;
+- no reactive movement/state when damaged;
+- taking damage only reduces HP unless another system says otherwise.
+
+### Pattern Candidate
+
+`CHARGE 1/2 → CHARGE 2/2 → SHOCKWAVE → RESET`
+
+Charge count remains **TENTATIVE**.
+
+### Shockwave
+
+Intent:
+
+`[SHOCKWAVE] [SELF]`
+
+Area:
+
+`Blue ATR`
+
+Shockwave:
+
+- always executes when its payoff activation occurs;
+- executes even if no Player Unit is in the area;
+- resets afterward;
+- is not blocked by LOS;
+- ignores Cover;
+- penetrates obstacles for area resolution.
+
+Affected Player Units inside Blue ATR receive:
+
+`STUN`
+
+Old Knockback concept: **SUPERSEDED**
+
+Candidate fallback if Stun is too oppressive:
+
+`IMMOBILIZE`
+
+Exact Stun duration remains **OPEN / TENTATIVE BALANCING PARAMETER**.
+
+Blue therefore tests whether the player spends movement/AP to leave the future danger area or accepts action denial.
+
+---
+
+## 39N. Charger Trio Pressure Comparison
+
+| Candidate | Primary Pressure |
+|---|---|
+| Orange | Kill commitment / punishment for careless chip damage |
+| Purple | Temporary AP funnel / first-attacker commitment |
+| Blue | Position commitment / timed spatial hazard |
+
+The three candidates are pressure-test designs, not confirmed Region 1 roster.
+
+### Status
+
+**TENTATIVE ROSTER / ENCOUNTER CANDIDATES**
+
+---
+
+## 39O. Mini-Boss Design
+
+Region 1 Stage 4 remains intended as a fixed Mini-Boss climax.
+
+Intended objective direction:
+
+`Defeat Mini-Boss`
 
 Current prototype Stage 4 battle content is a development placeholder and is not the canonical Mini-Boss design.
 
@@ -732,42 +1972,85 @@ Current prototype Stage 4 battle content is a development placeholder and is not
 
 - Stage 4 as Mini-Boss climax: **LOCKED DIRECTION**
 - Mini-Boss identity: **OPEN**
-- Mini-Boss abilities: **OPEN**
+- Mini-Boss abilities/pattern: **OPEN**
 - Exact stats: **TENTATIVE / OPEN**
 - Exact map: **OPEN**
 
 ---
 
-## 39. Future Enemy Archetype Design Space
+## 39P. Future Enemy Archetype Design Space
 
-Preserved directions:
+Preserved historical/future directions:
 
 - Bruiser / Heavy Melee
 - Fast Harasser
 - Support Enemy
+- Cover-seeking ranged variants
+- other role-specific enemies
+
+These are not confirmed active roster entries.
 
 ### Status
 
-**DEFERRED DESIGN SPACE**
+**DEFERRED / HISTORICAL DESIGN SPACE**
 
 ---
+
+## 39Q. Enemy Design Open Items
+
+Still unresolved:
+
+- exact combat-distance metric;
+- deterministic final target/tile ordering;
+- exact LOS implementation;
+- final Status vocabulary;
+- exact Status duration tick convention;
+- `Concealed` reveal rules;
+- final `Attuned`/`Focused` naming;
+- Orange numerical parameters;
+- Purple numerical parameters;
+- Blue ATR / Charge count / Stun duration;
+- which special enemies actually enter Region 1;
+- Mini-Boss design;
+- Boss Pattern design;
+- future enemy variants.
 
 # Part V — Encounter Design
 
 ## 40. Encounter Design Philosophy
 
-A tactical scenario may combine:
+A tactical encounter may combine:
 
-Map  
-+ Enemy Composition  
-+ Spawn Configuration  
-+ Objective  
-+ Victory / Defeat Conditions  
-+ Waves / Pacing  
-+ Triggers  
+Map
++ Enemy Composition
++ Spawn Configuration
++ Objective
++ Victory / Defeat Conditions
++ Encounter Phase
++ Wave / Pacing
++ Trigger
++ Player / Enemy Condition
 = Encounter Experience
 
 Difficulty is not defined by enemy stats alone.
+
+Encounter design should intentionally combine pressure sources to create tactical decisions.
+
+Pressure may come from:
+
+- enemy behaviour;
+- composition/synergy;
+- spatial layout;
+- objective;
+- Wave timing;
+- telegraph;
+- Shared AP opportunity cost;
+- party condition;
+- route context.
+
+### Status
+
+**CORE ENCOUNTER DESIGN PRINCIPLE**
 
 ---
 
@@ -776,16 +2059,19 @@ Difficulty is not defined by enemy stats alone.
 ### Core / Currently Intended
 
 #### Eliminate All
+
 Defeat all required enemies.
 
 Status: **LOCKED CORE OBJECTIVE / VALIDATED**
 
 #### Protect Target
+
 Keep a designated protected target alive while satisfying encounter requirements.
 
 Status: **PLANNED CORE OBJECTIVE**
 
 #### Defeat Mini-Boss
+
 Defeat a designated Mini-Boss or target enemy.
 
 Status: **PLANNED CORE OBJECTIVE**
@@ -804,13 +2090,15 @@ Status: **PLANNED / DEFERRED**
 
 ## 42. Objective, Victory, and Defeat
 
-**Objective ≠ Victory Condition ≠ Defeat Condition**
+`Objective ≠ Victory Condition ≠ Defeat Condition`
 
-The objective tells the player what they are trying to accomplish.
+Objective tells the player what they are trying to accomplish.
 
-Victory conditions define successful resolution states.
+Victory Condition defines a successful encounter resolution state.
 
-Defeat conditions define unsuccessful resolution states.
+Defeat Condition defines an unsuccessful encounter resolution state.
+
+Wave completion, Tutorial Task completion, and Phase transitions are not automatically equivalent to encounter victory.
 
 ### Status
 
@@ -834,85 +2122,233 @@ Planned objective-specific conditions may include:
 
 ### Status
 
-- All player units defeated: **LOCKED BASELINE**
+- All Player Units Defeated: **LOCKED BASELINE**
 - Objective-specific defeat conditions: **LOCKED DESIGN PRINCIPLE**
 - Exact future conditions: **PLANNED / DEFERRED**
 
 ---
 
-## 44. Trigger-Based Encounter Design
+## 44. Stage, Phase, Tutorial Task, Objective, and Wave
 
-Encounters may react to:
+These concepts should remain separate.
 
-- turn timing;
-- previous wave completion;
-- unit position / entering an area;
-- enemy HP thresholds;
-- objective progression.
+**Stage**
+One complete encounter/level.
 
-Possible outcomes:
+**Phase**
+A large authored section or state of the encounter.
 
-- wave spawn;
+**Tutorial Task**
+The current instructional objective used for onboarding.
+
+**Objective**
+The gameplay goal the player is trying to accomplish.
+
+**Victory Condition**
+The state that ends the encounter successfully.
+
+**Wave**
+A group of enemies/threats entering the encounter according to a trigger.
+
+A Phase may trigger one or more Waves.
+
+A Tutorial Task may use a Wave as teaching content.
+
+A Wave is not automatically a Phase, Objective, or Victory Condition.
+
+### Status
+
+**CURRENT DESIGN FRAMEWORK**
+
+---
+
+## 45. Trigger-Based Encounter Design
+
+Encounters may react to authored battle-state conditions.
+
+Candidate triggers include:
+
+- Stage Start;
+- Round / Turn timing;
+- Previous Wave Cleared;
+- unit entering an area;
+- HP threshold;
+- Objective progression;
+- Enemy Action;
+- Alarm;
+- Building State;
+- Phase Transition.
+
+Possible outcomes include:
+
+- Wave spawn;
 - reinforcement;
 - ambush;
 - objective change;
 - area hazard;
-- phase change.
+- Phase change.
+
+The trigger library may expand according to encounter needs.
 
 ### Status
 
-**PLANNED ENCOUNTER FRAMEWORK**
+**PLANNED / CURRENT ENCOUNTER FRAMEWORK**
 
 ---
 
-## 45. Wave System
+## 46. Wave System
 
-A wave is not an objective.
+A Stage may contain multiple Waves.
 
-Objective:
-- defines what the player must accomplish.
+Wave design may define:
 
-Wave:
-- modifies encounter pressure, spawn timing, and pacing.
+- Wave ID;
+- Role;
+- Trigger;
+- Timing;
+- Enemy Composition;
+- Spawn Position;
+- Telegraph;
+- Initial Intent;
+- Victory Relevance.
 
-Wave design may consider role, trigger, timing, spawn position, composition, recovery window, and victory relevance.
+Wave is a pressure/pacing tool, not merely an enemy container.
+
+A Wave can create new difficulty even with an existing enemy archetype because direction, timing, existing party state, and AP/positioning context change.
 
 ### Status
 
-**PLANNED / DEFERRED**
+**CURRENT DESIGN DIRECTION**
 
 ---
 
-## 46. Wave Roles
+## 47. Wave Roles
+
+Working taxonomy:
 
 ### Required Wave
-Mandatory encounter component that may need to be resolved before victory.
+
+Main encounter pressure expected as part of the authored encounter.
 
 ### Conditional Wave
-Appears only when a condition occurs.
+
+Exists/spawns only when a condition occurs.
 
 ### Punishment Wave
-Appears as a consequence of a specific action, mistake, trigger, or condition.
+
+Appears because of a consequence such as delay, failed interruption, alarm, mistake, or deliberately accepted trade-off.
+
+Role and Trigger are separate dimensions.
+
+Example:
+
+Role: Punishment
+Trigger: Enemy successfully resolves Alarm
 
 ### Status
 
-**PLANNED CONCEPTUAL MODEL**
+**TENTATIVE DESIGN/AUTHORING TAXONOMY**
 
-A working rule is that unresolved required waves may block victory, while untriggered optional conditional/punishment waves do not necessarily block victory.
-
-This remains **TENTATIVE** until validated.
+Do not assume a universal rule that every Required Wave always blocks Victory or every Punishment Wave does not.
 
 ---
 
-## 47. Multi-Step and Phased Encounters
+## 48. Wave Victory Relevance
+
+Wave Victory Relevance must be authored according to the Stage's Objective and Victory Condition.
+
+Examples:
+
+- an Eliminate All stage may require all active required enemies to be defeated;
+- a Mini-Boss stage may potentially end when the Mini-Boss dies even if reinforcement remains;
+- an untriggered Conditional/Punishment Wave may not exist as a victory blocker.
+
+No universal final rule has been selected.
+
+### Status
+
+**OPEN / PER-ENCOUNTER DESIGN**
+
+---
+
+## 48A. Wave Telegraph
+
+Current direction:
+
+`Telegraph → one Player preparation window → Spawn`
+
+Telegraph gives the player readable future pressure and a chance to reposition or allocate resources before the Wave arrives.
+
+### Reserved Spawn Tile
+
+A telegraphed spawn tile is:
+
+- passable for traversal;
+- invalid as a final occupied position;
+- reserved against both Player and Enemy final occupancy.
+
+This replaces the older gameplay solution based on Primary Spawn → Alternative Spawn → local 3×3 fallback.
+
+Old fallback approach:
+
+**SUPERSEDED AS PRIMARY GAMEPLAY SOLUTION**
+
+A purely technical emergency fallback may still be required by implementation and remains outside game-design canon.
+
+### Telegraph Timing
+
+Current direction:
+
+- Telegraph reservation is created before existing enemy movement during the preparation Enemy Turn;
+- an enemy that begins on the future spawn tile must end its movement elsewhere if possible because the tile is now reserved;
+- player receives the readable telegraph before spawn.
+
+### Status
+
+- One-turn pre-spawn telegraph: **CURRENT DESIGN DIRECTION**
+- Reserved passable/non-occupiable tile: **LATEST TEAM DECISION**
+- Exact technical fallback: **OPEN IMPLEMENTATION DETAIL**
+
+---
+
+## 48B. Spawned Enemy Behaviour
+
+When an enemy Wave spawns:
+
+- the enemy appears;
+- its Current Intent is calculated/displayed;
+- it does not immediately Move/Attack on that same spawn moment under the current direction.
+
+This creates a readable response window.
+
+However, exact phase boundaries between:
+
+- Telegraph creation;
+- Player response;
+- Spawn;
+- post-spawn Player response;
+- first enemy activation
+
+remain **OPEN** because the current candidate flow may provide too much response time.
+
+### Status
+
+- Spawn with readable Intent: **CURRENT DIRECTION**
+- No immediate offensive Move/Attack on spawn: **CURRENT DIRECTION**
+- Exact spawn-to-first-activation lifecycle: **OPEN / NEEDS PLAYTEST**
+
+---
+
+## 48C. Multi-Step and Phased Encounters
 
 Future encounters may include:
 
-- multiple objective steps;
+- multiple Objective steps;
 - Mini-Boss phases;
-- boss phases;
-- objective transitions;
-- changing encounter requirements.
+- Boss phases;
+- Objective transitions;
+- changing encounter requirements;
+- Phase-specific Waves.
 
 ### Status
 
@@ -920,32 +2356,64 @@ Future encounters may include:
 
 ---
 
-## 48. Region 1 Encounter Direction
+## 48D. Enemy Composition as Pressure Composition
 
-### Stage 1 Baseline
+Composition should be authored by the pressure/decision created by the combination, not merely by enemy counts.
+
+Current examples of enemy pressure identity:
+
+- Sword → close-distance melee pressure;
+- Spear → ranged-distance / effective firing pressure;
+- Orange → kill-commitment pressure;
+- Purple → AP / first-attacker commitment;
+- Blue → timed spatial pressure.
+
+Example hypothesis:
+
+`Spear + Blue`
+
+may create pressure where the player wants to leave Blue's future Shockwave area but must reconsider exposure to Spear.
+
+Such combinations are hypotheses to test, not automatically good encounters.
+
+### Status
+
+**CURRENT ENCOUNTER DESIGN METHOD**
+
+---
+
+## 48E. Region 1 Encounter Direction
+
+Historical/simple Stage 1 baseline:
 
 - Region: Village
 - Player: Guard + Archer
 - Enemy: 2 Sword Enemies
 - Objective: Eliminate All
 
-Purpose:
-- simple baseline before ranged enemy pressure;
-- validate positioning, targeting, obstacles, cover, Attack, and Wait.
+This remains useful as a **simple combat baseline**, but its old tutorial purpose is no longer fully current because the old Wait/Exhaustion action economy has been superseded.
 
-### Status
-
-**CURRENT REGION 1 BASELINE**
-
-Old specific Stage 2–3 encounter drafts are **HISTORICAL DESIGN SEEDS**.
+Old specific Stage 2–3 encounter drafts remain **HISTORICAL DESIGN SEEDS**.
 
 Their underlying intention remains:
 
-Stage 2–3 should progressively introduce variation through enemy composition, map pressure, objectives, waves/pacing, triggers, and risk–reward differences.
+Stage 2–3 should progressively introduce variation through:
 
-Future content should be redesigned using the balancing framework rather than copied directly from old drafts.
+- enemy composition;
+- map pressure;
+- objectives;
+- Waves/pacing;
+- triggers;
+- risk–reward differences.
 
----
+Region 1 Stage 4 remains a fixed Mini-Boss climax direction.
+
+### Status
+
+- Guard + Archer vs 2 Sword as simple baseline: **CARRIED / HISTORICAL VALID BASELINE**
+- Old Stage 1 tutorial sequence: **SUPERSEDED AS CURRENT TUTORIAL SEQUENCE / HISTORICAL SIMPLE-COMBAT BASELINE**
+- Old Stage 2–3 specific layouts/content: **HISTORICAL DESIGN SEEDS**
+- Stage 4 Mini-Boss climax: **LOCKED DIRECTION**
 
 # Part VI — Run Progression and Attrition
 
@@ -966,9 +2434,9 @@ During a run, the player's situation may evolve through:
 
 Higher-risk nodes should generally create better opportunities for higher-quality rewards.
 
-Higher Risk  
-→ Greater Encounter Pressure  
-→ Greater Attrition Risk  
+Higher Risk
+→ Greater Encounter Pressure
+→ Greater Attrition Risk
 → Potentially Better Reward Opportunity
 
 ### Status
@@ -1139,9 +2607,9 @@ Meta Crystal is persistent currency used for permanent progression between runs.
 
 Canonical:
 
-Active Run  
-→ Full Run Completion or Defeat  
-→ Run Settlement  
+Active Run
+→ Full Run Completion or Defeat
+→ Run Settlement
 → Run Crystal converts into Meta Crystal
 
 The current prototype converts after Region 1 because Region 1 acts as a temporary development settlement point.
@@ -1171,22 +2639,30 @@ The current prototype converts after Region 1 because Region 1 acts as a tempora
 
 ---
 
-## 64. Post-Run Shop
+## 64. Permanent Progression Shop / Access Point
 
-Full Run Ends  
-→ Settlement  
-→ Crystal Conversion  
-→ Post-Run Shop  
-→ Permanent Progression  
+Permanent progression remains part of the full-game loop.
+
+Conceptually:
+
+Full Run Resolution
+→ Settlement
+→ Run Crystal / Meta Crystal resolution
+→ Permanent Progression access
 → Future Run
+
+The older milestone-unlocked **Main Menu Shop** remains **SUPERSEDED**.
+
+The exact full-game presentation/access point for the permanent progression shop is not fully locked.
+
+The current prototype may expose the Shop from the Run Overview / post-run flow for practical validation and navigation. That prototype access point does **not** automatically redefine full-game canon.
 
 ### Status
 
-**CURRENT FULL-GAME DIRECTION**
-
-The older milestone-unlocked Main Menu Shop is **SUPERSEDED**.
-
----
+- Permanent progression shop/service: **CURRENT FULL-GAME DIRECTION**
+- Old milestone Main Menu Shop: **SUPERSEDED**
+- Exact full-game access/presentation: **OPEN / UIUX**
+- Current Run Overview access in prototype: **PROTOTYPE CURRENT FLOW**
 
 ## 65. In-Run Shop
 
@@ -1383,10 +2859,10 @@ It is not equivalent to enemy raw strength alone.
 
 Initial conceptual structure:
 
-Stage Pressure  
-= Enemy Pressure  
-+ Map Pressure  
-+ Wave / Pacing Pressure  
+Stage Pressure
+= Enemy Pressure
++ Map Pressure
++ Wave / Pacing Pressure
 + Objective / Phase Pressure
 
 ### Status
@@ -1533,7 +3009,7 @@ Historical interpretation:
 
 ## 84. Stage Node Difficulty Template
 
-The Stage Node Difficulty Template is preserved as a canonical Game Designer balancing tool.
+The Stage Node Difficulty Template is preserved as a canonical Game Designer balancing/authoring tool.
 
 ### 1. Node Identity
 - Node ID
@@ -1545,55 +3021,69 @@ The Stage Node Difficulty Template is preserved as a canonical Game Designer bal
 - Difficulty Tag
 - Path Role
 
-### 2. Expected Player State
+### 2. Intended Experience
+- Intended Pressure
+- Expected Decision / Trade-off
+- Predicted Player Behaviour
+- Success Signal
+- Failure Signal
+
+### 3. Expected Player State
 - Expected Run
 - Expected Permanent Upgrade
 - Expected Temporary Buff Count
 - Expected HP Condition
 - Expected Current Player Capability
 
-### 3. Enemy Pressure
+### 4. Enemy Pressure
 - Enemy Composition
+- Enemy behaviour/status/pattern considerations
 - Enemy Pressure Rating
 
-### 4. Map Pressure
+### 5. Map Pressure
 - Map Pressure Rating
+- relevant spatial constraints
 
-### 5. Wave Pressure
+### 6. Wave / Pacing Pressure
+- Wave structure
+- telegraph/reinforcement timing
+- recovery windows
 - Wave Pressure Rating
 
-### 6. Objective / Phase Pressure
+### 7. Objective / Phase Pressure
 - Objective / Phase Pressure Rating
 
-### 7. Stage Pressure Result
+### 8. Stage Pressure Result
 - Overall pressure estimate
 
-### 8. Difficulty Result
+### 9. Difficulty Result
 - Difficulty Gap
 - Target Difficulty
 
-### 9. Reward & Progression
+### 10. Reward & Progression
 - Crystal Reward
 - Reward Pool Tier
 - Temporary Buff Impact Range
 - Reward Choice Count / Opportunity
 
-### 10. Evaluation Notes
+### 11. Evaluation Notes
 - Expected Turn Count
 - Expected HP Remaining
 - Expected Unit Death
 - Telemetry Notes
 - Player Feedback Target
+- Observed Behaviour
+- Perceived Difficulty/Fairness
 
 This is a **design authoring template**, not a mandatory technical schema.
 
----
+The newer pressure-first fields do not invalidate the older numerical balancing framework; they provide the qualitative design intent that the numerical estimates are supposed to support.
 
 ## 85. Risk–Reward and Difficulty Relationship
 
-Expected Player State  
-→ Estimate Node Pressure  
-→ Estimate Difficulty / Risk  
+Expected Player State
+→ Estimate Node Pressure
+→ Estimate Difficulty / Risk
 → Assign Appropriate Reward Opportunity
 
 Greater expected risk should generally provide greater potential reward opportunity.
@@ -1664,7 +3154,17 @@ Potential metrics:
 - first unit death turn;
 - cover usage;
 - skill usage;
-- threat exposure.
+- threat exposure;
+- AP spent per Player Unit;
+- unused AP at End Turn;
+- movement AP commitments;
+- movement AP refunds;
+- repeated Attack/Skill usage;
+- Intent target changes caused by Player movement/state changes;
+- response to Charge / multi-activation threats;
+- Status applications and duration;
+- special-enemy target priority;
+- turn/time until special enemy is defeated.
 
 ### Status
 
@@ -1672,7 +3172,7 @@ Potential metrics:
 
 Not every metric is mandatory.
 
----
+Metrics should only be implemented when they support an explicit validation question.
 
 ## 90. Candidate Run Evaluation Metrics
 
@@ -1751,12 +3251,12 @@ Examples:
 
 Suggested cycle:
 
-Design Prediction  
-→ Gameplay Scenario  
-→ Playtest  
-→ Observed Performance  
-+ Player Perception  
-→ Compare  
+Design Prediction
+→ Gameplay Scenario
+→ Playtest
+→ Observed Performance
++ Player Perception
+→ Compare
 → Revise Design / Balancing Model
 
 A balancing model does not replace playtesting.
@@ -1806,65 +3306,1074 @@ It is:
 
 ## 96. Tutorial Design Philosophy
 
-Tutorial and onboarding should introduce tactical systems progressively.
+Tutorial and onboarding should introduce systems progressively.
 
-Players should understand and apply a mechanic before additional pressure or complexity is introduced.
+Preferred learning progression:
+
+```text
+Introduce
+→ Demonstrate
+→ Require Player Use
+→ Confirm Understanding Through Gameplay
+→ Add Pressure
+→ Combine With Earlier Knowledge
+```
+
+The tutorial should increasingly resemble normal TMTB play rather than remain a sequence of isolated button prompts.
+
+Important principles:
+
+- teach observable player rules rather than internal designer/programmer grammar;
+- one mechanic explanation/button press is not automatically evidence of understanding;
+- earlier knowledge should persist and be reinforced instead of repeatedly reset;
+- good/legal tactical play should not be treated as tutorial failure;
+- when observable learning evidence has already occurred, retroactive credit is preferable to forcing meaningless repetition;
+- instructional flow may adapt, but normal combat rules must not secretly change to make the tutorial script work.
 
 ### Status
 
-**CARRIED FORWARD**
+**STRONG CURRENT TUTORIAL PRINCIPLE**
 
 ---
 
-## 97. Progressive Mechanic Introduction
+## 97. Tutorial Structure Vocabulary
 
-Historical direction includes:
+Tutorial authoring should distinguish:
 
-- camera control;
+**Tutorial Flow Step**
+An intended onboarding action/beat. A Flow Step may represent either a real prototype mechanic or a simulated Unity-facing step.
+
+**Learning Block**
+A mental-model / knowledge cluster that the tutorial wants the player to build.
+
+**Stage**
+The complete tutorial encounter/level.
+
+**Phase**
+A major authored section of tutorial progression.
+
+**Tutorial Task**
+The current instructional requirement.
+
+**Objective**
+The gameplay goal.
+
+**Wave**
+A triggered group of enemies/threats.
+
+These concepts are not interchangeable.
+
+A Tutorial Flow Step can occur inside a Learning Block and Phase. A Tutorial Task may cause a Phase transition or content trigger. A Wave is encounter content, not a synonym for Phase or Objective.
+
+### Status
+
+**CURRENT DESIGN FRAMEWORK**
+
+---
+
+## 98. Control Knowledge vs Tactical Knowledge
+
+Main-game onboarding contains two broad knowledge families.
+
+### Control Knowledge
+
+Examples:
+
+- camera navigation;
 - unit selection;
+- switching controlled unit;
+- character movement;
+- action-interface access;
+- confirm/cancel interaction.
+
+Exact control mapping belongs to UI/UX and implementation.
+
+### Tactical Knowledge
+
+Examples:
+
+- Player Turn / Enemy Turn;
+- Shared AP;
+- StartGrid;
+- movement commitment/refund;
+- Attack/Skill position commitment;
+- End Turn;
+- ATR;
+- LOS;
+- Cover;
+- Intent;
+- Status;
+- Charge / multi-activation threat;
+- Wave Telegraph.
+
+The 2D prototype can validate systemic tactical teaching more directly than final 3D control feel.
+
+However, required Control Knowledge must still remain visible in the intended prototype flow when it is important for Unity onboarding.
+
+### Status
+
+**CURRENT TUTORIAL DESIGN DISTINCTION**
+
+---
+
+## 98A. Prototype Representation Types
+
+Every important tutorial knowledge/flow item should declare how the prototype represents it.
+
+### REAL SYSTEM VALIDATION
+
+The prototype actually runs the gameplay rule.
+
+Use when incorrect implementation would invalidate the design test.
+
+Examples:
+
+- Unit Selection / Switching;
+- tactical Movement;
+- Player/Enemy Turn;
+- Shared AP;
+- StartGrid/refund;
+- End Turn;
+- Attack / Position Commitment;
+- ATR;
+- LOS;
+- Cover;
+- Intent / Current Target / Dynamic Intent;
+- Status;
+- Charge;
+- Wave Telegraph.
+
+Learning evidence may progress through:
+
+```text
+EXPOSE
+→ GUIDED USE
+→ UNASSISTED CONFIRMATION
+→ COMBINED TRANSFER
+```
+
+### FLOW SIMULATION
+
+The intended Unity step remains present in the prototype flow, but the final mechanic is not reproduced.
+
+Current examples:
+
+- camera navigation;
+- final 3D camera orientation/control beats;
+- continuous Unity locomotion-control introduction.
+
+Prototype representation may be:
+
+```text
+instruction
+→ simulated input / confirmation
+→ completion feedback
+→ next flow step
+```
+
+Flow Simulation validates intended sequence/reference, not final control feel or mechanic mastery.
+
+By default, Flow Simulation must not silently mutate authoritative combat state such as:
+
+- Team AP;
+- StartGrid;
+- tactical position;
+- HP;
+- Status;
+- enemy state;
+- Combat Turn;
+- Wave state.
+
+### DEFERRED / NOT READY
+
+The rule/content is not sufficiently designed to teach accurately.
+
+Current examples:
+
+- detailed Hold lesson;
+- detailed individual Skill lesson.
+
+Do not invent a fake mechanic merely to fill a tutorial slot.
+
+### Status
+
+**CURRENT PROTOTYPE TUTORIAL / VALIDATION PRINCIPLE**
+
+---
+
+## 98B. Required Foundation Topics
+
+Current required onboarding foundation includes:
+
+```text
+Camera / Control
+→ Unit Selection
+→ Unit Switching
+→ Movement
+```
+
+followed by the tactical turn foundation.
+
+Camera/navigation and final 3D locomotion may use **FLOW SIMULATION** in the web prototype.
+
+Unit Selection / Switching and tactical rules should use real-system behaviour where they are being validated.
+
+Important mental model:
+
+> **The Player Turn belongs to the whole party, not one unit activation.**
+
+### Status
+
+**REQUIRED ONBOARDING FOUNDATION**
+
+---
+
+## 98C. Shared AP and Movement Commitment Tutorial
+
+Core topics:
+
+1. living Player Units contribute to one Team AP pool;
+2. current baseline contribution = 2 AP per living unit;
+3. AP is shared rather than owned by individual units;
+4. tactical movement uses the unit's movement allowance;
+5. leaving StartGrid spends movement commitment AP;
+6. returning to StartGrid before Attack/Skill and before movement lock can refund that movement AP;
+7. End Turn discards remaining AP.
+
+The tutorial should visually demonstrate actual AP changes rather than rely only on explanation.
+
+Example:
+
+```text
+Guard + Archer
+→ 4 AP
+→ Guard leaves StartGrid
+→ 3 AP
+→ Guard returns before commitment
+→ 4 AP
+```
+
+Do not teach unresolved edge cases such as mid-turn death AP handling as tutorial rules.
+
+### Status
+
+**CORE TUTORIAL TOPIC**
+
+---
+
+## 98D. Attack, Position Commitment, and Repeated Action
+
+Attack tutorial should communicate:
+
+- target selection;
+- AP consumption;
+- damage resolution;
+- Attack/Skill locks further Movement for the acting unit;
+- the unit is **not** Exhausted merely because it attacked;
+- the unit remains selectable;
+- if AP and action-specific legality remain, repeated actions may still be possible;
+- another party member may use the same remaining Shared AP pool.
+
+Repeated Action may be demonstrated through gameplay rather than a dedicated explanatory popup.
+
+Example:
+
+```text
+Guard attacks
+→ Movement becomes unavailable
+→ Guard remains selectable
+→ Guard may Attack again if AP/rules allow
+```
+
+### Status
+
+**CORE TUTORIAL TOPIC**
+
+---
+
+## 98E. End Turn and First Enemy Turn
+
+End Turn must be explicitly taught because the Player Turn no longer ends through unit Exhaustion.
+
+```text
+END TURN
+→ discard remaining AP
+→ Enemy Turn
+```
+
+A simple readable Enemy Turn should be experienced before advanced enemy systems are combined.
+
+Sword remains the strongest current candidate for the first basic enemy lesson because its normal behaviour is simpler than the special-enemy candidates.
+
+Current tutorial-stage working direction:
+
+- the first Sword may arrive as scripted/tutorial content;
+- this first arrival is **not** automatically the Wave Telegraph lesson;
+- it should receive readable Intent;
+- it should receive at least one normal readable activation before the first Attack lesson where practical.
+
+### Status
+
+- End Turn: **CORE TUTORIAL TOPIC**
+- Sword as first basic enemy lesson: **TENTATIVE — STRONG WORKING DIRECTION / NOT ROSTER LOCK**
+
+---
+
+## 98F. ATR, Melee, Ranged, LOS, and Cover
+
+The tutorial should establish:
+
+```text
+Movement Range ≠ ATR
+```
+
+ATR is Attack Range.
+
+Current learning dependency:
+
+```text
+Melee / ATR basics
+→ Archer / ranged combat
+→ ranged ATR
+→ LOS
+→ Cover
+```
+
+LOS and Cover must not be taught as the same concept.
+
+Player-facing understanding:
+
+- a target may be inside ATR but fail ranged LOS;
+- a target behind Cover may remain targetable;
+- Cover modifies effectiveness rather than automatically removing targetability;
+- Full Cover may reduce baseline damage to 0.
+
+Internal terms such as `Action Validity` and `Action Effectiveness` do not need to be player-facing tutorial vocabulary.
+
+### Practice Target Candidate
+
+A stationary training object is a strong current tutorial/prototype candidate for controlled ATR/LOS/Cover teaching.
+
+Desired characteristics:
+
+- clearly identified as a training object;
+- stationary by identity rather than a frozen normal enemy;
+- no normal AI/Intent;
+- uses the real ATR / LOS / Cover / damage rules;
+- not counted as a normal hostile Victory requirement.
+
+Its purpose is to preserve normal enemy grammar while allowing stable tactical-geometry teaching.
+
+### Status
+
+- ATR / Ranged / LOS / Cover onboarding: **CORE / REQUIRED**
+- Practice Target: **PROTOTYPE ONLY / TUTORIAL TRAINING OBJECT CANDIDATE**
+
+---
+
+## 98G. Enemy Intent, Current Target, and Dynamic Intent
+
+Enemy Intent is a required core tutorial topic.
+
+Player should understand:
+
+```text
+Intent
+=
+what the enemy currently plans to do on its next activation
+```
+
+Typical presentation may combine:
+
+```text
+[ACTION / BEHAVIOUR] + [CURRENT TARGET]
+```
+
+Intent must represent actual enemy behaviour state/rules rather than tutorial-only text.
+
+Current Target should come from the enemy's real Target Rule.
+
+The tutorial should teach Intent before Dynamic Intent.
+
+### Dynamic Intent
+
+Later:
+
+```text
+relevant player position/state changes
+→ enemy Current Target / Intent changes when its normal rules require it
+```
+
+The player should learn:
+
+> Intent is the enemy's current readable plan, not a permanent target lock.
+
+The tutorial should not teach exact future path/destination or hidden Pattern as normal Intent information.
+
+### Status
+
+- Intent: **CORE TUTORIAL TOPIC**
+- Current Target: **CORE TUTORIAL TOPIC**
+- Dynamic Intent: **INTERMEDIATE / ADVANCED CORE TOPIC**
+
+---
+
+## 98H. Status Onboarding
+
+The tutorial should communicate that a **Status** can change a unit's capability or interaction.
+
+A Status lesson should use a concrete Status that genuinely belongs to the chosen content.
+
+Current strongest candidate:
+
+```text
+STUN
+```
+
+Current Player Stun rules provide useful party-resource learning because the Stunned unit:
+
+- cannot Move;
+- cannot Normal Attack;
+- cannot Skill;
+- cannot Hold;
+- remains selectable;
+- continues contributing to Shared Team AP.
+
+This can teach that Shared AP remains a party resource even when one unit temporarily cannot use its normal actions.
+
+### Current blocker
+
+```text
+Exact first Status teaching source = OPEN
+```
+
+Blue remains a possible source/application vehicle, but Blue itself is not locked tutorial/Region 1 roster content.
+
+### Status
+
+- Status concept: **REQUIRED ADVANCED CONCEPT**
+- Stun as first concrete example: **TENTATIVE STRONG CANDIDATE**
+- Exact first Status source: **OPEN**
+- Blue as first source: **TENTATIVE / OPEN ALTERNATIVE**
+
+---
+
+## 98I. Charge / Multi-Activation Threat Onboarding
+
+The corrected curriculum baseline teaches Status before Charge.
+
+Current dependency:
+
+```text
+Status
+→ Charge / temporal threat
+→ special-enemy application if selected
+```
+
+Player-facing Charge knowledge:
+
+- `CHARGE X/Y` shows progress of the **current** behaviour;
+- progress advances only when relevant Charge activations succeed;
+- `CHARGE X/X` remains Charge and does not automatically preview the next payoff;
+- payoff becomes visible when it becomes Current Intent;
+- Charge creates a preparation/planning horizon.
+
+The tutorial does not need to teach internal terms such as `Pattern Advance Rule`.
+
+### Blue candidate routes
+
+**Route A — Current Working Baseline**
+
+```text
+Status known
+→ Charge known
+→ Blue combines them as competence application
+```
+
+**Route B — OPEN Alternative**
+
+```text
+Blue introduces Charge
+→ payoff introduces first Stun
+```
+
+Route B is content-efficient but risks combining too many new concepts and may fail to demonstrate Stun consequence when good play avoids the payoff.
+
+### Status
+
+- Charge: **ADVANCED CORE ENEMY LESSON**
+- Status → Charge ordering: **TENTATIVE — CURRENT CORRECTED CURRICULUM BASELINE**
+- Blue combined application: **TENTATIVE CANDIDATE**
+- Blue Charge-first → first Stun: **OPEN ALTERNATIVE**
+
+---
+
+## 98J. Wave Telegraph Onboarding
+
+Wave Telegraph is an advanced culmination of readable current pressure plus incoming pressure.
+
+Player-facing knowledge:
+
+- an enemy will arrive from the telegraphed position;
+- the reserved spawn position may be traversed;
+- neither side may end movement on the reserved position;
+- telegraph provides a preparation opportunity;
+- after spawning, the enemy returns to the normal Intent language.
+
+Current canonical direction:
+
+```text
+Telegraph
+→ one Player preparation window
+→ Spawn
+```
+
+Spawn itself is not an attached immediate offensive Move/Attack event.
+
+Exact time from Spawn to first normal activation remains **OPEN**.
+
+### Prototype timing experiments
+
+Potential validation variants include:
+
+**W1 — Safe**
+
+```text
+Telegraph
+→ preparation
+→ Spawn
+→ no early first activation
+→ later activation
+```
+
+**W2 — Tight**
+
+```text
+Telegraph
+→ preparation
+→ Spawn
+→ earlier normal activation eligibility
+```
+
+These are **PROTOTYPE VALIDATION VARIANTS**, not canonical lifecycle rules.
+
+For a first tutorial Wave, a known enemy such as Sword is the preferred working hypothesis so the new lesson is incoming-pressure planning rather than a new enemy grammar.
+
+### Status
+
+- Wave Telegraph: **ADVANCED TUTORIAL TOPIC**
+- Reserved-position rule: **CURRENT DESIGN**
+- Exact spawn-to-first-activation lifecycle: **OPEN**
+- W1 / W2: **PROTOTYPE VALIDATION VARIANTS**
+- Known Sword as first tutorial Wave content: **STRONG WORKING HYPOTHESIS / NOT LOCKED**
+
+---
+
+## 98K. Hold and Skill Onboarding
+
+### Hold
+
+Hold remains part of current combat direction, but its exact effect, terminal behaviour, movement-lock interaction, duration, and repeatability are not finalized.
+
+Therefore:
+
+```text
+Hold detailed tutorial
+→ DEFERRED / NOT READY
+```
+
+### Skill
+
+Skill is a planned action category, but individual player Skills are not sufficiently finalized for a canonical detailed tutorial task.
+
+Therefore:
+
+```text
+Skill detailed tutorial
+→ PLANNED SLOT / CONTENT OPEN
+```
+
+Do not create fake Hold/Skill rules merely to complete the tutorial sequence.
+
+---
+
+## 98L. Combat Onboarding vs Run Onboarding
+
+The tutorial should not force all roguelite/meta systems into the first combat lesson.
+
+### Combat Onboarding
+
+Focus:
+
+- controls / orientation;
+- party selection/switching;
+- Player/Enemy Turn;
+- Shared AP;
+- StartGrid / tactical movement commitment;
+- actions;
+- positioning;
+- ATR / LOS / Cover;
+- Intent / Dynamic Intent;
+- Status;
+- Charge / temporal threat;
+- later Wave pressure.
+
+### Run Onboarding
+
+Can be introduced after basic combat is understood:
+
+- battle result;
+- HP carry / attrition;
+- reward selection;
+- route preview;
+- route commitment;
+- risk–reward;
+- Run Crystal;
+- later settlement/meta progression.
+
+Meta Crystal and permanent progression may be introduced when the player reaches the relevant run-resolution context.
+
+### Status
+
+**STRONG CURRENT TUTORIAL STRUCTURE DIRECTION**
+
+---
+
+## 98M. Tutorial Learning Blocks
+
+Current Learning Blocks:
+
+```text
+1. Party Control & Turn Model
+2. Shared AP & Movement Commitment
+3. Attack & Position Commitment
+4. Tactical Range & Ranged Space
+5. Readable Enemy Pressure
+6. Status & Temporal Threat
+7. Incoming / Combined Pressure
+```
+
+Camera / Unity control flow is a foundation around the first block rather than necessarily an eighth Learning Block.
+
+Current mental-model progression:
+
+1. **I control a party during one shared Player Turn.**
+2. **The party shares AP and movement is a reversible commitment until I commit position.**
+3. **Attacking commits position, not the entire unit.**
+4. **Attack space depends on ATR, LOS, and Cover.**
+5. **Enemy threats are readable and can change with battle state.**
+6. **Conditions and delayed threats change how I allocate party resources.**
+7. **I can plan around current pressure and incoming pressure together.**
+
+### Status
+
+**CURRENT WORKING CURRICULUM ARCHITECTURE**
+
+---
+
+## 98N. Tutorial Knowledge Dependency Map
+
+Current conceptual dependency map:
+
+```text
+Camera / Control
+→ Unit Selection
+→ Unit Switching
+→ Movement
+```
+
+then:
+
+```text
+Player Turn / Enemy Turn
+→ Shared AP
+→ StartGrid / Movement Commitment
+→ Movement Refund
+→ End Turn
+```
+
+then:
+
+```text
+Attack
+→ Position Commitment
+→ Repeated Action
+→ Target Selection
+→ Damage
+→ ATR
+```
+
+then:
+
+```text
+Archer / Ranged Combat
+→ LOS
+→ Cover
+```
+
+then:
+
+```text
+Enemy Intent
+→ Current Target
+→ Dynamic Intent
+→ threat response
+```
+
+then:
+
+```text
+Status
+→ Charge / multi-activation threat
+→ special-enemy interaction
+→ Wave Telegraph
+```
+
+Separate run-onboarding layer:
+
+```text
+Battle Result
+→ HP Carry
+→ Reward
+→ Route Preview / Commitment
+→ Risk–Reward
+→ Run Resources
+```
+
+This is a **knowledge dependency map**, not the final count/order of tutorial Phases.
+
+---
+
+## 98O. Current Tutorial Stage Working Direction
+
+Current working direction is:
+
+```text
+ONE continuous Tutorial Stage / Level
+```
+
+The intended experience is one evolving tactical battlefield rather than isolated tutorial rooms.
+
+Current seven-Phase candidate:
+
+```text
+Phase 1 — Control & Party Orientation
+Phase 2 — Shared AP, Tactical Movement & Turn Foundation
+Phase 3 — Basic Combat & Static Intent
+Phase 4 — Tactical Range
+Phase 5 — Dynamic Threat Reading
+Phase 6 — Status & Temporal Threat
+Phase 7 — Incoming / Combined Pressure
+→ Tutorial Victory
+```
+
+### Important Phase 1 correction
+
+Phase 1 now includes important Unity-facing control/orientation beats through **FLOW SIMULATION**, while Unit Selection/Switching use real prototype interaction.
+
+Actual tactical Movement consequences begin only when Shared AP and StartGrid are active in Phase 2.
+
+Flow-simulated movement/control beats in Phase 1 must not silently spend AP or change authoritative tactical position.
+
+### Phase count
+
+Seven is a working candidate, not a locked architecture.
+
+Phase 6 may split if Status + Charge creates excessive cognitive load.
+
+### Status
+
+- One continuous Tutorial Stage: **TENTATIVE — STRONG WORKING DIRECTION**
+- Seven-Phase structure: **TENTATIVE WORKING STRUCTURE**
+- Phase 1 Control & Party Orientation: **TENTATIVE — CURRENT WORKING DIRECTION**
+- Exact Phase count: **OPEN / VALIDATION-DEPENDENT**
+
+### Current Tutorial Layout Family
+
+Current primary working layout family:
+
+```text
+Offset Courtyard
+```
+
+Its purpose is to support one continuous Tutorial Stage with evolving tactical geometry rather than isolated tutorial rooms.
+
+Current status:
+
+- Offset Courtyard: **TENTATIVE — PRIMARY WORKING LAYOUT FAMILY**
+- Exact grid dimensions / coordinates: **TENTATIVE / NOT LOCKED**
+- Exact ATR / LOS / Cover teaching geometry: **OPEN / VALIDATION-DEPENDENT**
+- Alternative layout geometry may be used if actual prototype validation shows the working family does not produce the intended learning evidence.
+
+Detailed candidate coordinates and paper-layout reasoning remain in the supporting Tutorial Design Corrected Handoff rather than this canonical context.
+
+---
+
+## 98P. Tutorial State Continuity and Trigger Principles
+
+Current state-continuity direction:
+
+1. Phase transition does not automatically refresh AP.
+2. Phase transition does not automatically refresh StartGrid.
+3. Phase transition does not auto-heal.
+4. Phase transition does not auto-clear Status.
+5. Tactical position persists by default.
+6. Avoid teleport/reset unless the design explicitly requires it.
+7. Early pressure may clear naturally.
+8. Late pressure should increasingly compose rather than reset.
+9. Reinforcement is preferred over battlefield reset.
+10. Instructional transition may occur mid-turn.
+11. Major battlefield/content transitions should prefer natural combat boundaries.
+12. Every Phase should have an Entry/Exit State Contract.
+13. Phase exit should create a state compatible with the next Phase.
+14. Tutorial rules must not contradict normal combat rules.
+15. Flow Simulation must not silently mutate authoritative combat state.
+16. Simulated flow completion must not be recorded as mechanic mastery.
+
+Preferred trigger categories:
+
+```text
+Learning Evidence Trigger
+Combat-Boundary Trigger
+Content Trigger
+Completion Trigger
+Flow-Simulation Completion Trigger
+```
+
+Exact-tile triggers should be used only when position itself is the learning objective.
+
+### Status
+
+**CURRENT TUTORIAL AUTHORING DIRECTION**
+
+---
+
+## 98Q. Tutorial Learning Evidence
+
+For **REAL SYSTEM VALIDATION**:
+
+```text
+EXPOSE
+→ GUIDED USE
+→ UNASSISTED CONFIRMATION
+→ COMBINED TRANSFER
+```
+
+The minimum desired exit evidence for an important taught mechanic is generally an unassisted confirmation, with later combined transfer used where practical.
+
+For **FLOW SIMULATION**:
+
+```text
+FLOW EXPOSURE
+→ SIMULATED COMPLETION
+```
+
+Example:
+
+```text
+"Move camera left"
+→ simulated completion
+```
+
+means:
+
+```text
+the intended Unity onboarding step was represented
+```
+
+not:
+
+```text
+camera-control mastery was validated
+```
+
+For authoring:
+
+```text
+Tutorial Flow Completion
+≠
+Learning Confirmation
+```
+
+### Status
+
+**CURRENT PROTOTYPE TUTORIAL EVALUATION FRAMEWORK**
+
+---
+
+## 98R. Good Play Must Not Break the Tutorial
+
+A correct or strong tactical response should not be treated as tutorial failure merely because it occurs earlier or differently from the script.
+
+Examples:
+
+- player kills an enemy earlier than expected;
+- player changes Dynamic Intent before the prompt;
+- player finds a legal firing position immediately;
+- player avoids a Status threat;
+- player eliminates current pressure before a Wave arrives.
+
+Where learning evidence is already observable, retroactive credit is preferred.
+
+Likewise, legal but suboptimal play can be used as consequence-based teaching rather than hard failure where appropriate.
+
+Example:
+
+```text
+legal Full-Cover shot
+→ 0 damage
+→ AP still consumed
+```
+
+may teach Cover consequence while the tutorial later still requires a meaningful ranged confirmation.
+
+### Status
+
+**CURRENT TUTORIAL AUTHORING PRINCIPLE**
+
+---
+
+## 98S. Prototype Validation Scope for Tutorial
+
+The corrected tutorial prototype has two explicit functions:
+
+```text
+A. Game Design Validation Tool
+B. Unity Functional Flow Reference
+```
+
+The prototype should model the following categories accurately when they are under validation:
+
+- Shared AP;
+- StartGrid/refund;
+- Attack movement lock without Exhaustion;
+- repeated/cross-unit AP usage;
+- ATR / LOS / Cover distinction;
+- actual Intent / Current Target;
+- Dynamic Intent;
+- sequential enemy activation;
+- Spawn Order as the baseline internal execution order;
+- maximum 1 Movement + 1 Action per baseline enemy activation;
+- Status when selected for validation;
+- Charge when selected for validation;
+- Wave Telegraph reservation/Spawn/Intent transition.
+
+Important Unity-specific control steps may be Flow Simulated.
+
+Hold/Skill detailed lessons remain deferred until their rules/content are ready.
+
+The prototype validation scope should not assume that a single tutorial Phase count is permanently fixed.
+
+### Status
+
+**CURRENT PROTOTYPE VALIDATION DIRECTION**
+
+---
+
+## 98T. Tutorial Failure / Retry
+
+Current prototype direction:
+
+```text
+Tutorial Defeat
+→ Retry Tutorial
+```
+
+Tutorial defeat should not automatically:
+
+- start normal Run settlement;
+- convert Crystal;
+- trigger permanent progression.
+
+For a longer tutorial, whether retry means:
+
+- retry entire Tutorial Stage;
+- retry current Phase/checkpoint
+
+remains **OPEN**.
+
+### Status
+
+- Separate tutorial retry flow: **CARRIED FORWARD**
+- Exact checkpoint/retry granularity: **OPEN**
+
+---
+
+## 98U. Existing Historical Tutorial Scenario
+
+Older tutorial material contained directions such as:
+
+- camera;
 - movement;
 - Action Menu;
 - Wait;
-- phase structure;
 - Attack;
-- damage;
-- target switching;
-- receiving damage;
-- ranged enemy interaction;
-- cover;
-- unit switching;
+- Cover;
 - Archer;
-- ranged attack;
-- final objective.
+- final encounter.
 
-The exact order is not fully re-audited here.
+The old sequence is not adopted directly because its Wait/Exhaustion mental model is outdated under Shared AP.
 
-### Status
-
-**PLANNED DIRECTION**
-
----
-
-## 98. Existing Planned Tutorial Scenario
-
-A more detailed tutorial scenario was previously discussed and summarized in older chat/design-summary documentation.
-
-The Game Designer still intends to implement that scenario in the prototype approximately according to the previous plan.
-
-Before tutorial development:
-
-1. request the original tutorial summary/document;
-2. audit the detailed sequence;
-3. do not reconstruct the scenario from memory alone;
-4. only then update canonical tutorial design or begin implementation.
+Useful unchanged ideas may still be reused when consistent with the corrected curriculum.
 
 ### Status
 
-**PLANNED FOR PROTOTYPE IMPLEMENTATION**
+**HISTORICAL DESIGN SEED**
 
-The current v2.5 placeholder tutorial battle is not main-game tutorial canon.
+The current old/placeholder prototype tutorial remains **PROTOTYPE IMPLEMENTATION HISTORY**, not main-game tutorial canon.
 
 ---
+
+## 98V. Current Tutorial Design Status
+
+The tutorial design is no longer in the same state as the broad v3.0 “curriculum still to be recovered” checkpoint.
+
+Current status:
+
+```text
+T1 — Learning Curriculum
+COMPLETE as corrected working curriculum
+
+T2 — Curriculum → Phase Architecture
+COMPLETE as corrected working architecture
+
+T3 — Actual Tutorial Stage Design
+WORKING DESIGN COMPLETE ENOUGH FOR PROTOTYPE VALIDATION PLANNING
+
+Prototype Validation Scope
+CORRECTED WORKING SCOPE
+```
+
+This does NOT mean the production tutorial is final or locked.
+
+Material design blocker:
+
+```text
+Exact first Status teaching source
+```
+
+Other OPEN / validation-dependent items include:
+
+- final Phase count;
+- exact map dimensions/coordinates;
+- exact tactical LOS/Cover geometry;
+- Practice Target final identity/presentation;
+- Stun duration/timing;
+- final Blue inclusion/placement;
+- exact Wave spawn-to-first-activation lifecycle;
+- Wave Telegraph information density;
+- exact AP-sensitive task choreography;
+- exact Tutorial Objective / UI wording;
+- retry whole Stage vs Phase checkpoint;
+- exact amount of Flow Simulation needed for Unity control onboarding;
+- movement-scouting/refund exploit/value;
+- final combined-pressure tuning;
+- main-game tutorial skip/replay/access policy.
+
+### Status
+
+**WORKING DESIGN RECOVERED / NOT FINAL PRODUCTION LOCK**
+
 
 # Part XII — Prototype-Originated Design Candidates
 
@@ -1912,35 +4421,80 @@ Whether it becomes part of the main Unity game depends on later UI/UX discussion
 # Part XIII — Open Design Questions
 
 ## Game Vision
-- Core Player Experience
-- Core Design Pillars
+- final wording/validation of Core Player Experience;
+- final confirmation of the four Core Design Pillars after playtest.
 
 ## Combat
+- exact Normal Attack AP cost if not retained at candidate 1 AP;
 - exact Skill system;
-- skill resources;
-- skill cooldowns;
-- action-economy exceptions;
-- exact Unity movement-allowance measurement.
+- Skill resources/cooldowns/repeat restrictions;
+- exact Hold effect;
+- whether Hold is terminal or repeatable;
+- whether Hold locks movement;
+- final presence/removal of individual Wait;
+- exact terminology for movement lock after Attack/Skill;
+- AP handling when a contributing unit dies mid-Player-Turn;
+- AP=0 behaviour during an already-paid reposition state;
+- exact Unity movement-allowance measurement;
+- exact StartGrid boundary detection in continuous movement;
+- exact LOS implementation;
+- exact Status duration/tick convention.
 
 ## Units
 - Trickster identity;
 - Support identity;
-- future playable units;
-- future enemy roles.
+- individual playable Skills;
+- future playable units.
+
+## Enemy
+- exact combat-distance metric;
+- deterministic final target/tile ordering;
+- final Status vocabulary;
+- Concealed reveal rule;
+- final Attuned/Focused naming;
+- Orange parameters;
+- Purple parameters;
+- Blue ATR / Charge / Stun duration;
+- which special enemies enter Region 1;
+- Mini-Boss design;
+- Boss Pattern design;
+- future enemy roles/variants.
 
 ## Encounter
 - exact Protect Target design;
-- exact Mini-Boss design;
-- wave validation;
+- exact Mini-Boss encounter;
+- exact Wave Victory Relevance rules;
+- exact telegraph/spawn/first-activation lifecycle;
+- emergency technical spawn fallback;
 - multi-step objectives;
-- future objective library.
+- future objective library;
+- final Region 1 enemy compositions.
+
+## Tutorial
+- final production Tutorial Phase count;
+- exact tutorial map dimensions/coordinates;
+- exact LOS/Cover teaching geometry;
+- exact first Status teaching source;
+- Practice Target final identity/presentation;
+- Stun duration/timing for the chosen tutorial content;
+- final use/non-use and placement of Orange/Purple/Blue;
+- exact Wave spawn-to-first-activation lifecycle;
+- Wave Telegraph information density;
+- exact AP-sensitive task choreography;
+- final Tutorial Objective / UI wording;
+- retry whole Stage vs Phase/checkpoint granularity;
+- exact amount of Unity-control Flow Simulation required;
+- movement-scouting/refund exploit/value;
+- final combined-pressure tuning;
+- main-game tutorial skip/replay/access policy.
 
 ## Run
 - recovery rules;
 - rest-node behavior;
 - unit defeat persistence;
 - between-region recovery;
-- resume unfinished active run.
+- resume unfinished active run;
+- Town/Castle internal structure.
 
 ## Rewards
 - reward occurrence probability;
@@ -1948,27 +4502,32 @@ Whether it becomes part of the main Unity game depends on later UI/UX discussion
 - reward repetition;
 - reward stacking;
 - stacking caps;
-- unique-node reward behavior.
+- unique-node reward behavior;
+- reward content interacting with Shared AP / Status / Hold / positioning.
 
 ## Economy
 - final Crystal conversion rate;
 - defeat penalty or completion bonus;
 - In-Run Shop design;
+- exact full-game permanent-shop access/presentation;
 - future permanent upgrade categories.
 
 ## Balancing
-- exact definition of Current Player Capability;
+- exact definition/measurement of Current Player Capability;
 - exact Stage Pressure scale;
 - Difficulty Gap interpretation;
 - Tactical Mastery measurement;
 - pressure weights;
-- final difficulty scale.
+- final difficulty scale;
+- rebalance of old Region 1 numerical values after new combat/enemy rules.
 
 ## Main Game UI/UX Candidates
 - Death Marker;
-- Run History / Run Notes.
-
----
+- Run History / Run Notes;
+- exact Intent icon language;
+- target/status/state visual treatment;
+- End Turn warning/confirmation;
+- camera/control mapping.
 
 # Part XIV — Superseded and Revised Legacy Design
 
@@ -1984,71 +4543,133 @@ Whether it becomes part of the main Unity game depends on later UI/UX discussion
 
 ---
 
-## 102. `1 Unit = 1 Action = End Turn`
+## 102. Old Unit Activation / Exhaustion Model
 
-**Old wording:** one unit = one action = end turn.
+**Old design:**
+
+Reposition
+→ one baseline action
+→ unit Exhausted
+→ all living units Exhausted
+→ Enemy Phase
 
 **Current design:**
-- unit activation;
-- optional reposition;
-- one baseline action;
-- unit exhausted;
-- Player Phase continues with other non-exhausted units;
-- Enemy Phase begins after all living player units are exhausted.
 
-**Status:** REVISED
+Shared Player Turn
+→ living units contribute Team AP
+→ free switching/reselection
+→ repeated Attack/Skill allowed if legal/AP sufficient
+→ Attack/Skill locks further movement for that unit
+→ global End Turn
+→ Enemy Turn
+
+**Status:** **SUPERSEDED**
 
 ---
 
-## 103. Range Terminology
+## 103. Individual Wait as Turn-Completion Action
+
+**Old:** Wait consumes the unit's baseline action and Exhausts the unit.
+
+**Current:** Player Turn is ended globally through End Turn. Hold is a separate paid preparation action.
+
+Final existence of an individual Wait command in another form remains open.
+
+**Status:** **SUPERSEDED / LIKELY REMOVED**
+
+---
+
+## 104. Inactive / Exhausted Combat State
+
+**Old:** acted units became Inactive/Exhausted for the remainder of Player Phase.
+
+**Current:** acting does not remove the unit from the Player Turn. Attack/Skill only locks further movement under the core rule; other legal actions may remain possible.
+
+**Status:** **SUPERSEDED**
+
+---
+
+## 105. `1 Unit = 1 Action = End Turn`
+
+**Old wording:** one unit = one action = end turn.
+
+**Current:** party-wide Shared AP with global End Turn.
+
+**Status:** **SUPERSEDED**
+
+---
+
+## 106. Enemy Phase `All Move → All Attack`
+
+**Old:** all living enemies moved, then all living enemies attempted attacks.
+
+**Current:** enemies resolve sequentially by current Spawn Order, each with maximum one Movement Resolution and one Action Resolution.
+
+**Status:** **SUPERSEDED**
+
+---
+
+## 107. Exact Enemy Path / Destination Preview
+
+**Old direction/implementation possibility:** communicate exact movement outcome.
+
+**Current:** show Current Intent / Target / relevant State/Status/threat area, but normally hide exact path and destination.
+
+**Status:** **SUPERSEDED AS PLAYER-FACING DEFAULT**
+
+---
+
+## 108. Range Terminology
 
 **Old:** Range
 
 **Current:** ATR — Attack Range
 
-**Status:** SUPERSEDED
+**Status:** **SUPERSEDED**
 
 ---
 
-## 104. Tile-by-Tile Movement as Full-Game Interpretation
+## 109. Tile-by-Tile Movement as Full-Game Interpretation
 
 **Old/prototype interpretation:** discrete grid movement.
 
-**Current full-game design:** continuous free movement with tactical grid snap when entering Action State.
+**Current full-game design:** continuous free movement with tactical grid resolution/snap for combat.
 
-**Status:** CLARIFIED / PROTOTYPE SIMPLIFICATION
+**Status:** **CLARIFIED / PROTOTYPE SIMPLIFICATION**
 
 ---
 
-## 105. Main Menu Shop
+## 110. Main Menu Shop
 
 **Old:** hidden or milestone-unlocked Main Menu Shop.
 
-**Current:** Post-Run Shop after run settlement.
+**Current:** permanent progression remains tied to post-run/meta flow; exact final access presentation remains UI/UX open.
 
-**Status:** SUPERSEDED
-
----
-
-## 106. Region 1 as Run Boundary
-
-**Prototype behavior:** Village completion currently ends the validation loop.
-
-**Current full-game design:** one run continues Village → Town → Castle.
-
-**Status:** CLARIFIED / DEVELOPMENT EXCEPTION
+**Status:** **SUPERSEDED**
 
 ---
 
-## 107. Spear Enemy Removal from Stage 1
+## 111. Region 1 as Full Run Boundary
 
-**Current interpretation:** Spear Enemy remains the planned basic ranged enemy. It was removed only from Stage 1 onboarding.
+**Prototype behavior:** Village completion currently may end the validation loop.
 
-**Status:** CARRIED FORWARD
+**Current full-game design:** one full run continues Village → Town → Castle.
+
+**Status:** **CLARIFIED / DEVELOPMENT EXCEPTION**
 
 ---
 
-## 108. Old Specific Stage 2–3 Encounter Drafts
+## 112. Spear Enemy Removal from Stage 1
+
+**Current interpretation:** Spear remains the intended basic ranged enemy. It was removed from the old Stage 1 onboarding baseline to reduce early complexity.
+
+Its placement in the redesigned tutorial is not yet final.
+
+**Status:** **CARRIED / TUTORIAL PLACEMENT REOPENED**
+
+---
+
+## 113. Old Specific Stage 2–3 Encounter Drafts
 
 Old detailed encounter drafts are no longer current Region 1 content plans.
 
@@ -2057,133 +4678,278 @@ Their underlying principles remain relevant:
 - encounter diversity;
 - enemy composition;
 - objectives;
-- waves;
+- Waves;
 - map pressure;
 - risk–reward.
 
-**Status:** HISTORICAL DESIGN SEEDS
+**Status:** **HISTORICAL DESIGN SEEDS**
 
 ---
+
+## 114. Primary / Alternative / 3×3 Spawn Fallback as Gameplay Rule
+
+**Old candidate:** when spawn was blocked, search Primary → Alternative → local fallback area.
+
+**Current:** telegraphed spawn position is reserved, passable, and non-occupiable as a final tile.
+
+A technical emergency fallback may still exist, but it is not the intended player-facing solution.
+
+**Status:** **SUPERSEDED AS PRIMARY GAMEPLAY DESIGN**
+
+---
+
+## 115. Purple Melee/Ranged Adaptive Immunity
+
+**Old candidate:** first melee/ranged hit creates immunity to that attack category.
+
+**Current:** first successful damaging Player Unit becomes the only unit able to damage Purple for the remainder of that Player Turn.
+
+**Status:** **SUPERSEDED**
+
+---
+
+## 116. Blue Shockwave Knockback
+
+**Old candidate:** Blue Shockwave displaces/knocks units back.
+
+**Current:** Shockwave applies Stun; Immobilize is retained only as a fallback candidate if Stun proves too oppressive.
+
+**Status:** **SUPERSEDED**
+
+---
+
+## 117. Old Tutorial Wait / Exhaustion Curriculum
+
+**Old tutorial mental model:** use Wait / complete unit activation / Exhaust unit.
+
+**Current:** teach Shared AP, party-wide Player Turn, position commitment, repeated actions, and global End Turn.
+
+**Status:** **SUPERSEDED**
+
+---
+
+## 118. Old Orange Permanent Mobility After Buff
+
+**Old candidate:** Orange could become generally mobile after completing its first Buff cycle.
+
+**Current:** after Buff succeeds, Orange resets Charge and returns to stationary Charging at its current position.
+
+**Status:** **SUPERSEDED**
 
 # Part XV — Design Carryover Registry
 
-| Legacy Concept | Current Status | Migration |
+This registry exists to make preservation explicit. Older details that were not contradicted are intentionally retained.
+
+| Design Concept | Current Status | Migration |
 |---|---|---|
-| TMTB project identity | Locked | Carried |
-| BeCan | Clarified as group | Carried |
-| 3D Turn-Based Tactics | Locked | Carried |
-| Semi-Roguelite progression | Locked | Carried |
-| Permanent Meta Progression | Locked | Carried |
-| Village → Town → Castle | Locked | Carried |
-| One full run spans all three regions | Locked | Clarified |
-| Region 1 Stage 1–4 structure | Locked for Region 1 | Carried |
-| Branching node graph | Locked direction | Carried |
-| Controlled randomization | Planned | Carried |
+| TMTB project identity | LOCKED | Carried |
+| BeCan as development group | LOCKED / clarified | Carried |
+| 3D Turn-Based Tactics | LOCKED | Carried |
+| Unity production context | LOCKED | Carried |
+| Semi-Roguelite / Light Roguelite | LOCKED | Carried |
+| Permanent meta progression | LOCKED | Carried |
+| Main game ≠ 2D prototype | LOCKED distinction | Carried |
+| Continuous 3D movement | LOCKED | Carried |
+| Tactical grid combat resolution | LOCKED | Carried |
+| Prototype direct grid movement | PROTOTYPE simplification | Carried |
+| Core Player Experience | TENTATIVE canonical direction | Updated |
+| Readable Threats | TENTATIVE pillar | Added |
+| Shared Tactical Economy | TENTATIVE pillar | Added |
+| Position Commitment | TENTATIVE pillar | Added |
+| Adaptive Party Development | TENTATIVE pillar | Added |
+| Village → Town → Castle | LOCKED | Carried |
+| One full run spans all three regions | LOCKED | Carried |
+| Region 1 temporary prototype settlement | DEVELOPMENT EXCEPTION | Carried |
+| Region 1 Stage 1–4 branching structure | LOCKED direction | Carried |
+| Route preview before commitment | LOCKED | Carried |
+| Commit route on encounter start | LOCKED | Carried |
+| Controlled randomization | PLANNED | Carried |
 | `Trackback` item | Not canon | Historical example |
-| 1 unit = 1 action = end turn | Superseded wording | Revised |
-| One baseline action | Locked | Carried/revised |
-| Additional action mechanics | Open | Preserved design space |
-| Free WASD movement | Locked | Clarified |
-| Tactical grid snap | Locked | Carried/clarified |
-| BFS | Prototype implementation | Excluded |
-| Four-direction movement | Prototype implementation | Excluded |
-| Range terminology | Superseded | Replaced by ATR |
-| ATR | Locked | Carried |
-| Cover system | Locked | Carried |
-| O30 / O70 values | Tentative | Carried |
-| Current damage formula | Tentative | Carried |
-| Target validity vs effectiveness | Locked principle | Clarified |
-| Guard | Planned playable | Carried |
-| Archer | Planned playable | Carried |
-| Trickster | Planned playable | Carried |
-| Support | Planned playable | Carried |
-| Sword Enemy | Basic melee | Carried |
-| Spear Enemy | Basic ranged | Carried |
-| Heavy / Fast / Support enemy roles | Deferred | Carried as design space |
+| Old one-action Exhaustion model | SUPERSEDED | Replaced by Shared AP |
+| Shared Team AP | CURRENT DESIGN | Added |
+| 2 AP contribution per living Player Unit | CURRENT DESIGN | Added |
+| AP no carry | CURRENT DESIGN | Added |
+| StartGrid | CURRENT DESIGN | Added |
+| Leave StartGrid = movement AP commitment | CURRENT DESIGN | Added |
+| Return-to-StartGrid refund | CURRENT DESIGN | Added |
+| Movement scouting consequence | NEEDS PLAYTEST | Added |
+| Attack/Skill movement lock | CURRENT DESIGN | Added |
+| Repeated Attack/Skill | CURRENT DESIGN | Added |
+| Global End Turn | CURRENT DESIGN | Added |
+| Individual Wait → Exhaustion | SUPERSEDED | Replaced |
+| Hold | CURRENT direction, details OPEN | Added |
+| ATR terminology | LOCKED | Carried |
+| Melee path obstacle interaction | LOCKED | Carried |
+| All ranged attacks require LOS | CURRENT DESIGN | Added |
+| LOS ≠ Cover | CURRENT DESIGN | Added |
+| Cover system | LOCKED | Carried/clarified |
+| O30 / O70 values | TENTATIVE | Carried |
+| Full Cover targetability | LOCKED current design | Carried/clarified |
+| Target Validity vs Effectiveness | LOCKED principle | Expanded |
+| Current damage formula | TENTATIVE | Carried |
+| Player Stun definition | CURRENT DESIGN | Added |
+| Guard | PLANNED playable / validated baseline | Carried |
+| Archer | PLANNED playable / validated baseline | Carried |
+| Trickster | PLANNED / deferred | Carried |
+| Support | PLANNED / deferred | Carried |
+| Guard numerical stats | TENTATIVE | Carried |
+| Archer numerical stats | TENTATIVE | Carried |
+| Enemy as pressure source | CORE PRINCIPLE | Expanded |
+| Systemic counterplay | STRONG direction | Added |
+| Role-consistent enemy AI | TENTATIVE strong direction | Added |
+| Sword Enemy | Basic melee | Carried/expanded |
+| Spear Enemy | Basic ranged | Carried/expanded |
+| Dynamic Intent | CURRENT DESIGN | Added |
+| Current Target | CURRENT DESIGN | Added |
+| Exact enemy path/destination preview | SUPERSEDED default | Replaced |
+| Sequential enemy activation | CURRENT DESIGN | Added |
+| Spawn Order execution | CURRENT DESIGN | Added |
+| Enemy max 1 Move + 1 Action | CURRENT DESIGN | Added |
+| Enemy State grammar | TENTATIVE | Added |
+| Enemy Status system | STRONG direction | Added |
+| Conditional Override | TENTATIVE/current framework | Added |
+| Enemy Pattern | CURRENT direction | Added |
+| Deterministic Pattern default | TENTATIVE | Added |
+| Pattern hidden by default | CURRENT DESIGN | Added |
+| Charge countdown as current behaviour progress | CURRENT DESIGN | Added |
+| Orange Charger Buffer | TENTATIVE candidate | Added |
+| Purple Charger Debuffer | TENTATIVE candidate | Added |
+| Blue Shockwave Charger | TENTATIVE candidate | Added |
+| Old Purple melee/ranged immunity | SUPERSEDED | Replaced |
+| Old Blue knockback | SUPERSEDED | Replaced |
+| Heavy / Fast / Support enemy roles | Deferred design space | Carried |
+| Region 1 Mini-Boss climax | LOCKED direction | Carried |
 | Eliminate All | Core objective | Carried |
-| Protect Target | Planned core objective | Carried |
-| Defeat Mini-Boss | Planned core objective | Carried |
-| Survive Turns | Planned | Carried |
-| Reach Exit | Planned | Carried |
-| Activate Points | Planned | Carried |
-| Escort Target | Planned | Carried |
-| Hold Position | Planned | Carried |
-| Trigger framework | Planned | Carried |
-| Wave system | Planned | Carried |
-| Required / Conditional / Punishment waves | Planned | Carried |
-| Multi-step objective | Open/deferred | Carried |
-| Old Stage 2–3 specific drafts | Historical | Demoted |
-| Temporary reward durations | Planned | Carried |
+| Protect Target | PLANNED | Carried |
+| Defeat Mini-Boss | PLANNED | Carried |
+| Survive Turns | PLANNED design space | Carried |
+| Reach Exit | PLANNED design space | Carried |
+| Activate Points | PLANNED design space | Carried |
+| Escort Target | PLANNED design space | Carried |
+| Hold Position | PLANNED design space | Carried |
+| Trigger framework | PLANNED/current framework | Expanded |
+| Stage / Phase / Task / Objective / Wave distinction | CURRENT framework | Added/clarified |
+| Multiple Waves per Stage | CURRENT direction | Added |
+| Required / Conditional / Punishment Wave roles | TENTATIVE taxonomy | Carried/updated |
+| One-turn Wave Telegraph | CURRENT direction | Added |
+| Reserved passable/non-occupiable spawn tile | CURRENT DESIGN | Added |
+| Old spawn fallback gameplay system | SUPERSEDED | Replaced |
+| Spawn with readable Intent | CURRENT direction | Added |
+| Immediate attack on spawn | NOT current direction | Clarified |
+| Exact spawn lifecycle | OPEN | Preserved |
+| Multi-step encounter | OPEN/deferred | Carried |
+| Old Stage 2–3 specific drafts | Historical | Carried as seeds |
+| HP Carry | LOCKED direction | Carried |
+| Recovery | OPEN/deferred | Carried |
+| Unit defeat persistence | OPEN | Carried |
+| Temporary reward durations | PLANNED | Carried |
 | Reward impact model | Working | Carried |
-| Reward stacking | Open | Carried |
-| Run Crystal | Locked | Carried |
-| Meta Crystal | Locked | Carried |
-| 100% conversion | Tentative | Carried as current baseline |
-| Main Menu Shop | Superseded | Replaced |
-| Post-Run Shop | Current direction | Carried |
-| Permanent upgrades | Locked concept | Carried |
-| HP / ATK / DEF upgrade foundation | Locked direction | Carried |
-| HP Carry | Locked direction | Restored |
-| Recovery | Open/deferred | Carried |
-| Death Marker | Prototype planned | Reclassified |
-| Run History | Prototype planned | Reclassified |
+| Reward stacking | OPEN | Carried |
+| Run Crystal | LOCKED concept | Carried |
+| Meta Crystal | LOCKED concept | Carried |
+| 100% Crystal conversion | TENTATIVE | Carried |
+| Old Main Menu Shop | SUPERSEDED | Carried as history |
+| Permanent progression shop/service | Current direction | Clarified |
+| Prototype Run Overview Shop access | PROTOTYPE CURRENT FLOW | Reclassified |
+| In-Run Shop | OPEN | Carried |
+| Permanent upgrades | LOCKED concept | Carried |
+| HP / ATK / DEF upgrade foundation | LOCKED direction | Carried |
 | Current Player Capability | Working framework | Carried |
 | Stage Pressure | Core balancing principle | Carried |
-| Enemy Pressure | Working framework | Carried |
+| Enemy Pressure | Working framework | Expanded |
 | Map Pressure | Working framework | Carried |
-| Wave Pressure | Working framework | Carried |
+| Wave Pressure | Working framework | Expanded |
 | Objective / Phase Pressure | Working framework | Carried |
-| Difficulty Gap | Initial working concept | Carried |
-| Difficulty Scale | Working | Carried |
-| Stage Node Difficulty Template | Canonical design tool | Carried |
+| Difficulty Gap | Working model | Carried |
+| Difficulty Scale | TENTATIVE working | Carried |
+| Stage Node Difficulty Template | Canonical design tool | Updated |
 | Temporary Buff Impact Rating | Working model | Carried |
 | Permanent Upgrade Growth Rating | Working model | Carried |
-| Tactical Mastery | Open measurement model | Carried |
+| Tactical Mastery | Open measurement model | Expanded conceptually |
 | Predicted / Observed / Perceived | Working evaluation framework | Carried |
-| Battle metrics | Candidate evaluation metrics | Carried |
-| Run metrics | Candidate evaluation metrics | Carried |
-| Player feedback dimensions | Candidate evaluation dimensions | Carried |
-| Telemetry | Evaluation tool | Reclassified |
-| Debug Balancing UI | Prototype tool | Excluded from game canon |
-| Auto-simulation | Optional evaluation tool | Carried/reclassified |
-| Progressive tutorial philosophy | Planned | Carried |
-| Detailed tutorial scenario | Planned for prototype | Source review required |
-
----
+| Battle metrics | Candidate metrics | Expanded |
+| Run metrics | Candidate metrics | Carried |
+| Player feedback dimensions | Candidate dimensions | Carried |
+| Telemetry | Evaluation tool | Carried/reclassified |
+| Debug Balancing UI | PROTOTYPE tool | Excluded from game canon |
+| Auto-simulation | Optional evaluation tool | Carried |
+| Progressive tutorial philosophy | Current strong direction | Updated |
+| Old Wait/Exhaustion tutorial | SUPERSEDED | Replaced |
+| Tutorial Flow Step / Learning Block / Phase distinction | CURRENT framework | Added |
+| Prototype representation types | CURRENT direction | Added |
+| Camera / Unity-control Flow Simulation | CURRENT prototype-flow direction | Added |
+| Unit Selection / Switching onboarding | Required topic | Carried/expanded |
+| Shared AP tutorial | Required topic | Carried |
+| StartGrid/refund tutorial | Required topic | Carried |
+| Attack position-commitment tutorial | Required topic | Carried |
+| Intent / Current Target tutorial | Required topic | Carried/expanded |
+| Dynamic Intent tutorial | Required topic | Carried |
+| Practice Target | PROTOTYPE ONLY candidate | Added |
+| Status tutorial concept | Required advanced concept | Carried |
+| Stun as first Status example | TENTATIVE strong candidate | Clarified |
+| Exact first Status source | OPEN | Clarified |
+| Status → Charge curriculum order | TENTATIVE — current corrected baseline | Updated |
+| Blue Charge-first → first Stun | OPEN alternative | Reclassified |
+| Wave Telegraph tutorial | Advanced topic | Updated |
+| W1 / W2 Wave timing variants | PROTOTYPE validation variants | Added |
+| One continuous Tutorial Stage | TENTATIVE — strong working direction | Added |
+| Offset Courtyard layout family | TENTATIVE — primary working layout family | Added |
+| Seven-Phase tutorial structure | TENTATIVE working | Added |
+| Hold tutorial | Deferred pending rules | Carried |
+| Run onboarding | Separate curriculum layer | Carried |
+| Death Marker | Prototype planned / main game open | Carried |
+| Run History | Prototype planned / main game open | Carried |
 
 # Part XVI — Source-of-Truth Use
 
 For **game-design intent**:
 
 1. Latest explicit Game Designer decision.
-2. `TMTB_GAME_DESIGN_CONTEXT.md`.
-3. Latest `TMTB_GAME_DESIGN_DECISIONS_vX.X.md`.
-4. Historical game-design documents.
+2. This latest `TMTB_GAME_DESIGN_CONTEXT`.
+3. Latest `TMTB_GAME_DESIGN_DECISIONS`.
+4. Domain handoffs / historical game-design documents when they contain detail not yet migrated.
 
 For **prototype implementation truth**:
 
 1. Actual source code and data.
 2. Confirmed runtime testing.
-3. Latest `TMTB_CURRENT_STATE_vX.X.md`.
+3. Latest `TMTB_CURRENT_STATE`.
+4. Architecture/state/handoff documents describing the implemented prototype.
 
-A prototype implementation that conflicts with the Game Design Context should be treated as a development limitation, validation simplification, implementation bug, or undocumented design change.
+If design and implementation conflict:
 
-The conflict should be explicit rather than silently merged.
+- do not silently choose one;
+- state the conflict;
+- treat this document as design intent;
+- audit actual source/runtime before making implementation claims;
+- update implementation documents only after the prototype actually changes.
+
+A prototype implementation that conflicts with Game Design Context may represent:
+
+- a development limitation;
+- a validation simplification;
+- an implementation bug;
+- an intentionally deferred feature;
+- or an undocumented design change that needs explicit Game Designer confirmation.
 
 ---
 
 # Part XVII — Maintenance Rule
 
-This is a living document.
+This is a living canonical game-design document.
+
+Version 3.1 specifically migrates the corrected Tutorial T1–T3 / Prototype Validation Scope direction established on 11 August 2026. The detailed tutorial handoff remains a supporting reference rather than replacing this canonical context.
 
 Update it when:
 
 - the Game Designer explicitly changes a canonical game rule;
-- an open design question becomes decided;
-- a planned feature is intentionally abandoned;
+- an `OPEN` design question becomes decided;
+- a `TENTATIVE` direction is promoted, revised, or abandoned;
+- a planned feature is intentionally removed;
 - a prototype experiment produces a main-game design decision;
+- enemy/encounter/tutorial design materially evolves;
 - full-game progression changes;
-- balancing or evaluation frameworks materially evolve;
+- balancing/evaluation frameworks materially evolve;
 - a legacy design is rediscovered and confirmed as relevant.
 
 Do **not** update it merely because:
@@ -2191,14 +4957,55 @@ Do **not** update it merely because:
 - a prototype function is refactored;
 - a file path changes;
 - an implementation algorithm changes;
-- a temporary prototype shortcut is introduced.
+- a temporary prototype shortcut is introduced;
+- a feature exists in prototype code without explicit design adoption.
+
+When migrating from a working handoff:
+
+1. preserve the status of each decision;
+2. do not promote `TENTATIVE` values to `LOCKED`;
+3. preserve still-valid older details;
+4. explicitly record important superseded rules;
+5. keep prototype-only navigation/technical behaviour out of full-game canon unless adopted.
 
 ---
+
+# Part XVIII — Immediate Design Work After v3.1
+
+The tutorial recovery/design checkpoint that followed v3.0 has now been completed far enough for prototype validation planning.
+
+Completed working-design sequence:
+
+```text
+Game Design Context v3.0
+→ Game Design Decisions v3.0
+→ Tutorial Learning Curriculum
+→ Tutorial Phase / Stage Design
+→ Prototype Validation Scope
+→ repository/source/runtime audit
+```
+
+Current project-level next work is:
+
+```text
+documentation refresh / portability package
+→ prototype migration planning
+→ smallest verified implementation checkpoints
+```
+
+This document does not prescribe the technical migration structure.
+
+Implementation work must use actual current repository/source/runtime truth and should proceed one tested checkpoint at a time.
+
+Remaining tutorial design questions should be resolved when they materially block the next prototype validation domain, rather than reopening the entire T1–T3 curriculum from zero.
+
 
 ## Final Principle
 
 **TMTB is the game.**
 
-**The prototype is a Game Designer validation tool.**
+**The prototype is a Game Designer validation tool and a functional Unity flow reference.**
 
-The purpose of this document is to ensure that the design of the main game remains visible, coherent, and portable even when the prototype, implementation, research method, or development scope changes.
+The purpose of this document is to keep the full-game design visible, coherent, and portable even while prototype implementation, simulated Unity-only flow, research methods, balancing assumptions, and development scope continue to evolve.
+
+**Latest explicit Game Designer decisions override this document when a later conflict exists.**

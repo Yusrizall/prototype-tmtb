@@ -1,861 +1,1339 @@
 # TMTB Handoff Maintenance Protocol
 
-**Project:** TMTB / BeCan Prototype  
-**Document Type:** Evergreen Handoff Maintenance Protocol  
-**Purpose:** Menjaga konsistensi konteks project, kualitas asistensi, dan workflow pengembangan ketika berpindah chat, akun, perangkat, atau assistant.  
-**Last Updated:** 17 July 2026
+**Project:** TMTB / BeCan
+**Document Type:** Evergreen Documentation / Handoff Maintenance Protocol
+**Last Updated:** 11 August 2026
+**Status:** **EVERGREEN GOVERNANCE DOCUMENT**
+**Applies To:** Canonical design docs, handoff packages, supporting handoffs, historical snapshots, repository/source audit, and future project recovery.
 
 ---
 
-# 1. Tujuan Dokumen
+# 1. Purpose
 
-Dokumen ini menjelaskan protokol resmi untuk membuat, memperbarui, memverifikasi, dan menggunakan paket handoff project TMTB.
+This document defines the official protocol for creating, updating, auditing, using, and preserving TMTB project documentation.
 
-Paket handoff dibuat agar pengembangan prototype dapat dilanjutkan dengan kualitas konteks yang konsisten ketika:
+The protocol exists so the project can be resumed safely when:
 
-- berpindah ke chat baru;
-- berpindah akun ChatGPT;
-- berpindah perangkat;
-- kembali ke project setelah jeda panjang;
-- menggunakan assistant lain;
-- melakukan handoff kepada collaborator;
-- membuat checkpoint besar baru.
+- moving to a new chat;
+- moving to a new ChatGPT account;
+- moving to another device;
+- returning after a long break;
+- using another assistant;
+- handing work to a programmer/collaborator;
+- completing a major design or implementation checkpoint;
+- recovering context after chat/project memory is lost.
 
-Masalah utama yang ingin dicegah adalah hilangnya konteks seperti:
+The primary risks this protocol is designed to prevent are:
 
-- arah desain project;
-- struktur repository;
-- tanggung jawab setiap file;
-- bentuk state dan data;
-- fitur yang sudah selesai;
-- fitur yang sengaja ditunda;
-- keputusan gameplay;
-- urutan roadmap;
-- pola kerja antara user dan assistant;
-- hasil testing yang sudah dikonfirmasi.
+- design intent being confused with current prototype behaviour;
+- old implementation docs being treated as current truth;
+- tentative design being promoted to locked design accidentally;
+- supporting discussion notes silently replacing canonical docs;
+- historical files overriding later explicit Game Designer decisions;
+- assistant assumptions replacing actual source/runtime evidence;
+- documentation being version-bumped without repository/source audit;
+- implementation being changed before the recovered project state is documented;
+- future recovery requiring the Game Designer to manually re-explain major systems.
 
-Assistant baru tidak boleh diasumsikan memiliki ingatan dari chat atau akun sebelumnya.
+Primary operating principle:
 
-Karena itu, source code aktual dan paket dokumentasi handoff harus menjadi dasar untuk membangun kembali konteks.
+> **Audit first. Document second. Implement only after the documentation state is trustworthy enough for the next task.**
 
----
+For code changes:
 
-# 2. Prinsip Dasar Handoff
-
-Paket handoff harus:
-
-1. Mewakili kondisi project aktual.
-2. Dibuat berdasarkan audit source code dan repository nyata.
-3. Tidak hanya mengandalkan ingatan percakapan.
-4. Memisahkan informasi berdasarkan tanggung jawab dokumen.
-5. Membedakan fitur selesai, tentative, deferred, dan open question.
-6. Tidak mengklaim fitur berhasil bila belum pernah diuji.
-7. Tidak memaksakan arsitektur lama bila source code aktual sudah berubah.
-8. Menjelaskan cara assistant harus bekerja dengan user.
-9. Dapat digunakan oleh assistant baru tanpa harus membaca seluruh histori chat lama.
-10. Tetap menyimpan dokumen lama sebagai referensi historical bila diperlukan.
-
-Paket handoff bukan pengganti source code.
-
-Paket handoff adalah representasi terstruktur dari konteks yang dibutuhkan untuk memahami source code dan melanjutkan pengembangan dengan aman.
+> **Actual files first. Assumptions second.**
 
 ---
 
-# 3. Struktur Dokumentasi Handoff
+# 2. Core Documentation Philosophy
 
-Dokumen evergreen ini disimpan pada:
+TMTB documentation is not one single source file.
+
+Different documents exist for different responsibilities.
+
+The project must distinguish:
 
 ```text
-docs/
-└─ TMTB_HANDOFF_MAINTENANCE_PROTOCOL.md
+GAME-DESIGN INTENT
+from
+PROTOTYPE IMPLEMENTATION TRUTH
 ```
 
-Setiap checkpoint besar memiliki folder handoff sendiri.
+and also distinguish:
 
-Contoh:
+```text
+CANONICAL
+SUPPORTING
+HISTORICAL
+```
+
+A document may be accurate within its historical checkpoint while no longer being current.
+
+Therefore:
+
+```text
+Old document
+≠
+wrong document
+
+Old document
+=
+historical snapshot unless explicitly superseded/removed
+```
+
+The goal is not to erase history.
+
+The goal is to make current authority unmistakable.
+
+---
+
+# 3. Version Semantics
+
+TMTB must NOT use one version number to imply several different things.
+
+The following concepts are separate.
+
+## 3.1 Game Design Version
+
+Represents the current canonical game-design state.
+
+Example:
+
+```text
+Game Design v3.1
+```
+
+This version may advance because game design materially evolves even if the prototype has not yet implemented those changes.
+
+---
+
+## 3.2 Handoff Package Version
+
+Represents the generation/checkpoint of the portable documentation package.
+
+Example:
+
+```text
+Handoff Package v3.0
+```
+
+This means:
+
+```text
+third-generation active documentation package
+```
+
+It does NOT mean:
+
+```text
+prototype combat implementation = v3.0
+```
+
+---
+
+## 3.3 Prototype Implementation Baseline / Milestone
+
+Represents what the prototype actually implements.
+
+Use explicit wording when a simple version number would be misleading.
+
+Example:
+
+```text
+Prototype Implementation Baseline:
+Post-v2.5 / Pre-v3 Combat Migration
+
+Verified:
+11 August 2026
+```
+
+A Git tag may still represent an implementation milestone when appropriate, for example:
+
+```text
+v2.5-full-loop-core
+```
+
+---
+
+## 3.4 Required Metadata
+
+Implementation-facing handoff documents should clearly state:
+
+```text
+Handoff Package Version
+Verification Date
+Prototype Implementation Baseline
+```
+
+Canonical design documents should clearly state:
+
+```text
+Game Design Version
+Date
+Canonical Status
+```
+
+Do not infer implementation completeness from a documentation filename.
+
+---
+
+# 4. Document Classes
+
+Every important project document should belong to a recognizable class.
+
+## 4.1 CANONICAL LIVING DOCUMENT
+
+A continuously maintained authoritative document.
+
+Current examples:
+
+```text
+TMTB_GAME_DESIGN_CONTEXT.md
+TMTB_HANDOFF_MAINTENANCE_PROTOCOL.md
+```
+
+A living document may be updated in place.
+
+Historical copies may still be preserved through Git history or deliberate snapshots.
+
+---
+
+## 4.2 CANONICAL SNAPSHOT
+
+A versioned compact snapshot of canonical decisions at a known point.
+
+Example:
+
+```text
+TMTB_GAME_DESIGN_DECISIONS_v3.1.md
+```
+
+Its purpose is quick reference, not full reasoning history.
+
+---
+
+## 4.3 HANDOFF SNAPSHOT
+
+A versioned documentation package describing the project at a checkpoint.
+
+Typical documents:
+
+```text
+README.md
+TMTB_CHAT_HANDOFF_vX.X.md
+TMTB_CURRENT_STATE_vX.X.md
+TMTB_PROTOTYPE_ARCHITECTURE_vX.X.md
+TMTB_STATE_AND_DATA_MODEL_vX.X.md
+TMTB_PROGRESS_AND_BACKLOG_vX.X.md
+TMTB_PROJECT_CONTEXT_vX.X.md
+```
+
+A handoff snapshot is portable context.
+
+It is NOT a replacement for source code.
+
+---
+
+## 4.4 SUPPORTING HANDOFF
+
+A structured `.md` document used to preserve important domain discussion, recovery work, audit evidence, or design reasoning that is too detailed for core canonical documents.
+
+Examples:
+
+```text
+Enemy Design Discussion Handoff
+Tutorial Design Corrected Handoff
+Prototype Recovery / Repository Audit Handoff
+```
+
+Supporting handoffs:
+
+- may contain detailed reasoning;
+- may preserve unresolved alternatives;
+- may record evidence/provenance;
+- do not automatically become canonical;
+- must declare their status explicitly;
+- should identify which canonical documents remain above them.
+
+A supporting handoff can later be mined for canonical decisions.
+
+Do not silently merge the entire supporting handoff into canon.
+
+---
+
+## 4.5 HISTORICAL SNAPSHOT
+
+A previously current document retained for provenance.
+
+Examples:
+
+```text
+handoff-v2.5/*
+old root CURRENT_STATE
+old TODO/backlog snapshots
+```
+
+Historical snapshots:
+
+- remain useful for understanding evolution;
+- do not override current source-of-truth;
+- should not be retroactively rewritten merely to match current rules.
+
+---
+
+## 4.6 VERBATIM / RECOVERY EVIDENCE
+
+Raw chat exports, verbatim text files, or other recovery artifacts.
+
+Example:
+
+```text
+TMTB-CHAT ARCHIVE VERBATIM 1.txt
+```
+
+Use them when provenance or lost-discussion recovery is needed.
+
+They are not normal current-reading documents.
+
+Preferred format:
+
+```text
+.md
+= structured supporting handoff
+
+.txt
+= acceptable verbatim / historical evidence
+```
+
+---
+
+# 5. Design Status Language
+
+Game-design documents should use explicit status language.
+
+Current status vocabulary:
+
+```text
+LOCKED
+PLANNED
+TENTATIVE
+OPEN
+SUPERSEDED
+PROTOTYPE ONLY
+DEVELOPMENT EXCEPTION
+HISTORICAL DESIGN SEED
+```
+
+## LOCKED
+
+Current canonical direction.
+
+## PLANNED
+
+Intended, but incomplete or not yet sufficiently validated.
+
+## TENTATIVE
+
+Working direction/value that may still change.
+
+## OPEN
+
+Not yet decided.
+
+## SUPERSEDED
+
+An intentionally replaced rule.
+
+## PROTOTYPE ONLY
+
+A rule/content/tool used only for prototype validation/evaluation.
+
+## DEVELOPMENT EXCEPTION
+
+A temporary divergence accepted because of development scope.
+
+## HISTORICAL DESIGN SEED
+
+An old idea retained only as reference/input.
+
+Do not promote:
+
+```text
+TENTATIVE
+or
+OPEN
+```
+
+to:
+
+```text
+LOCKED
+```
+
+without an explicit Game Designer decision.
+
+---
+
+# 6. Source-of-Truth Hierarchy
+
+TMTB uses separate hierarchies for design and implementation.
+
+This separation is mandatory.
+
+---
+
+## 6.1 Game-Design Intent
+
+Use this order:
+
+```text
+1. Latest explicit Game Designer decision in the active discussion
+2. Latest TMTB_GAME_DESIGN_CONTEXT
+3. Latest TMTB_GAME_DESIGN_DECISIONS
+4. Latest relevant domain-specific supporting handoff
+5. Historical / legacy design documents
+```
+
+If a supporting handoff contains a later explicit Game Designer decision that has not yet been migrated into canon, record the gap and update the canonical documents deliberately.
+
+Do not silently treat every supporting recommendation as canonical.
+
+---
+
+## 6.2 Prototype Implementation Truth
+
+Use this order:
+
+```text
+1. Actual source code / data in the current repository
+2. Confirmed runtime testing
+3. Latest TMTB_CURRENT_STATE
+4. Latest Architecture / State & Data / implementation handoff
+5. Historical implementation documents
+```
+
+Actual source and confirmed runtime beat implementation documentation.
+
+If source and runtime disagree, investigate the runtime path and exact source revision before documenting a conclusion.
+
+---
+
+## 6.3 Design vs Implementation Conflict
+
+If design says:
+
+```text
+A
+```
+
+while prototype still implements:
+
+```text
+B
+```
+
+write the conflict explicitly.
+
+Possible classifications include:
+
+```text
+deferred feature
+old implementation
+prototype simplification
+temporary development exception
+bug
+migration gap
+unverified implementation
+```
+
+Never silently rewrite one side to match the other.
+
+---
+
+# 7. Core Active Documentation Set
+
+The current portable active set should remain compact enough to upload into a new chat while still preserving the major project domains.
+
+Recommended active set:
+
+```text
+1. README.md
+
+2. TMTB_HANDOFF_MAINTENANCE_PROTOCOL.md
+
+3. TMTB_PROJECT_CONTEXT_vX.X.md
+
+4. TMTB_CHAT_HANDOFF_vX.X.md
+
+5. TMTB_CURRENT_STATE_vX.X.md
+
+6. TMTB_PROTOTYPE_ARCHITECTURE_vX.X.md
+
+7. TMTB_STATE_AND_DATA_MODEL_vX.X.md
+
+8. TMTB_PROGRESS_AND_BACKLOG_vX.X.md
+
+9. TMTB_GAME_DESIGN_CONTEXT.md
+
+10. TMTB_GAME_DESIGN_DECISIONS_vY.Y.md
+```
+
+The handoff package version `X.X` and game-design version `Y.Y` may differ.
+
+Supporting handoffs are uploaded only when the task needs their detailed reasoning/evidence.
+
+---
+
+# 8. Recommended Repository Documentation Structure
+
+Exact folder structure may evolve, but the responsibilities should remain clear.
+
+Recommended conceptual structure:
 
 ```text
 docs/
 ├─ TMTB_HANDOFF_MAINTENANCE_PROTOCOL.md
+├─ TMTB_GAME_DESIGN_CONTEXT.md
+├─ TMTB_GAME_DESIGN_DECISIONS_vY.Y.md
 │
-├─ handoff-v2.5/
+├─ supporting/
+│  ├─ <enemy design supporting handoff>
+│  ├─ <tutorial supporting handoff>
+│  └─ <repository audit supporting handoff>
+│
+├─ handoff-vX.X/
 │  ├─ README.md
-│  ├─ TMTB_CHAT_HANDOFF_v2.5.md
-│  ├─ TMTB_CURRENT_STATE_v2.5.md
-│  ├─ TMTB_PROTOTYPE_ARCHITECTURE_v2.5.md
-│  ├─ TMTB_STATE_AND_DATA_MODEL_v2.5.md
-│  ├─ TMTB_GAME_DESIGN_DECISIONS_v2.5.md
-│  ├─ TMTB_PROGRESS_AND_BACKLOG_v2.5.md
-│  └─ TMTB_PROJECT_CONTEXT_v2.5.md
+│  ├─ TMTB_CHAT_HANDOFF_vX.X.md
+│  ├─ TMTB_CURRENT_STATE_vX.X.md
+│  ├─ TMTB_PROTOTYPE_ARCHITECTURE_vX.X.md
+│  ├─ TMTB_STATE_AND_DATA_MODEL_vX.X.md
+│  ├─ TMTB_PROGRESS_AND_BACKLOG_vX.X.md
+│  └─ TMTB_PROJECT_CONTEXT_vX.X.md
 │
-└─ handoff-vNEXT/
-   └─ ...
+└─ handoff-vOLD/
+   └─ historical snapshot
 ```
 
-Folder handoff lama tidak perlu dihapus ketika membuat versi baru.
+The exact `supporting/` location is an organizational choice.
 
-Contoh:
+The important rule is:
 
 ```text
-handoff-v2.5
-handoff-v2.6
-handoff-v3.0
+canonical
+supporting
+historical
 ```
 
-Versi lama dianggap sebagai snapshot historical.
+must not be ambiguous.
 
 ---
 
-# 4. Dokumen Wajib dalam Setiap Paket Handoff
-
-Setiap paket handoff memiliki delapan file utama.
+# 9. Responsibilities of Core Documents
 
 ---
 
-## 4.1 README.md
+## 9.1 README.md
 
-### Fungsi
+### Purpose
 
-Menjadi pintu masuk paket handoff.
+Entry point to the active documentation package.
 
-README harus menjelaskan:
-
-- versi handoff;
-- tanggal checkpoint;
-- tujuan paket;
-- daftar dokumen;
-- fungsi singkat setiap dokumen;
-- urutan membaca;
-- link atau path ke Maintenance Protocol;
-- instruksi singkat untuk assistant baru.
-
-### README menjawab pertanyaan:
-
-> "Saya baru membuka paket ini. Dokumen mana yang harus saya baca terlebih dahulu?"
-
----
-
-## 4.2 TMTB_CHAT_HANDOFF_vX.X.md
-
-### Fungsi
-
-Menjelaskan cara assistant harus bekerja dengan user.
-
-Dokumen ini menjaga konsistensi pola kolaborasi.
-
-Minimal harus mencatat bahwa user:
-
-- berperan sebagai Game Designer;
-- bukan programmer utama;
-- membutuhkan instruksi teknis yang eksplisit;
-- ingin source code aktual diaudit sebelum perubahan;
-- tidak ingin assistant menebak struktur file;
-- ingin perubahan dilakukan secara bertahap;
-- ingin expected result dan testing scenario diberikan;
-- ingin hasil setiap checkpoint diverifikasi sebelum melanjutkan.
-
-Dokumen ini juga harus menjelaskan workflow perubahan kode.
-
-Contoh:
+README should answer:
 
 ```text
-Audit kondisi aktual
-→ minta file relevan
-→ baca file aktual
-→ tentukan perubahan kecil
-→ sebutkan path
-→ sebutkan blok yang dicari
-→ jelaskan apakah ditambah/diganti/dihapus
-→ berikan kode siap tempel
-→ jalankan prototype
-→ berikan expected result
-→ lakukan testing
-→ tunggu konfirmasi user
-→ lanjut
+What is this project?
+What is the current Game Design version?
+What is the Handoff Package version?
+What is the verified prototype implementation baseline?
+Which documents are canonical?
+Which documents are supporting?
+Which documents are historical?
+What should be read first?
+Where should work resume?
 ```
 
-### CHAT_HANDOFF menjawab pertanyaan:
-
-> "Bagaimana cara terbaik bekerja dengan user ini?"
+README is written last because it describes the final assembled package.
 
 ---
 
-## 4.3 TMTB_CURRENT_STATE_vX.X.md
+## 9.2 TMTB_PROJECT_CONTEXT_vX.X.md
 
-### Fungsi
+### Purpose
 
-Menjelaskan keadaan build aktual pada checkpoint tersebut.
+Stable project-level context.
 
-Isinya harus mencakup:
+Should include:
 
-- teknologi;
-- environment yang terkonfirmasi;
-- milestone saat ini;
-- full flow aktual;
-- fitur yang sudah berfungsi;
-- fitur yang masih placeholder;
-- known limitations;
-- persistence behavior;
-- checkpoint terakhir;
-- hasil testing penting;
-- next recommended step.
+- project identity;
+- purpose;
+- academic context if still relevant;
+- user/Game Designer role;
+- programmer/collaborator role;
+- prototype purpose;
+- Main Game vs Prototype distinction;
+- prototype validation philosophy;
+- prototype as functional Unity flow reference;
+- technology;
+- high-level non-goals;
+- source-of-truth split;
+- design-status terminology;
+- collaboration principles.
 
-Dokumen ini tidak boleh berisi roadmap panjang.
-
-Roadmap berada di PROGRESS_AND_BACKLOG.
-
-### CURRENT_STATE menjawab pertanyaan:
-
-> "Prototype saat ini sebenarnya sudah bisa melakukan apa?"
+It should not become a detailed current implementation snapshot.
 
 ---
 
-## 4.4 TMTB_PROTOTYPE_ARCHITECTURE_vX.X.md
+## 9.3 TMTB_CHAT_HANDOFF_vX.X.md
 
-### Fungsi
+### Purpose
 
-Menjelaskan struktur teknis repository aktual.
+Instructions for how a new assistant should resume and work with the Game Designer.
 
-Harus dibuat berdasarkan audit repository dan source code nyata.
+Should include:
 
-Minimal mencakup:
+- do not assume memory;
+- source-of-truth hierarchy;
+- distinction between design intent and implementation truth;
+- required audit workflow;
+- exact technical assistance style;
+- one-small-change rule;
+- expected result / test / regression workflow;
+- no claim of success before user confirmation;
+- relevant supporting-handoff usage;
+- exact current resume point.
 
-- struktur folder;
-- daftar file penting;
-- tanggung jawab setiap file;
-- hubungan import utama;
-- aliran data;
-- data source;
-- UI layer;
-- logic layer;
-- storage layer;
-- scene/flow controller;
-- file legacy atau unreferenced bila ditemukan.
+It should prevent needless re-discussion of already recovered design.
 
-Untuk setiap file penting, idealnya dijelaskan:
+---
+
+## 9.4 TMTB_CURRENT_STATE_vX.X.md
+
+### Purpose
+
+Verified current prototype behaviour.
+
+This is implementation-facing.
+
+It must distinguish:
+
+```text
+IMPLEMENTED
+TESTED
+CONFIRMED
+NOT IMPLEMENTED
+UNVERIFIED
+KNOWN STALE UI/COPY
+UNCOMMITTED WORK
+```
+
+It should answer:
+
+> What does the prototype actually do now?
+
+Do not put desired future v3.x mechanics into current state as if implemented.
+
+---
+
+## 9.5 TMTB_PROTOTYPE_ARCHITECTURE_vX.X.md
+
+### Purpose
+
+Actual repository/module structure.
+
+Must be based on:
+
+```text
+actual tracked tree
+actual source
+actual imports/responsibilities
+```
+
+For important modules record, when useful:
 
 ```text
 Path
-Tanggung jawab
-Input
-Output
-Dipanggil oleh
-Memanggil
-Tidak bertanggung jawab atas
+Responsibility
+Inputs
+Outputs
+Called by
+Calls
+Does NOT own
+Audit/verification status
 ```
 
-Contoh:
+Architecture may include known migration pressure.
 
-```text
-src/logic/battle/battleSetup.js
-
-Tanggung jawab:
-- membuat battle state awal;
-- membuat player battle units;
-- membuat enemy battle units;
-- menerapkan permanent upgrade pada run stage.
-
-Tidak bertanggung jawab atas:
-- damage resolution;
-- enemy AI;
-- scene routing;
-- profile persistence.
-```
-
-### PROTOTYPE_ARCHITECTURE menjawab pertanyaan:
-
-> "File apa melakukan apa, dan perubahan ini seharusnya dilakukan di mana?"
+It must not prescribe a speculative refactor as if it already exists.
 
 ---
 
-## 4.5 TMTB_STATE_AND_DATA_MODEL_vX.X.md
+## 9.6 TMTB_STATE_AND_DATA_MODEL_vX.X.md
 
-### Fungsi
+### Purpose
 
-Mendokumentasikan struktur state dan data runtime aktual.
+Actual current runtime/data state.
 
-Minimal mencakup:
+Document:
 
-- profileState;
-- runState;
-- battleState;
-- battle unit;
-- generated node;
-- reward option;
-- permanent upgrade;
-- crystal conversion;
-- JSON definitions penting.
+- profile state;
+- run state;
+- battle state;
+- battle unit state;
+- tutorial flow state if implemented;
+- map/encounter/unit JSON;
+- persistence;
+- transitions;
+- ownership of mutations.
 
-Untuk setiap state, jelaskan:
-
-- field;
-- arti field;
-- nilai valid;
-- siapa yang mengubahnya;
-- kapan berubah;
-- persistence behavior.
-
-Contoh:
+Separate clearly:
 
 ```text
-profileState
-- tutorialCompleted
-- metaCrystal
-- permanentUpgrades
-
-runState
-- runStatus
-- runResult
-- generatedNodes
-- runCrystal
-- chosenRewardIds
-- pendingRewardOptions
-- crystalConversionCompleted
+CURRENT RUNTIME STATE
 ```
 
-Dokumen juga harus menjelaskan aturan transisi penting.
-
-Contoh:
+from:
 
 ```text
-Run Crystal
-→ diperoleh dari victory stage
-→ disimpan selama run
-→ dikonversi ketika completed/defeated
-→ setelah conversion runCrystal menjadi 0
-→ conversion harus idempotent
+DESIGN-TARGET STATE NOT YET IMPLEMENTED
 ```
 
-### STATE_AND_DATA_MODEL menjawab pertanyaan:
-
-> "Data apa yang ada, bentuknya bagaimana, dan kapan berubah?"
+Future fields are migration targets, not current schema.
 
 ---
 
-## 4.6 TMTB_GAME_DESIGN_DECISIONS_vX.X.md
+## 9.7 TMTB_PROGRESS_AND_BACKLOG_vX.X.md
 
-### Fungsi
+### Purpose
 
-Mendokumentasikan keputusan gameplay dan balancing.
+Current project checkpoint + future work.
 
-Keputusan harus dikategorikan.
-
-Gunakan status:
-
-```text
-LOCKED
-TENTATIVE
-DEFERRED
-OPEN QUESTION
-```
-
-### LOCKED
-
-Keputusan aktif yang saat ini menjadi rule prototype.
-
-### TENTATIVE
-
-Sudah digunakan, tetapi angka atau rule masih dapat direvisi.
-
-### DEFERRED
-
-Sengaja ditunda demi prioritas lain.
-
-### OPEN QUESTION
-
-Belum diputuskan.
-
-Dokumen ini dapat mencakup:
-
-- activation;
-- turn structure;
-- movement;
-- ATR;
-- cover;
-- damage;
-- unit stat;
-- objective;
-- progression;
-- Crystal;
-- rewards;
-- branching;
-- Shop;
-- permanent upgrades;
-- HP carry;
-- tutorial;
-- difficulty.
-
-### GAME_DESIGN_DECISIONS menjawab pertanyaan:
-
-> "Apa rule desain yang sekarang berlaku, apa yang masih sementara, dan apa yang belum diputuskan?"
-
----
-
-## 4.7 TMTB_PROGRESS_AND_BACKLOG_vX.X.md
-
-### Fungsi
-
-Mencatat perkembangan dan pekerjaan masa depan.
-
-Minimal mencakup:
-
-- checkpoint selesai;
-- milestone saat ini;
-- phase berikutnya;
-- fitur deferred;
-- technical debt;
-- stabilization tasks;
-- testing backlog;
-- dependency antar-task;
-- prioritas.
-
-Dokumen ini harus membedakan:
+Use statuses such as:
 
 ```text
 DONE
+IN PROGRESS
 NEXT
+PLANNED
 DEFERRED
 OPTIONAL
+SUPERSEDED
+HISTORICAL
 ```
 
-Dokumen ini tidak boleh mengklaim bahwa sebuah fitur selesai hanya karena kode pernah ditulis.
+A feature is not `DONE` merely because code was written.
 
-Fitur hanya dianggap selesai setelah hasil aktual diuji dan dikonfirmasi.
+Testing/confirmation requirements must be respected.
 
-### PROGRESS_AND_BACKLOG menjawab pertanyaan:
-
-> "Apa yang sudah selesai, apa yang harus dikerjakan berikutnya, dan apa yang sengaja ditunda?"
+Historical backlog items should be re-audited and classified rather than copied forward blindly.
 
 ---
 
-## 4.8 TMTB_PROJECT_CONTEXT_vX.X.md
+## 9.8 TMTB_GAME_DESIGN_CONTEXT.md
 
-### Fungsi
+### Purpose
 
-Memberikan konteks besar project.
+Full canonical living game-design context.
 
-Minimal mencakup:
+Contains:
 
-- identitas project;
-- tujuan prototype;
-- konteks akademik;
-- role user;
-- pembagian role team;
-- scope prototype;
-- non-goals;
-- prinsip desain;
-- prinsip arsitektur;
-- teknologi;
-- terminologi utama;
-- arah jangka panjang.
+- current systems;
+- interactions;
+- terminology;
+- design philosophy;
+- statuses;
+- current working directions;
+- relevant prototype validation principles.
 
-Dokumen ini relatif lebih stabil dibanding CURRENT_STATE.
+It is about intended design.
 
-### PROJECT_CONTEXT menjawab pertanyaan:
-
-> "Mengapa project ini ada, untuk siapa, dan apa tujuan besarnya?"
+Do not insert current old implementation behaviour as a gameplay rule merely because the prototype still does it.
 
 ---
 
-# 5. Mengapa Dokumen Dipisahkan
+## 9.9 TMTB_GAME_DESIGN_DECISIONS_vY.Y.md
 
-Jangan menggabungkan seluruh konteks menjadi satu file raksasa.
+### Purpose
 
-Pemisahan dilakukan karena:
+Compact canonical design snapshot.
 
-- setiap dokumen memiliki tanggung jawab berbeda;
-- lebih mudah mengetahui dokumen mana yang perlu diperbarui;
-- lebih mudah menemukan informasi;
-- mengurangi risiko informasi lama tersembunyi di dokumen besar;
-- memudahkan audit konflik;
-- memudahkan assistant baru membaca konteks secara bertahap;
-- memisahkan intent desain dari implementation detail.
-
-Contoh:
+It should summarize:
 
 ```text
-Perubahan folder
+LOCKED rules
+PLANNED items
+important TENTATIVE directions
+OPEN questions
+SUPERSEDED rules
+PROTOTYPE ONLY exceptions/candidates
+DEVELOPMENT EXCEPTIONS
+```
+
+Do not reproduce long discussion reasoning.
+
+Use supporting handoffs for detail.
+
+---
+
+## 9.10 TMTB_HANDOFF_MAINTENANCE_PROTOCOL.md
+
+### Purpose
+
+Evergreen governance for the documentation system itself.
+
+Update only when the maintenance/recovery protocol changes materially.
+
+Do not create a duplicate version inside every handoff folder unless there is a deliberate archival need.
+
+---
+
+# 10. Why Documents Stay Separate
+
+Do not merge all context into one giant file.
+
+Separation reduces:
+
+- hidden stale information;
+- domain confusion;
+- accidental design/implementation merging;
+- unnecessary reading;
+- maintenance burden;
+- conflict-detection difficulty.
+
+Typical ownership:
+
+```text
+Design rule changes
+→ Game Design Context / Decisions
+
+Actual runtime behaviour changes
+→ Current State
+
+Module/file responsibility changes
 → Architecture
 
-Perubahan field runState
-→ State & Data Model
+State field / persistence changes
+→ State & Data
 
-Perubahan rule damage
-→ Game Design Decisions
+Project milestone/backlog changes
+→ Progress & Backlog
 
-Checkpoint selesai
-→ Current State + Progress
-
-Perubahan workflow user
+Collaboration workflow changes
 → Chat Handoff
+
+Project purpose/scope changes
+→ Project Context
+
+Documentation-governance changes
+→ Maintenance Protocol
 ```
+
+Supporting handoffs preserve detailed domain reasoning when core docs would become bloated.
 
 ---
 
-# 6. Source-of-Truth Priority
+# 11. Audit-First Documentation Workflow
 
-Jika terdapat konflik informasi, gunakan urutan berikut.
+Do not copy an old handoff and merely bump the version number.
+
+Use this sequence.
+
+---
+
+## Step 1 — Establish the Target of the Documentation Refresh
+
+State clearly:
 
 ```text
-1. Keputusan terbaru user di chat aktif
-2. Source code dan data aktual dari repository
-3. TMTB_CURRENT_STATE versi handoff terbaru
-4. TMTB_PROGRESS_AND_BACKLOG versi terbaru
-5. TMTB_PROTOTYPE_ARCHITECTURE versi terbaru
-6. TMTB_STATE_AND_DATA_MODEL versi terbaru
-7. TMTB_GAME_DESIGN_DECISIONS versi terbaru
-8. TMTB_PROJECT_CONTEXT versi terbaru
-9. Dokumen historical / versi lama
+What changed?
+Why is a new package/update needed?
+Which domains may be stale?
 ```
 
-Ada perbedaan penting antara implementation truth dan design intent.
-
-### Implementation Truth
-
-Untuk menjawab:
-
-> "Apa yang benar-benar dilakukan prototype sekarang?"
-
-Gunakan source code aktual dan hasil testing.
-
-### Design Intent
-
-Untuk menjawab:
-
-> "Apa rule yang sebenarnya diinginkan?"
-
-Gunakan keputusan terbaru user dan GAME_DESIGN_DECISIONS.
-
-Jika implementation dan design intent berbeda:
-
-- jangan menyatukan konflik secara diam-diam;
-- tandai perbedaannya;
-- konfirmasi keputusan terbaru;
-- tentukan apakah implementasi perlu diperbaiki atau dokumentasi perlu diperbarui.
+Do not begin by rewriting every document.
 
 ---
 
-# 7. Protokol Audit Sebelum Membuat Handoff
+## Step 2 — Audit Git State
 
-Jangan langsung menyalin handoff versi lama lalu mengganti nomor versi.
-
-Gunakan urutan berikut.
-
-## Step 1 — Pastikan Git dalam kondisi jelas
-
-Periksa:
+Check:
 
 ```bash
 git status
-```
-
-Ideal:
-
-```text
-nothing to commit, working tree clean
-```
-
-Periksa commit terakhir:
-
-```bash
 git log -1 --oneline
-```
-
-Periksa tag:
-
-```bash
+git branch --show-current
 git tag --list
 ```
 
+If relevant, compare against the last known milestone:
+
+```bash
+git log --oneline <old-tag>..HEAD
+git diff --name-status <old-tag>..HEAD
+git diff --stat <old-tag>..HEAD
+```
+
+If working tree is dirty:
+
+```text
+DO NOT discard changes automatically.
+```
+
+Classify them first.
+
 ---
 
-## Step 2 — Audit repository aktual
+## Step 3 — Audit Repository Structure
 
-Gunakan:
+Use:
 
 ```bash
 git ls-files
 ```
 
-atau export:
+or export it.
 
-```bash
-git ls-files > PATH_TO_FILE.txt
-```
+Purpose:
 
-Tujuan:
-
-- melihat seluruh tracked files;
-- menghindari asumsi struktur lama;
-- mengidentifikasi file baru;
-- mengidentifikasi file legacy.
+- identify tracked files;
+- detect new/deleted/moved modules;
+- locate stale root documents;
+- identify deployment/config additions;
+- avoid relying on old architecture trees.
 
 ---
 
-## Step 3 — Audit dokumen lama
+## Step 4 — Audit Existing Documentation
 
-Klasifikasikan sebagai:
+For each relevant document classify:
 
 ```text
-STILL VALID
-NEEDS UPDATE
-HISTORICAL ONLY
-CONFLICTS WITH CURRENT BUILD
+KEEP
+UPDATE
+REPLACE
+SUPPORTING-ONLY
+HISTORICAL
 ```
 
-Dokumen lama tidak boleh digunakan sebagai current truth tanpa verifikasi.
-
----
-
-## Step 4 — Audit source code relevan
-
-Untuk Architecture, State Model, dan Current State:
-
-- baca file aktual;
-- periksa import/export;
-- periksa state fields;
-- periksa data JSON;
-- periksa scene routing;
-- periksa storage;
-- periksa fungsi yang benar-benar dipanggil.
-
----
-
-## Step 5 — Audit hasil testing
-
-Pisahkan:
+For individual claims/items classify when useful:
 
 ```text
-Implemented
+CARRIED
+NEW
+SUPERSEDED
+CONFLICT
+MISSING
+HISTORICAL
 ```
 
-dari:
-
-```text
-Tested and Confirmed
-```
-
-Jangan mengklaim fitur selesai hanya karena fungsi ada di source code.
+A new file version should be a result of this audit, not its starting point.
 
 ---
 
-## Step 6 — Identifikasi konflik
+## Step 5 — Audit Relevant Actual Source / Data
 
-Contoh:
+Only inspect files necessary to establish the documentation truth.
 
-```text
-Dokumen lama mengatakan fitur belum ada
-Source aktual menunjukkan fitur sudah ada
-Testing user mengonfirmasi fitur berjalan
-```
+Check:
 
-Maka dokumen lama menjadi historical.
+- current controller/orchestration;
+- state initialization;
+- actual state fields;
+- data schemas;
+- storage;
+- routing;
+- rule modules;
+- deployment config;
+- tutorial flow;
+- current UI when it materially affects state/flow claims.
+
+Do not inspect every file indiscriminately if it does not advance the documentation question.
 
 ---
 
-## Step 7 — Baru tulis paket handoff baru
+## Step 6 — Confirm Runtime Behaviour
 
-Urutan yang direkomendasikan:
+Separate:
+
+```text
+IMPLEMENTED IN SOURCE
+```
+
+from:
+
+```text
+CONFIRMED AT RUNTIME
+```
+
+A function existing in source does not automatically mean the user-facing flow works.
+
+Record:
+
+```text
+Expected from source
+Observed
+Match?
+Notes
+```
+
+when a structured baseline test is useful.
+
+---
+
+## Step 7 — Audit Latest Design Decisions / Supporting Recovery
+
+Review:
+
+```text
+latest explicit Game Designer decisions
+canonical design docs
+relevant supporting design handoffs
+```
+
+Determine whether:
+
+```text
+canon already contains the decision
+or
+canon requires deliberate migration
+```
+
+Do not leave important later decisions stranded forever in chat/supporting notes.
+
+---
+
+## Step 8 — Create a Supporting Audit / Recovery Handoff When Useful
+
+If the audit or recovery is substantial, create a structured `.md` supporting handoff before rewriting core documents.
+
+Recommended sections:
+
+```text
+source/date/status
+scope
+audit method
+verified findings
+runtime confirmations
+conflicts
+reusable seeds
+known gaps
+exact resume point
+```
+
+This preserves evidence and prevents the core docs from becoming reasoning archives.
+
+---
+
+## Step 9 — Build a Documentation Inventory + Migration Matrix
+
+Before authoring:
+
+- list target core documents;
+- classify each existing document;
+- identify primary authority for each section;
+- mark `CARRIED / NEW / SUPERSEDED / MISSING / HISTORICAL`;
+- decide version semantics;
+- decide authoring order.
+
+Only after this matrix is stable should large-scale documentation authoring begin.
+
+---
+
+## Step 10 — Author One Document Domain at a Time
+
+Recommended general order when a major design recovery and implementation audit have both occurred:
 
 ```text
 1. Maintenance Protocol
-2. README
-3. Chat Handoff
+2. Game Design Context
+3. Game Design Decisions
 4. Current State
 5. Prototype Architecture
 6. State & Data Model
-7. Game Design Decisions
-8. Progress & Backlog
-9. Project Context
+7. Progress & Backlog
+8. Project Context
+9. Chat Handoff
+10. README
 ```
 
-Maintenance Protocol tidak perlu dibuat ulang untuk setiap versi.
+This order may change when project circumstances require it.
 
-Ia hanya diperbarui bila protokol handoff berubah.
-
----
-
-# 8. Trigger Pembaruan Dokumen
-
-## Update CHAT_HANDOFF ketika:
-
-- pola kerja user berubah;
-- workflow audit berubah;
-- cara memberikan instruksi kode berubah;
-- prioritas interaksi berubah.
-
-## Update CURRENT_STATE ketika:
-
-- checkpoint besar selesai;
-- scene baru ditambahkan;
-- flow berubah;
-- fitur utama mulai aktif;
-- limitation penting berubah.
-
-## Update PROTOTYPE_ARCHITECTURE ketika:
-
-- file dibuat/dihapus/dipindah;
-- folder berubah;
-- tanggung jawab module berubah;
-- controller dipisah;
-- dependency berubah.
-
-## Update STATE_AND_DATA_MODEL ketika:
-
-- field state berubah;
-- structure JSON berubah;
-- persistence berubah;
-- transition state berubah.
-
-## Update GAME_DESIGN_DECISIONS ketika:
-
-- rule gameplay berubah;
-- angka balancing berubah;
-- status tentative menjadi locked;
-- deferred feature diaktifkan.
-
-## Update PROGRESS_AND_BACKLOG ketika:
-
-- checkpoint selesai;
-- task baru muncul;
-- backlog berubah;
-- feedback dosen masuk;
-- prioritas berubah.
-
-## Update PROJECT_CONTEXT ketika:
-
-- tujuan project berubah;
-- scope akademik berubah;
-- pembagian role berubah;
-- teknologi utama berubah.
+README remains best written last.
 
 ---
 
-# 9. Protokol Membuat Versi Handoff Baru
+## Step 11 — Cross-Document Consistency Audit
 
-Contoh ketika berpindah:
+Before package completion, verify that related claims agree.
+
+Example:
+
+If Current State says:
+
+```text
+Run Overview is implemented and runtime-confirmed.
+```
+
+then:
+
+- Architecture should identify the responsible flow/controller modules;
+- Progress & Backlog should not list Run Overview as unimplemented;
+- Chat Handoff should not describe the old route as current;
+- README should point to the new package, not the old checkpoint.
+
+Design-vs-implementation differences are allowed.
+
+Unmarked contradictions are not.
+
+---
+
+## Step 12 — New-Chat Recovery Simulation
+
+Before declaring a major portable package complete, test the package conceptually:
+
+> If a new assistant had only the active portable set, could it correctly understand the project without old chat history?
+
+The package should allow a new assistant to determine:
+
+```text
+what TMTB is
+current canonical design
+actual prototype baseline
+important design-vs-implementation gaps
+which documents are authoritative
+which supporting handoffs exist
+what work is already recovered
+what remains open
+how to work with the Game Designer
+where to resume
+```
+
+If a major recovered decision would still require manual re-briefing, the package is not yet complete.
+
+---
+
+# 12. Trigger Rules for Updating Documents
+
+## Update Game Design Context when:
+
+- a core design rule changes;
+- a major tutorial structure materially evolves;
+- a new system interaction becomes canonical;
+- terminology/status governance changes materially.
+
+## Create/update Game Design Decisions snapshot when:
+
+- enough canonical decisions have changed to justify a new compact checkpoint;
+- superseded/open/tentative status has materially shifted.
+
+## Update Current State when:
+
+- actual prototype flow changes;
+- major current behaviour changes;
+- implementation gaps change;
+- runtime-confirmed state changes;
+- important uncommitted work becomes committed or is discarded.
+
+## Update Architecture when:
+
+- files/folders/modules change;
+- module responsibilities change;
+- deployment architecture changes;
+- controller/routing responsibilities change;
+- dependencies move.
+
+## Update State & Data Model when:
+
+- runtime state fields change;
+- JSON schemas change;
+- persistence changes;
+- state ownership/transitions change.
+
+## Update Progress & Backlog when:
+
+- checkpoints complete;
+- priorities change;
+- migration domains change;
+- design blockers change;
+- historical backlog items are reclassified.
+
+## Update Project Context when:
+
+- project purpose changes;
+- prototype role changes;
+- team roles change;
+- academic scope changes;
+- core technology changes;
+- source-of-truth/collaboration framing changes materially.
+
+## Update Chat Handoff when:
+
+- collaboration workflow changes;
+- resume point changes materially;
+- assistant operating rules change;
+- supporting-handoff usage changes.
+
+## Update Maintenance Protocol when:
+
+- documentation/recovery governance itself changes.
+
+---
+
+# 13. Historical Preservation
+
+Do not overwrite historical handoff folders merely because they are stale.
+
+Example:
 
 ```text
 handoff-v2.5
-→ handoff-v2.6
 ```
 
-Gunakan proses berikut.
+remains a historical checkpoint.
 
-1. Jangan hapus `handoff-v2.5`.
-2. Gunakan handoff lama hanya sebagai referensi.
-3. Audit repository aktual.
-4. Audit source code aktual.
-5. Audit keputusan chat terbaru.
-6. Audit backlog.
-7. Buat folder `handoff-v2.6`.
-8. Buat dokumen versi baru.
-9. Jangan hanya mengganti nomor versi.
-10. Lakukan cross-document audit.
-11. Commit.
-12. Push.
-13. Tambahkan Git tag bila merupakan milestone besar.
-
-Versi lama menjadi historical snapshot.
-
----
-
-# 10. Cross-Document Consistency Audit
-
-Sebelum paket dianggap selesai, periksa hubungan antar-dokumen.
-
-Contoh:
-
-Jika CURRENT_STATE mengatakan:
+When creating a new package:
 
 ```text
-Permanent Upgrade sudah aktif di battle.
+handoff-v2.5
+→ preserved
+
+handoff-v3.0
+→ new active snapshot
 ```
 
-Maka:
+Historical root documents with ambiguous names should eventually be reorganized or renamed if they can mislead future readers, but preserve their contents/provenance.
 
-- ARCHITECTURE harus menjelaskan file yang menerapkannya;
-- STATE_AND_DATA_MODEL harus menjelaskan field level upgrade;
-- GAME_DESIGN_DECISIONS harus menjelaskan efek per level;
-- PROGRESS_AND_BACKLOG harus menandainya DONE.
-
-Jika salah satu masih mengatakan deferred, paket belum konsisten.
+Do not retroactively rewrite old docs just to make them agree with later design.
 
 ---
 
-# 11. Protokol Kerja Assistant dalam Perubahan Kode
+# 14. Supporting-Handoff Lifecycle
 
-Assistant yang menggunakan handoff harus mengikuti prinsip berikut.
+Supporting handoffs are intentionally non-canonical unless explicitly promoted.
 
-## Sebelum perubahan
-
-1. Pahami tujuan perubahan.
-2. Minta file aktual yang relevan.
-3. Audit file aktual.
-4. Jangan mengandalkan versi file lama.
-5. Jangan mengasumsikan struktur ideal.
-
-## Saat memberikan instruksi
-
-Selalu jelaskan:
-
-- path file;
-- file mana yang diedit;
-- apakah file dibuat, diganti, atau dihapus;
-- blok kode yang harus dicari;
-- apakah kode ditambah sebelum/sesudah;
-- apakah blok diganti;
-- apakah seluruh file diganti.
-
-Gunakan kode siap salin bila memungkinkan.
-
-## Setelah perubahan
-
-Berikan:
-
-- expected result;
-- urutan testing;
-- regression scenario;
-- edge case penting.
-
-Jangan menganggap user sudah:
-
-- menyimpan;
-- menjalankan;
-- mengetes;
-- berhasil.
-
-Tunggu konfirmasi hasil.
-
----
-
-# 12. Workflow Perubahan Prototype
-
-Pola default:
+Recommended lifecycle:
 
 ```text
-Inspect actual state
-→ discuss target
-→ audit relevant files
-→ make one small change
+discussion / recovery / audit
+→ structured supporting handoff
+→ review against source-of-truth
+→ migrate canonical/current facts into proper core docs
+→ retain supporting handoff for detail/provenance
+```
+
+After migration, mark or understand the supporting handoff as:
+
+```text
+supporting detail
+not primary active authority
+```
+
+Do not delete it merely because the core docs were updated.
+
+---
+
+# 15. Implementation Documentation Status Language
+
+Implementation-facing documentation should use evidence-aware terminology.
+
+Recommended:
+
+```text
+IMPLEMENTED
+TESTED
+CONFIRMED
+UNVERIFIED
+NOT IMPLEMENTED
+KNOWN STALE COPY
+UNCOMMITTED WORK
+HISTORICAL
+```
+
+Examples:
+
+```text
+IMPLEMENTED + RUNTIME CONFIRMED:
+Run Overview routing.
+
+IMPLEMENTED IN SOURCE, NOT RETESTED:
+a carried legacy path.
+
+NOT IMPLEMENTED:
+Shared Team AP.
+
+KNOWN STALE COPY:
+old tutorial navigation text.
+```
+
+Do not use `LOCKED` to describe whether code exists.
+
+`LOCKED` is a game-design status.
+
+---
+
+# 16. Prototype Coding Workflow
+
+Documentation refresh does not replace source audit before future coding.
+
+For each technical change:
+
+```text
+Understand target
+→ audit current relevant files
+→ identify smallest coherent change
+→ provide exact edit
 → run
-→ verify
+→ compare expected vs actual
+→ regression test
+→ wait for Game Designer confirmation
 → continue
 ```
 
-Untuk user non-programmer:
+Before giving an edit, provide when possible:
 
-- gunakan bahasa eksplisit;
-- hindari asumsi teknis tersembunyi;
-- jelaskan lokasi perubahan;
-- jangan memberikan batch perubahan besar tanpa alasan;
-- prioritaskan perubahan kecil yang dapat diverifikasi.
+- exact path;
+- exact function/block to find;
+- add/replace/delete method;
+- copy-ready code;
+- expected result;
+- ordered test;
+- regression test.
+
+Do not assume:
+
+```text
+save
+run
+test
+success
+```
+
+until confirmed.
 
 ---
 
-# 13. Git Workflow untuk Checkpoint
+# 17. Error / Regression Workflow
 
-Workflow default sekarang adalah:
+When a new error appears:
+
+```text
+actual error
++
+relevant current files
+→ audit latest change
+→ isolate smallest cause
+→ fix one thing
+→ retest
+```
+
+Do not respond to a regression with a broad speculative refactor.
+
+Actual current source/data + runtime evidence beat implementation docs.
+
+---
+
+# 18. Git Workflow
+
+Default development workflow:
 
 ```text
 Save
@@ -864,7 +1342,7 @@ Save
 → Push
 ```
 
-Sebelum bekerja di perangkat lain:
+Before working on another device:
 
 ```text
 Fetch
@@ -872,283 +1350,318 @@ Fetch
 → Work
 ```
 
-Setelah selesai:
+A local commit alone is not a complete remote backup.
 
-```text
-Test
-→ Commit
-→ Push
-```
-
-Commit lokal saja bukan backup penuh.
-
-Perubahan harus di-push agar tersedia di repository remote.
+Push deliberate checkpoints.
 
 ---
 
-# 14. Milestone dan Git Tag
+# 19. Milestones and Git Tags
 
-Untuk checkpoint besar, gunakan Git tag.
+Use Git tags for meaningful implementation milestones.
 
-Contoh:
+Examples:
 
 ```text
 v2.5-full-loop-core
-v2.6-stabilization
-v3.0-content-expansion
 ```
 
-Contoh command:
+Do not create a tag merely because documentation changed unless the documentation checkpoint itself is deliberately being tagged.
 
-```bash
-git tag -a v2.5-full-loop-core -m "Prototype v2.5 full loop core"
-git push origin v2.5-full-loop-core
-```
+Game Design version, Handoff Package version, and Git implementation tag may differ.
 
-Tag digunakan untuk menandai milestone penting.
+This is expected.
 
 ---
 
-# 15. Posisi ZIP Backup
+# 20. ZIP Backup
 
-ZIP bukan lagi metode checkpoint default.
+ZIP is optional, not the routine checkpoint mechanism.
 
-Gunakan Git commit + push untuk version history rutin.
+Use ZIP for:
 
-ZIP bersifat opsional untuk:
-
-- submission kepada dosen;
+- academic submission;
 - presentation package;
 - offline archive;
-- release package tertentu.
+- release bundle.
 
-Jangan membuat ZIP untuk setiap perubahan kecil.
+Routine development should use Git.
 
 ---
 
-# 16. Menggunakan Handoff di Chat atau Akun Baru
+# 21. Using the Project in a New Chat
 
-Pada chat baru:
-
-1. Upload `README.md`.
-2. Upload `TMTB_CHAT_HANDOFF`.
-3. Upload `TMTB_CURRENT_STATE`.
-4. Upload `TMTB_PROTOTYPE_ARCHITECTURE`.
-5. Upload `TMTB_STATE_AND_DATA_MODEL`.
-6. Upload `TMTB_GAME_DESIGN_DECISIONS`.
-7. Upload `TMTB_PROGRESS_AND_BACKLOG`.
-8. Upload `TMTB_PROJECT_CONTEXT`.
-
-Bila diperlukan, upload juga Maintenance Protocol.
-
-Setelah itu gunakan pesan pembuka seperti:
+Recommended portable upload set:
 
 ```text
-Ini adalah paket handoff terbaru project TMTB.
-
-Tolong baca seluruh dokumen yang diberikan.
-
-Gunakan prioritas sumber kebenaran yang dijelaskan dalam handoff.
-
-Sebelum memberikan perubahan kode:
-- minta dan audit file aktual yang relevan;
-- jangan menebak isi file;
-- sebutkan path file;
-- jelaskan bagian yang dicari;
-- jelaskan apakah kode ditambah, diganti, atau seluruh file diganti;
-- berikan expected result;
-- berikan urutan testing;
-- jangan menganggap perubahan berhasil sebelum saya mengonfirmasi.
+README.md
+TMTB_HANDOFF_MAINTENANCE_PROTOCOL.md
+TMTB_PROJECT_CONTEXT_vX.X.md
+TMTB_CHAT_HANDOFF_vX.X.md
+TMTB_CURRENT_STATE_vX.X.md
+TMTB_PROTOTYPE_ARCHITECTURE_vX.X.md
+TMTB_STATE_AND_DATA_MODEL_vX.X.md
+TMTB_PROGRESS_AND_BACKLOG_vX.X.md
+TMTB_GAME_DESIGN_CONTEXT.md
+TMTB_GAME_DESIGN_DECISIONS_vY.Y.md
 ```
 
-Setelah konteks terbentuk, upload source file aktual yang relevan dengan task berikutnya.
+Then provide a short instruction such as:
+
+```text
+Ini adalah active project source package terbaru TMTB.
+
+Baca dokumen sesuai authority/read-order yang dijelaskan.
+
+Bedakan canonical Game Design dari actual prototype implementation.
+
+Jangan mengulang keputusan yang sudah dipreservasi kecuali ada konflik baru.
+
+Jika task berikutnya coding:
+minta/audit actual relevant source files sebelum memberikan edit.
+```
+
+Supporting Enemy/Tutorial/Audit handoffs should be uploaded when their detail is relevant.
 
 ---
 
-# 17. Jangan Upload Seluruh Repository Tanpa Alasan
+# 22. Do Not Upload the Entire Repository Without Reason
 
-Assistant tidak selalu membutuhkan seluruh project.
+The active documentation package is intended to restore project context.
 
-Gunakan prinsip:
+It does NOT eliminate the need for actual source files when coding.
+
+Use:
 
 ```text
 Task
-→ identifikasi file relevan
-→ upload file tersebut
+→ identify relevant files
+→ upload/read those actual files
 → audit
+→ edit
 ```
 
-Contoh:
+For a broad repository audit, tracked-file lists and selected central files may be needed.
 
-Shop bug:
-
-```text
-profileStorage.js
-basicFlowScreens.js
-main.js
-```
-
-Battle setup:
-
-```text
-battleSetup.js
-player_units.json
-main.js
-```
-
-Architecture audit:
-
-```text
-repository tracked-files list
-+ source files utama
-```
-
-Hal ini menjaga konteks tetap fokus.
+For a small bug, only the relevant files should be loaded.
 
 ---
 
-# 18. Historical Documents
+# 23. New-Chat Read Order
 
-Dokumen lama boleh tetap berada di repository.
-
-Tetapi harus diperlakukan sebagai:
+Recommended default read order:
 
 ```text
-HISTORICAL REFERENCE
+1. README
+2. Maintenance Protocol
+3. Project Context
+4. Game Design Context
+5. Game Design Decisions
+6. Current State
+7. Prototype Architecture
+8. State & Data Model
+9. Progress & Backlog
+10. Chat Handoff
 ```
 
-Dokumen historical tidak boleh mengalahkan:
+Why:
 
-- keputusan terbaru user;
-- source code aktual;
-- handoff versi terbaru.
+- establish documentation governance;
+- establish project purpose;
+- establish intended design;
+- then inspect actual implementation state;
+- finish with exact resume/collaboration instructions.
 
-Tidak perlu menghapus histori hanya karena sudah usang.
-
-Histori dapat membantu memahami mengapa sebuah keputusan dibuat.
-
----
-
-# 19. Quality Checklist untuk Paket Handoff
-
-Sebelum paket dianggap selesai:
-
-## Repository
-
-- [ ] Git status jelas.
-- [ ] Source terbaru sudah di-commit.
-- [ ] Source terbaru sudah di-push.
-- [ ] Struktur repository sudah diaudit.
-
-## README
-
-- [ ] Semua dokumen terdaftar.
-- [ ] Urutan membaca jelas.
-- [ ] Maintenance Protocol dirujuk.
-
-## Chat Handoff
-
-- [ ] Workflow user dijelaskan.
-- [ ] Protocol audit file dijelaskan.
-- [ ] Expected testing behavior dijelaskan.
-
-## Current State
-
-- [ ] Flow aktual benar.
-- [ ] Fitur selesai benar-benar sudah diuji.
-- [ ] Limitation aktual tercatat.
-
-## Architecture
-
-- [ ] Struktur folder sesuai repository.
-- [ ] File utama tercatat.
-- [ ] Tanggung jawab file benar.
-- [ ] Legacy files ditandai bila ada.
-
-## State & Data Model
-
-- [ ] Field sesuai source aktual.
-- [ ] Transition state dijelaskan.
-- [ ] Persistence behavior benar.
-
-## Game Design Decisions
-
-- [ ] LOCKED jelas.
-- [ ] TENTATIVE jelas.
-- [ ] DEFERRED jelas.
-- [ ] OPEN QUESTION jelas.
-
-## Progress & Backlog
-
-- [ ] DONE sesuai hasil testing.
-- [ ] NEXT jelas.
-- [ ] Deferred feature tidak hilang.
-- [ ] Feedback baru tercatat.
-
-## Project Context
-
-- [ ] Tujuan project masih benar.
-- [ ] Scope prototype benar.
-- [ ] Role dan tanggung jawab benar.
-
-## Cross-document
-
-- [ ] Tidak ada kontradiksi besar.
-- [ ] Versi konsisten.
-- [ ] Tanggal konsisten.
-- [ ] Nama file konsisten.
+Supporting handoffs are read on demand.
 
 ---
 
-# 20. Definition of Done untuk Paket Handoff
+# 24. Cross-Document Consistency Rules
 
-Paket handoff dianggap selesai ketika:
+The package is allowed to contain design-vs-implementation gaps.
+
+Example:
 
 ```text
-Repository audited
-→ source code relevant audited
-→ historical docs audited
-→ documents created
-→ cross-document consistency checked
-→ user reviews result
+Game Design:
+Shared Team AP is current direction.
+
+Current State:
+prototype still uses Ready / Exhausted.
+```
+
+This is valid if explicitly marked as a migration gap.
+
+Invalid package state:
+
+```text
+Current State:
+Shared AP implemented.
+
+State & Data:
+no Team AP state exists.
+
+Architecture:
+old Exhaustion only.
+
+Progress:
+Shared AP still not started.
+```
+
+That is an unmarked contradiction.
+
+When a rule changes, update all documents whose responsibilities are affected.
+
+---
+
+# 25. Quality Checklist
+
+Before declaring a major handoff/documentation refresh complete:
+
+## Governance
+
+- [ ] Game Design version is explicit.
+- [ ] Handoff Package version is explicit.
+- [ ] Prototype Implementation Baseline is explicit.
+- [ ] Canonical/supporting/historical classes are clear.
+
+## Git / Repository
+
+- [ ] Git state is understood.
+- [ ] Relevant commit/tag history is understood.
+- [ ] Tracked repository structure is audited.
+- [ ] Important uncommitted work is classified.
+
+## Design
+
+- [ ] Latest explicit Game Designer decisions are preserved.
+- [ ] Canonical Context is current.
+- [ ] Decisions snapshot matches Context.
+- [ ] TENTATIVE/OPEN content was not silently promoted.
+
+## Implementation
+
+- [ ] Current State reflects actual source/runtime.
+- [ ] Implemented vs confirmed is distinguished.
+- [ ] Architecture matches actual repository.
+- [ ] State/Data reflects actual fields/schemas.
+- [ ] Known design-vs-implementation gaps are explicit.
+
+## Backlog
+
+- [ ] Historical backlog was audited, not blindly copied.
+- [ ] DONE items have sufficient evidence.
+- [ ] Current NEXT is explicit.
+- [ ] Deferred/open items remain visible.
+
+## Supporting / Historical
+
+- [ ] Supporting handoffs have clear non-canonical status.
+- [ ] Historical snapshots remain preserved.
+- [ ] Verbatim evidence is not treated as normal active authority.
+
+## Cross-Document
+
+- [ ] File names/versions/dates are consistent.
+- [ ] No major unmarked contradiction exists.
+- [ ] README read order matches actual package.
+- [ ] Chat Handoff resume point matches Progress & Backlog.
+
+## Recovery Test
+
+- [ ] A new assistant could recover the project without old chat history.
+- [ ] Major recovered systems do not require manual re-briefing.
+- [ ] Actual source is still requested/audited before coding.
+
+---
+
+# 26. Definition of Done — Documentation Refresh
+
+A major documentation refresh is done when:
+
+```text
+Repository / source / runtime audited as needed
+→ design recovery audited
+→ supporting evidence preserved
+→ documentation inventory completed
+→ migration matrix completed
+→ core documents authored
+→ cross-document consistency audited
+→ new-chat recovery scenario checked
+→ Game Designer reviews result
+→ files saved to repository
+→ relevant tests complete
 → commit
 → push
 ```
 
-Untuk milestone besar dapat dilanjutkan dengan:
-
-```text
-Git tag
-```
+A Git tag is optional and should reflect a deliberate milestone.
 
 ---
 
-# 21. Prinsip Terakhir
+# 27. Definition of Done — Supporting Recovery / Audit Handoff
 
-Handoff dibuat untuk mempertahankan konteks.
-
-Handoff tidak boleh menjadi sumber informasi usang baru.
-
-Karena itu:
-
-> Audit first. Document second.
-
-Dan untuk perubahan kode:
-
-> Actual files first. Assumptions second.
-
-Paket handoff yang baik harus memungkinkan assistant baru memahami:
+A supporting handoff is sufficient when it preserves:
 
 ```text
-Apa project ini
-→ sudah sampai mana
-→ bagaimana sistemnya bekerja
-→ bagaimana source diorganisasi
-→ data apa yang ada
-→ rule apa yang berlaku
-→ apa yang belum dikerjakan
-→ bagaimana bekerja dengan user
-→ apa langkah berikutnya
+source/date/status
+scope
+authority relationship
+verified findings or explicit decisions
+important conflicts
+open questions
+what must NOT be inferred
+exact resume point
 ```
 
-Tanpa bergantung pada histori chat sebelumnya.
+It does not need to reproduce every historical message.
+
+Its purpose is reliable recovery, not verbatim archival completeness.
+
+---
+
+# 28. Current TMTB Documentation Governance Example
+
+As of the 11 August 2026 recovery/documentation checkpoint:
+
+```text
+Canonical Game Design:
+v3.1
+
+Handoff Package:
+v3.0
+
+Verified Prototype Implementation Baseline:
+Post-v2.5 / Pre-v3 Combat Migration
+Verified 11 August 2026
+```
+
+This example exists to demonstrate version separation.
+
+Future updates should replace the metadata in active handoff documents rather than assuming this example remains current forever.
+
+---
+
+# 29. Final Principle
+
+A good TMTB project-source package should allow a new assistant to understand:
+
+```text
+what TMTB is
+→ what the Game Designer currently intends
+→ what the prototype actually implements
+→ where those two differ
+→ what evidence supports the implementation claims
+→ which files are authoritative
+→ which handoffs preserve detailed reasoning
+→ what is historical
+→ what remains open
+→ how to work with the Game Designer
+→ where to resume
+```
+
+without requiring the Game Designer to reconstruct months of discussion manually.
+
+The documentation system exists to preserve clarity, not just information volume.
+
+> **Audit first. Document second. Keep design intent and implementation truth explicitly separate.**
