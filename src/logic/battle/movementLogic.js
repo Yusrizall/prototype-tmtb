@@ -260,9 +260,13 @@ export function getMovementTiles(
     return [];
   }
 
-  if (selectedUnit.turnState === "exhausted") {
-    return [];
-  }
+  if (selectedUnit.currentHP <= 0) {
+  return [];
+}
+
+if (selectedUnit.movementLocked) {
+  return [];
+}
 
   const movementTiles =
   getReachableTilesForUnit(
@@ -344,7 +348,7 @@ const requiresMovementApCommit =
 const requiresMovementApRefund =
   selectedUnit.movementApCommitted &&
   isDestinationStartGrid &&
-  !selectedUnit.hasActed;
+  !selectedUnit.movementLocked;
 
 if (
   requiresMovementApCommit &&
@@ -392,11 +396,9 @@ const nextPlayerUnits =
             ),
 
       turnState:
-        unit.hasActed
-          ? "exhausted"
-          : requiresMovementApRefund
-            ? "ready"
-            : "positioned"
+  isDestinationStartGrid
+    ? "ready"
+    : "positioned"
     };
   });
 
@@ -432,15 +434,12 @@ return {
 };
 }
 
-export function selectNextReadyPlayerUnit(
+export function selectNextPlayerUnit(
   battleState
 ) {
   const selectableUnits =
     battleState.playerUnits.filter((unit) => {
-      return (
-        unit.currentHP > 0 &&
-        unit.turnState !== "exhausted"
-      );
+      return unit.currentHP > 0;
     });
 
   if (selectableUnits.length === 0) {

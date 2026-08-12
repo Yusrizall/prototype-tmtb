@@ -7,7 +7,7 @@ import {
   getMovementTiles,
   moveSelectedUnitToTile,
   moveSelectedUnitByDirection,
-  selectNextReadyPlayerUnit
+selectNextPlayerUnit
 } from "./logic/battle/movementLogic.js";
 import {
   getValidBasicAttackTargets
@@ -65,10 +65,12 @@ let currentScene = "title";
 
 const ENEMY_PHASE_DELAY_MS = 900;
 
+// TENTATIVE prototype validation value.
+const PLAYER_BASIC_ATTACK_AP_COST = 1;
+
 const ACTION_OPTIONS = [
   "attack",
-  "skill",
-  "wait"
+  "skill"
 ];
 
 function renderLoadingScreen() {
@@ -327,9 +329,10 @@ function resolveEnemyPhaseActions() {
   },
 
   movementApCommitted: false,
+movementLocked: false,
 
-          turnState: "ready",
-          hasActed: false
+turnState: "ready",
+hasActed: false
         };
       }
     );
@@ -423,7 +426,7 @@ function canOpenActionMenu() {
 
   if (!selectedUnit) return false;
   if (battleState.phase !== "player_phase") return false;
-  if (selectedUnit.turnState === "exhausted") return false;
+if (selectedUnit.currentHP <= 0) return false;
 
   return true;
 }
@@ -477,56 +480,33 @@ function moveActionMenuSelection(direction) {
   };
 }
 
-function resolveWaitAction() {
-  const selectedUnit = getSelectedPlayerUnit();
+function openAttackTargeting() {
+  if (
+    battleState.teamApCurrent <
+    PLAYER_BASIC_ATTACK_AP_COST
+  ) {
+    battleState = {
+      ...battleState,
 
-  if (!selectedUnit) {
+      feedbackMessage:
+        "Team AP tidak cukup untuk Attack."
+    };
+
     return;
   }
 
-  const nextPlayerUnits = battleState.playerUnits.map((unit) => {
-    if (unit.battleUnitId !== selectedUnit.battleUnitId) {
-      return unit;
-    }
-
-    return {
-      ...unit,
-      turnState: "exhausted",
-      hasActed: true
-    };
-  });
-
-  let nextBattleState = {
-    ...battleState,
-    playerUnits: nextPlayerUnits,
-    battleControlState: "unit_selected_movement",
-    actionMenuIndex: 0,
-    selectedAction: null,
-    targetIndex: 0,
-    targetUnitId: null,
-    feedbackMessage: null
-  };
-
-nextBattleState =
-  selectNextReadyPlayerUnit(
-    nextBattleState
-  );
-
-battleState =
-  nextBattleState;
-}
-
-function openAttackTargeting() {
-  const validTargets = getValidBasicAttackTargets(
-  appData.stage1Map,
-  battleState
-);
+  const validTargets =
+    getValidBasicAttackTargets(
+      appData.stage1Map,
+      battleState
+    );
 
   if (validTargets.length === 0) {
     battleState = {
       ...battleState,
+
       feedbackMessage:
-  "Tidak ada target valid dalam ATR/path unit ini."
+        "Tidak ada target valid dalam ATR/path unit ini."
     };
 
     return;
@@ -534,10 +514,20 @@ function openAttackTargeting() {
 
   battleState = {
     ...battleState,
-    battleControlState: "attack_targeting",
-    selectedAction: "attack",
+
+    battleControlState:
+      "attack_targeting",
+
+    selectedAction:
+      "attack",
+
     targetIndex: 0,
-    targetUnitId: validTargets[0].unit.battleUnitId,
+
+    targetUnitId:
+      validTargets[0]
+        .unit
+        .battleUnitId,
+
     feedbackMessage: null
   };
 }
@@ -550,10 +540,13 @@ function confirmActionMenuSelection() {
     openAttackTargeting();
     return;
   }
-
-  if (selectedAction === "wait") {
-    resolveWaitAction();
-  }
+  if (selectedAction === "skill") {
+  battleState = {
+    ...battleState,
+    feedbackMessage:
+      "Skill belum diimplementasikan pada prototype."
+  };
+}
 }
 
 function moveAttackTargetSelection(direction) {
@@ -621,6 +614,27 @@ function createVictoryBattleState(
 }
 
 function confirmBasicAttack() {
+  if (
+    battleState.teamApCurrent <
+    PLAYER_BASIC_ATTACK_AP_COST
+  ) {
+    battleState = {
+      ...battleState,
+
+      battleControlState:
+        "unit_selected_movement",
+
+      selectedAction: null,
+      targetIndex: 0,
+      targetUnitId: null,
+
+      feedbackMessage:
+        "Team AP tidak cukup untuk Attack."
+    };
+
+    return;
+  }
+
   const validTargets =
     getValidBasicAttackTargets(
       appData.stage1Map,
@@ -628,16 +642,21 @@ function confirmBasicAttack() {
     );
 
   const selectedTargetData =
-    validTargets.find((targetData) => {
-      return (
-        targetData.unit.battleUnitId ===
-        battleState.targetUnitId
-      );
-    });
+    validTargets.find(
+      (targetData) => {
+        return (
+          targetData
+            .unit
+            .battleUnitId ===
+          battleState.targetUnitId
+        );
+      }
+    );
 
   if (!selectedTargetData) {
     battleState = {
       ...battleState,
+
       feedbackMessage:
         "Target attack tidak lagi valid."
     };
@@ -645,15 +664,22 @@ function confirmBasicAttack() {
     return;
   }
 
-  const resolution = resolveBasicAttack(
-    battleState,
-    selectedTargetData.unit.battleUnitId,
-    selectedTargetData.pathResult
-  );
+  const resolution =
+    resolveBasicAttack(
+      battleState,
+
+      selectedTargetData
+        .unit
+        .battleUnitId,
+
+      selectedTargetData
+        .pathResult
+    );
 
   if (!resolution.attackResult) {
     battleState = {
       ...battleState,
+
       feedbackMessage:
         "Attack gagal diselesaikan."
     };
@@ -661,43 +687,99 @@ function confirmBasicAttack() {
     return;
   }
 
-  const attackResult = resolution.attackResult;
+  const attackResult =
+    resolution.attackResult;
+
+  const committedPlayerUnits =
+    resolution
+      .battleState
+      .playerUnits
+      .map((unit) => {
+        if (
+          unit.battleUnitId !==
+          attackResult.attackerId
+        ) {
+          return unit;
+        }
+
+        const isAtStartGrid =
+          unit.tileX ===
+            unit.startGrid.x &&
+          unit.tileY ===
+            unit.startGrid.y;
+
+        return {
+          ...unit,
+
+          movementLocked: true,
+
+          turnState:
+            isAtStartGrid
+              ? "ready"
+              : "positioned"
+        };
+      });
+
+  const nextTeamApCurrent =
+    Math.max(
+      0,
+
+      resolution
+        .battleState
+        .teamApCurrent -
+        PLAYER_BASIC_ATTACK_AP_COST
+    );
+
+  const battleStateAfterAttackCommitment = {
+    ...resolution.battleState,
+
+    teamApCurrent:
+      nextTeamApCurrent,
+
+    playerUnits:
+      committedPlayerUnits
+  };
 
   const resultMessage =
     attackResult.targetDefeated
       ? (
           `${attackResult.attackerName} memberikan ` +
           `${attackResult.finalDamage} damage kepada ` +
-          `${attackResult.targetName}. Target defeated.`
+          `${attackResult.targetName}. Target defeated. ` +
+          `Team AP ${nextTeamApCurrent}/` +
+          `${battleState.teamApCapacity}.`
         )
       : (
           `${attackResult.attackerName} memberikan ` +
           `${attackResult.finalDamage} damage kepada ` +
           `${attackResult.targetName}. ` +
           `HP ${attackResult.targetHPBefore} → ` +
-          `${attackResult.targetHPAfter}.`
+          `${attackResult.targetHPAfter}. ` +
+          `Team AP ${nextTeamApCurrent}/` +
+          `${battleState.teamApCapacity}.`
         );
-        const objectiveEvaluation =
-  evaluateEliminateAllObjective(
-    resolution.battleState
-  );
 
-if (
-  objectiveEvaluation.resolved &&
-  objectiveEvaluation.resultState ===
-    "victory"
-) {
-  battleState =
-    createVictoryBattleState(
-      resolution.battleState,
-      resultMessage
+  const objectiveEvaluation =
+    evaluateEliminateAllObjective(
+      battleStateAfterAttackCommitment
     );
 
-  return;
-}
+  if (
+    objectiveEvaluation.resolved &&
+    objectiveEvaluation.resultState ===
+      "victory"
+  ) {
+    battleState =
+      createVictoryBattleState(
+        battleStateAfterAttackCommitment,
+        resultMessage
+      );
 
-  let nextBattleState = {
-    ...resolution.battleState,
+    return;
+  }
+
+  battleState = {
+    ...battleStateAfterAttackCommitment,
 
     battleControlState:
       "unit_selected_movement",
@@ -708,16 +790,9 @@ if (
     targetIndex: 0,
     targetUnitId: null,
 
-    feedbackMessage: resultMessage
+    feedbackMessage:
+      resultMessage
   };
-
-  nextBattleState =
-  selectNextReadyPlayerUnit(
-    nextBattleState
-  );
-
-battleState =
-  nextBattleState;
 }
 
 function closeAttackTargeting() {
@@ -2074,7 +2149,7 @@ function handleMovementInput(event, key) {
   if (key === "q") {
     event.preventDefault();
 
-    battleState = selectNextReadyPlayerUnit(battleState);
+    battleState = selectNextPlayerUnit(battleState);
 
     renderApp();
     return;

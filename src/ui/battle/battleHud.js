@@ -2,8 +2,7 @@ import { renderMapGrid } from "../mapRenderer.js";
 
 const ACTION_LABELS = [
   "Attack",
-  "Skill",
-  "Wait"
+  "Skill"
 ];
 
 function getSelectedUnit(battleState) {
@@ -57,7 +56,6 @@ function renderRosterPanel(battleState) {
         <div class="roster-card ${selectedClass}">
           <strong>${unit.name}</strong>
           <span>HP ${unit.currentHP}/${unit.maxHP}</span>
-          <span>Status: ${unit.turnState}</span>
           <span>
   StartGrid: ${unit.startGrid.x},${unit.startGrid.y}
 </span>
@@ -70,6 +68,14 @@ function renderRosterPanel(battleState) {
     unit.movementApCommitted
       ? "COMMITTED"
       : "NOT COMMITTED"
+  }
+</span>
+<span>
+  Movement Lock:
+  ${
+    unit.movementLocked
+      ? "LOCKED"
+      : "UNLOCKED"
   }
 </span>
         </div>
@@ -241,7 +247,14 @@ function renderUnitDetailPanel(
   }
 </p>
         </p>
-        <p>Turn State: ${selectedUnit.turnState}</p>
+        <p>
+  Movement Lock:
+  ${
+    selectedUnit.movementLocked
+      ? "LOCKED"
+      : "UNLOCKED"
+  }
+</p>
         <p>
           Control State:
           ${battleState.battleControlState}
@@ -356,19 +369,6 @@ function renderInputHintBar(battleState) {
 
     const isEnemyPhase =
   battleState.phase === "enemy_phase";
-
-  const livingPlayerUnits =
-    battleState.playerUnits.filter(
-      (unit) => unit.currentHP > 0
-    );
-
-  const allPlayersExhausted =
-    livingPlayerUnits.length > 0 &&
-    livingPlayerUnits.every(
-      (unit) => {
-        return unit.turnState === "exhausted";
-      }
-    );
 
   const feedback =
     battleState.feedbackMessage
@@ -486,28 +486,6 @@ if (isBattleResult) {
     `;
   }
 
-  if (allPlayersExhausted) {
-    return `
-  <section class="input-hint-bar">
-    ${feedback}
-
-    <span>
-      Semua unit player sedang exhausted
-      oleh legacy action model
-    </span>
-
-    <span>
-      Player Turn belum selesai otomatis
-    </span>
-
-    <span>
-      T atau tombol End Turn
-      = Global End Turn
-    </span>
-  </section>
-`;
-  }
-
   return `
     <section class="input-hint-bar">
       ${feedback}
@@ -522,8 +500,8 @@ if (isBattleResult) {
         Enter/Space = Open Action Menu
       </span>
       <span>
-        Movement belum membuat unit exhausted
-      </span>
+  Attack mengunci Movement, bukan unit selection
+</span>
       <span>
   T / End Turn = End Player Turn
 </span>

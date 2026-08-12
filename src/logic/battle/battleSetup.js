@@ -236,7 +236,8 @@ return {
     y: position.y
   },
 
-  movementApCommitted: false
+movementApCommitted: false,
+movementLocked: false
 };
     });
 }
