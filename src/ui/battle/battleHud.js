@@ -44,6 +44,72 @@ function getSelectedAttackTarget(
   return validAttackTargets[safeTargetIndex];
 }
 
+function renderEnemyIntentSummary(
+  battleState
+) {
+  if (
+    battleState.phase !==
+    "player_phase"
+  ) {
+    return "";
+  }
+
+  const livingEnemies =
+    [...battleState.enemyUnits]
+      .filter((enemy) => {
+        return enemy.currentHP > 0;
+      })
+      .sort((first, second) => {
+        return (
+          first.spawnOrder -
+          second.spawnOrder
+        );
+      });
+
+  if (livingEnemies.length === 0) {
+    return "";
+  }
+
+  const intentRows =
+    livingEnemies
+      .map((enemy) => {
+        const target =
+          battleState.playerUnits.find((unit) => {
+            return (
+              unit.battleUnitId ===
+              enemy.currentTargetId &&
+              unit.currentHP > 0
+            );
+          });
+
+        const intentLabel =
+          enemy.currentIntent?.intentType ===
+            "basic_attack"
+            ? "ATTACK"
+            : "NONE";
+
+        const targetLabel =
+          target
+            ? ` → ${target.name}`
+            : "";
+
+        return `
+          <p>
+            #${enemy.spawnOrder}
+            ${intentLabel}${targetLabel}
+          </p>
+        `;
+      })
+      .join("");
+
+  return `
+    <div class="enemy-intent-summary">
+      <h3>Enemy Intent</h3>
+      ${intentRows}
+    </div>
+  `;
+}
+
 function renderRosterPanel(battleState) {
   const rosterItems = battleState.playerUnits
     .map((unit) => {
@@ -87,6 +153,9 @@ function renderRosterPanel(battleState) {
     <aside class="battle-panel roster-panel">
       <h2>Roster</h2>
       ${rosterItems}
+      ${renderEnemyIntentSummary(
+        battleState
+      )}
     </aside>
   `;
 }
@@ -147,8 +216,52 @@ function renderTargetPreview(
         </p>
 
         <p>
-          ATR Status:
+          Target Validity:
           <strong>VALID</strong>
+        </p>
+
+        <p>
+          Range:
+          <strong>
+            ${
+              selectedTargetData.rangeValid
+                ? "VALID"
+                : "OUTSIDE ATR"
+            }
+          </strong>
+        </p>
+
+        <p>
+          LOS:
+          <strong>
+            ${
+              selectedTargetData.losValid
+                ? "VALID"
+                : "BLOCKED"
+            }
+          </strong>
+        </p>
+
+        <p>
+          Action Path:
+          <strong>
+            ${
+              selectedTargetData.actionPathValid
+                ? "VALID"
+                : "BLOCKED"
+            }
+          </strong>
+        </p>
+
+        <p>
+          Action Validity:
+          <strong>
+            ${
+              selectedTargetData.actionValid
+                ? "VALID"
+                : "INVALID"
+            }
+          </strong>
         </p>
 
         <p>
@@ -261,7 +374,7 @@ function renderUnitDetailPanel(
         </p>
       </div>
 
-      ${isAttackTargeting ? "" : targetPreview}
+  ${isAttackTargeting ? "" : targetPreview}
     </aside>
   `;
 }
@@ -467,7 +580,7 @@ if (isBattleResult) {
         <span>E = Confirm Attack</span>
         <span>Z = Back to Action Menu</span>
         <span>
-          Preview memakai ATR, path, dan cover
+          Preview memakai ATR, LOS, path, dan cover
         </span>
       </section>
     `;
@@ -673,9 +786,9 @@ export function renderBattleHud(
         </section>
 
         ${renderUnitDetailPanel(
-          battleState,
-          validAttackTargets
-        )}
+  battleState,
+  validAttackTargets
+)}
       </section>
 
       ${renderCommandBand(battleState)}

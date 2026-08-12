@@ -259,12 +259,22 @@ function createEnemyBattleUnits(data) {
           spawnData.spawnLabel
         );
 
-      return createBattleUnit(
-        unitDefinition,
-        spawnData.spawnLabel,
-        position,
-        index
-      );
+      const battleUnit =
+        createBattleUnit(
+          unitDefinition,
+          spawnData.spawnLabel,
+          position,
+          index
+        );
+
+      return {
+  ...battleUnit,
+
+  spawnOrder: index + 1,
+
+  currentTargetId: null,
+  currentIntent: null
+};
     });
 }
 

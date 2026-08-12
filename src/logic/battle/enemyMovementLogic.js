@@ -2,6 +2,14 @@ import {
   getReachableTilesForUnit
 } from "./movementLogic.js";
 
+import {
+  getEnemyCurrentTarget
+} from "./enemyTargetLogic.js";
+
+import {
+  getBasicAttackCandidatesForUnit
+} from "./atrLogic.js";
+
 function getDistanceBetweenUnitAndTile(
   unit,
   tile
@@ -12,50 +20,68 @@ function getDistanceBetweenUnitAndTile(
   return Math.hypot(deltaX, deltaY);
 }
 
-function getLivingPlayerUnits(battleState) {
-  return battleState.playerUnits.filter((unit) => {
-    return unit.currentHP > 0;
-  });
+function evaluateDestinationForTarget(
+  mapData,
+  enemy,
+  target,
+  tile
+) {
+  const positionedEnemy = {
+    ...enemy,
+
+    tileX: tile.x,
+    tileY: tile.y
+  };
+
+  const attackCandidate =
+    getBasicAttackCandidatesForUnit(
+      mapData,
+      positionedEnemy,
+      [target]
+    )[0] ?? null;
+
+  const targetDistance =
+    getDistanceBetweenUnitAndTile(
+      target,
+      tile
+    );
+
+  return {
+    ...tile,
+
+    targetDistance,
+
+    actionValid:
+      attackCandidate?.actionValid ??
+      false,
+
+    actionPathValid:
+      attackCandidate
+        ?.actionPathValid ??
+      false,
+
+    engagementGap:
+      Math.max(
+        0,
+        targetDistance -
+        enemy.derivedStats.atr
+      )
+  };
 }
 
-function chooseNearestPlayer(
-  enemy,
-  battleState
+function compareDeterministicTiles(
+  first,
+  second
 ) {
-  const livingPlayers =
-    getLivingPlayerUnits(battleState);
-
-  if (livingPlayers.length === 0) {
-    return null;
+  if (first.distance !== second.distance) {
+    return first.distance - second.distance;
   }
 
-  return [...livingPlayers].sort((first, second) => {
-    const firstDistance =
-      getDistanceBetweenUnitAndTile(
-        enemy,
-        {
-          x: first.tileX,
-          y: first.tileY
-        }
-      );
+  if (first.y !== second.y) {
+    return first.y - second.y;
+  }
 
-    const secondDistance =
-      getDistanceBetweenUnitAndTile(
-        enemy,
-        {
-          x: second.tileX,
-          y: second.tileY
-        }
-      );
-
-    if (firstDistance !== secondDistance) {
-      return firstDistance - secondDistance;
-    }
-
-    return first.battleUnitId.localeCompare(
-      second.battleUnitId
-    );
-  })[0];
+  return first.x - second.x;
 }
 
 function chooseEnemyDestination(
@@ -64,29 +90,6 @@ function chooseEnemyDestination(
   enemy,
   target
 ) {
-  const currentDistance =
-    getDistanceBetweenUnitAndTile(
-      target,
-      {
-        x: enemy.tileX,
-        y: enemy.tileY
-      }
-    );
-
-  // Bila sudah berada dalam ATR,
-  // enemy tidak perlu bergerak.
-  if (
-    currentDistance <=
-    enemy.derivedStats.atr
-  ) {
-    return {
-      x: enemy.tileX,
-      y: enemy.tileY,
-      distance: 0,
-      targetDistance: currentDistance
-    };
-  }
-
   const reachableTiles =
     getReachableTilesForUnit(
       mapData,
@@ -103,42 +106,115 @@ function chooseEnemyDestination(
     return null;
   }
 
-  const rankedTiles =
+  const evaluatedTiles =
     reachableTiles.map((tile) => {
-      return {
-        ...tile,
-
-        targetDistance:
-          getDistanceBetweenUnitAndTile(
-            target,
-            tile
-          )
-      };
+      return evaluateDestinationForTarget(
+        mapData,
+        enemy,
+        target,
+        tile
+      );
     });
 
-  rankedTiles.sort((first, second) => {
-    if (
-      first.targetDistance !==
-      second.targetDistance
-    ) {
+  const engagementTiles =
+    evaluatedTiles
+      .filter((tile) => {
+        return tile.actionValid;
+      })
+      .sort((first, second) => {
+        if (
+          first.targetDistance !==
+          second.targetDistance
+        ) {
+          return (
+            first.targetDistance -
+            second.targetDistance
+          );
+        }
+
+        return compareDeterministicTiles(
+          first,
+          second
+        );
+      });
+
+  if (engagementTiles.length > 0) {
+    return {
+      ...engagementTiles[0],
+
+      movementMode:
+        "valid_melee_engagement"
+    };
+  }
+
+  const fallbackTiles =
+    [...evaluatedTiles]
+      .sort((first, second) => {
+        if (
+          first.actionPathValid !==
+          second.actionPathValid
+        ) {
+          return first.actionPathValid
+            ? -1
+            : 1;
+        }
+
+        if (
+          first.engagementGap !==
+          second.engagementGap
+        ) {
+          return (
+            first.engagementGap -
+            second.engagementGap
+          );
+        }
+
+        if (
+          first.targetDistance !==
+          second.targetDistance
+        ) {
+          return (
+            first.targetDistance -
+            second.targetDistance
+          );
+        }
+
+        return compareDeterministicTiles(
+          first,
+          second
+        );
+      });
+
+  const bestFallback =
+    fallbackTiles[0];
+
+  const currentTile =
+    evaluatedTiles.find((tile) => {
       return (
-        first.targetDistance -
-        second.targetDistance
+        tile.x === enemy.tileX &&
+        tile.y === enemy.tileY
       );
-    }
+    });
 
-    if (first.distance !== second.distance) {
-      return first.distance - second.distance;
-    }
+  const fallbackIsUseful =
+    !currentTile ||
+    bestFallback.x !== currentTile.x ||
+    bestFallback.y !== currentTile.y;
 
-    if (first.y !== second.y) {
-      return first.y - second.y;
-    }
+  if (!fallbackIsUseful) {
+    return {
+      ...bestFallback,
 
-    return first.x - second.x;
-  });
+      movementMode: "stay"
+    };
+  }
 
-  return rankedTiles[0];
+  return {
+    ...bestFallback,
+
+    movementMode:
+      "fallback_approach"
+  };
 }
 
 function moveEnemyToTile(
@@ -173,20 +249,29 @@ function moveEnemyToTile(
 
 export function resolveEnemyMovementPhase(
   mapData,
-  battleState
+  battleState,
+  enemyIds = null
 ) {
   let nextBattleState = battleState;
 
   const movementEvents = [];
 
   const enemyOrder =
-    battleState.enemyUnits
-      .filter((enemy) => {
-        return enemy.currentHP > 0;
-      })
-      .map((enemy) => {
-        return enemy.battleUnitId;
-      });
+    Array.isArray(enemyIds)
+      ? enemyIds
+      : [...battleState.enemyUnits]
+          .filter((enemy) => {
+            return enemy.currentHP > 0;
+          })
+          .sort((first, second) => {
+            return (
+              first.spawnOrder -
+              second.spawnOrder
+            );
+          })
+          .map((enemy) => {
+            return enemy.battleUnitId;
+          });
 
   enemyOrder.forEach((enemyId) => {
     const currentEnemy =
@@ -194,17 +279,36 @@ export function resolveEnemyMovementPhase(
         return enemy.battleUnitId === enemyId;
       });
 
-    if (!currentEnemy) {
-      return;
-    }
+    if (
+  !currentEnemy ||
+  currentEnemy.currentHP <= 0
+) {
+  return;
+}
 
     const target =
-      chooseNearestPlayer(
+      getEnemyCurrentTarget(
         currentEnemy,
         nextBattleState
       );
 
     if (!target) {
+      movementEvents.push({
+        enemyId:
+          currentEnemy.battleUnitId,
+
+        enemyName:
+          currentEnemy.name,
+
+        targetId: null,
+        targetName: null,
+
+        moved: false,
+
+        reason:
+          "no_current_target"
+      });
+
       return;
     }
 
@@ -257,7 +361,11 @@ export function resolveEnemyMovementPhase(
         y: destination.y
       },
 
-      moved,
+     moved,
+
+      movementMode:
+        destination.movementMode,
+
       targetDistance:
         destination.targetDistance
     });

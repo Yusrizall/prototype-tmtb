@@ -10,6 +10,7 @@ import {
 selectNextPlayerUnit
 } from "./logic/battle/movementLogic.js";
 import {
+  getBasicAttackCandidates,
   getValidBasicAttackTargets
 } from "./logic/battle/atrLogic.js";
 import {
@@ -21,6 +22,12 @@ import {
 import {
   resolveEnemyAttackPhase
 } from "./logic/battle/enemyAttackLogic.js";
+import {
+  resolveEnemyCurrentTarget
+} from "./logic/battle/enemyTargetLogic.js";
+import {
+  resolveEnemyCurrentIntent
+} from "./logic/battle/enemyIntentLogic.js";
 import {
   evaluateEliminateAllObjective
 } from "./logic/battle/objectiveLogic.js";
@@ -107,6 +114,94 @@ function getSelectedPlayerUnit() {
   return battleState.playerUnits.find((unit) => {
     return unit.battleUnitId === battleState.selectedUnitId;
   });
+}
+
+function refreshEnemyReadabilityState(
+  sourceState
+) {
+  let nextState = sourceState;
+
+  const enemyOrder =
+    [...nextState.enemyUnits]
+      .filter((enemy) => {
+        return enemy.currentHP > 0;
+      })
+      .sort((first, second) => {
+        return (
+          first.spawnOrder -
+          second.spawnOrder
+        );
+      })
+      .map((enemy) => {
+        return enemy.battleUnitId;
+      });
+
+  enemyOrder.forEach((enemyId) => {
+    const targetResolution =
+      resolveEnemyCurrentTarget(
+        nextState,
+        enemyId
+      );
+
+    nextState =
+      targetResolution.battleState;
+
+    const intentResolution =
+      resolveEnemyCurrentIntent(
+        nextState,
+        enemyId
+      );
+
+    nextState =
+      intentResolution.battleState;
+  });
+
+  return nextState;
+}
+
+function refreshEnemyReadabilityAfterPlayerMovement(
+  previousState,
+  nextState
+) {
+  if (
+    !previousState ||
+    !nextState ||
+    nextState.phase !== "player_phase"
+  ) {
+    return nextState;
+  }
+
+  const playerPositionChanged =
+    previousState.playerUnits.some(
+      (previousUnit) => {
+        const nextUnit =
+          nextState.playerUnits.find((unit) => {
+            return (
+              unit.battleUnitId ===
+              previousUnit.battleUnitId
+            );
+          });
+
+        if (!nextUnit) {
+          return false;
+        }
+
+        return (
+          previousUnit.tileX !==
+            nextUnit.tileX ||
+          previousUnit.tileY !==
+            nextUnit.tileY
+        );
+      }
+    );
+
+  if (!playerPositionChanged) {
+    return nextState;
+  }
+
+  return refreshEnemyReadabilityState(
+    nextState
+  );
 }
 
 function enterEnemyPhase(nextState) {
@@ -197,25 +292,142 @@ function resolveEnemyPhaseActions() {
     return;
   }
 
-  // Langkah 1: seluruh enemy melakukan movement.
-  const movementResolution =
-    resolveEnemyMovementPhase(
-      appData.stage1Map,
-      battleState
+  let stateAfterEnemyActions =
+    battleState;
+
+  const movementEvents = [];
+  const attackEvents = [];
+
+  const enemyOrder =
+    [...battleState.enemyUnits]
+      .filter((enemy) => {
+        return enemy.currentHP > 0;
+      })
+      .sort((first, second) => {
+        return (
+          first.spawnOrder -
+          second.spawnOrder
+        );
+      })
+      .map((enemy) => {
+        return enemy.battleUnitId;
+      });
+
+  for (const enemyId of enemyOrder) {
+    const hasLivingPlayer =
+      stateAfterEnemyActions
+        .playerUnits
+        .some((unit) => {
+          return unit.currentHP > 0;
+        });
+
+    if (!hasLivingPlayer) {
+      break;
+    }
+
+    const targetResolution =
+      resolveEnemyCurrentTarget(
+        stateAfterEnemyActions,
+        enemyId
+      );
+
+    stateAfterEnemyActions =
+      targetResolution.battleState;
+
+    const currentTarget =
+      targetResolution.target;
+
+    const intentResolution =
+      resolveEnemyCurrentIntent(
+        stateAfterEnemyActions,
+        enemyId
+      );
+
+    stateAfterEnemyActions =
+      intentResolution.battleState;
+
+    const currentIntent =
+      intentResolution.intent;
+
+    if (
+      !currentTarget ||
+      !currentIntent
+    ) {
+      continue;
+    }
+
+    const movementResolution =
+      resolveEnemyMovementPhase(
+        appData.stage1Map,
+        stateAfterEnemyActions,
+        [enemyId]
+      );
+
+    stateAfterEnemyActions =
+      movementResolution.battleState;
+
+    movementEvents.push(
+      ...movementResolution
+        .movementEvents
     );
 
-  const stateAfterEnemyMovement =
-    movementResolution.battleState;
+    const attackResolution =
+      resolveEnemyAttackPhase(
+        appData.stage1Map,
+        stateAfterEnemyActions,
+        [enemyId]
+      );
 
-  // Langkah 2: seluruh enemy mencoba menyerang.
-  const attackResolution =
-    resolveEnemyAttackPhase(
-      appData.stage1Map,
-      stateAfterEnemyMovement
+    stateAfterEnemyActions =
+      attackResolution.battleState;
+
+    attackEvents.push(
+      ...attackResolution
+        .attackEvents
     );
+    console.log(
+      "Enemy activation resolved:",
+      {
+        enemyId,
 
-  const stateAfterEnemyActions =
-    attackResolution.battleState;
+        spawnOrder:
+          stateAfterEnemyActions
+            .enemyUnits
+            .find((enemy) => {
+              return (
+                enemy.battleUnitId ===
+                enemyId
+              );
+            })
+            ?.spawnOrder ??
+          null,
+
+        currentTargetId:
+          currentTarget.battleUnitId,
+
+        currentTargetName:
+          currentTarget.name,
+
+          currentIntent,
+
+        intentChanged:
+          intentResolution.intentChanged,
+
+        targetChanged:
+          targetResolution.targetChanged,
+
+        movementEvent:
+          movementResolution
+            .movementEvents[0] ??
+          null,
+
+        attackEvent:
+          attackResolution
+            .attackEvents[0] ??
+          null
+      }
+    );
+  }
 
   const livingPlayerUnits =
     stateAfterEnemyActions.playerUnits.filter(
@@ -225,21 +437,17 @@ function resolveEnemyPhaseActions() {
     );
 
   const movedEnemyCount =
-    movementResolution.movementEvents.filter(
+    movementEvents.filter(
       (eventData) => {
         return eventData.moved;
       }
     ).length;
 
   const livingEnemyCount =
-    stateAfterEnemyActions.enemyUnits.filter(
-      (enemy) => {
-        return enemy.currentHP > 0;
-      }
-    ).length;
+    enemyOrder.length;
 
   const successfulAttacks =
-    attackResolution.attackEvents.filter(
+    attackEvents.filter(
       (eventData) => {
         return eventData.attacked;
       }
@@ -265,7 +473,8 @@ function resolveEnemyPhaseActions() {
         return eventData.targetName;
       });
 
-  // Jika tidak ada player hidup, battle langsung berhenti.
+  // Jika tidak ada player hidup,
+  // battle langsung berhenti.
   if (livingPlayerUnits.length === 0) {
     const defeatedText =
       defeatedPlayerNames.length > 0
@@ -303,7 +512,8 @@ function resolveEnemyPhaseActions() {
     return;
   }
 
-  // Jika masih ada player hidup, siapkan Player Turn baru.
+  // Jika masih ada player hidup,
+  // siapkan Player Turn baru.
   const nextPlayerUnits =
     stateAfterEnemyActions.playerUnits.map(
       (unit) => {
@@ -324,15 +534,15 @@ function resolveEnemyPhaseActions() {
           },
 
           startGrid: {
-    x: unit.tileX,
-    y: unit.tileY
-  },
+            x: unit.tileX,
+            y: unit.tileY
+          },
 
-  movementApCommitted: false,
-movementLocked: false,
+          movementApCommitted: false,
+          movementLocked: false,
 
-turnState: "ready",
-hasActed: false
+          turnState: "ready",
+          hasActed: false
         };
       }
     );
@@ -342,10 +552,10 @@ hasActed: false
       return unit.currentHP > 0;
     });
 
-    const nextTeamApCapacity =
-  calculateTeamApCapacity(
-    nextPlayerUnits
-  );
+  const nextTeamApCapacity =
+    calculateTeamApCapacity(
+      nextPlayerUnits
+    );
 
   const defeatedText =
     defeatedPlayerNames.length > 0
@@ -355,7 +565,8 @@ hasActed: false
         )
       : "";
 
-  battleState = {
+  battleState =
+    refreshEnemyReadabilityState({
     ...stateAfterEnemyActions,
 
     phase: "player_phase",
@@ -363,11 +574,11 @@ hasActed: false
     turnCount:
       stateAfterEnemyActions.turnCount + 1,
 
-      teamApCurrent:
-  nextTeamApCapacity,
+    teamApCurrent:
+      nextTeamApCapacity,
 
-teamApCapacity:
-  nextTeamApCapacity,
+    teamApCapacity:
+      nextTeamApCapacity,
 
     selectedUnitId:
       firstLivingPlayerUnit?.battleUnitId ??
@@ -389,10 +600,9 @@ teamApCapacity:
       `${movedEnemyCount}/${livingEnemyCount} ` +
       `enemy bergerak, ` +
       `${enemyAttackCount} attack, ` +
-      `${totalEnemyDamage} total damage.` +
-      `${defeatedText} ` +
+      `${totalEnemyDamage} total damage. ` +
       `Player Turn baru dimulai.`
-  };
+  });
 
   renderApp();
 }
@@ -502,15 +712,45 @@ function openAttackTargeting() {
     );
 
   if (validTargets.length === 0) {
-    battleState = {
-      ...battleState,
+  const attackCandidates =
+    getBasicAttackCandidates(
+      appData.stage1Map,
+      battleState
+    );
 
-      feedbackMessage:
-        "Tidak ada target valid dalam ATR/path unit ini."
-    };
+  const reasonLabels = {
+    outside_atr: "OUTSIDE ATR",
+    no_los: "NO LOS",
+    path_blocked: "PATH BLOCKED"
+  };
 
-    return;
-  }
+  const invalidSummary =
+    attackCandidates.length === 0
+      ? "No living opposing target."
+      : attackCandidates
+          .map((targetData) => {
+            const reason =
+              reasonLabels[
+                targetData.invalidReason
+              ] ?? "INVALID";
+
+            return (
+              `${targetData.unit.name}: ` +
+              `${reason}`
+            );
+          })
+          .join(" | ");
+
+  battleState = {
+    ...battleState,
+
+    feedbackMessage:
+      `Tidak ada target Attack valid. ` +
+      `${invalidSummary}`
+  };
+
+  return;
+}
 
   battleState = {
     ...battleState,
@@ -868,17 +1108,18 @@ currentScene = "main_menu";
 function startTutorialBattle() {
   clearEnemyPhaseTimer();
 
-  battleState = {
-    ...createInitialBattleState(
-      appData
-    ),
+  battleState =
+    refreshEnemyReadabilityState({
+      ...createInitialBattleState(
+        appData
+      ),
 
-    stageId: "tutorial_stage",
-    flowContext: "tutorial",
+      stageId: "tutorial_stage",
+      flowContext: "tutorial",
 
-    encounterName:
-      "Tutorial Stage (Placeholder)"
-  };
+      encounterName:
+        "Tutorial Stage (Placeholder)"
+    });
 
   currentScene = "battle";
 
@@ -989,7 +1230,8 @@ function beginSelectedStageBattle() {
       stageNode.nodeId
     );
 
-  battleState = {
+  battleState =
+    refreshEnemyReadabilityState({
   ...createInitialBattleState(
     appData,
     profileState?.permanentUpgrades
@@ -1013,7 +1255,7 @@ function beginSelectedStageBattle() {
 
     nodeType:
       stageNode.nodeType
-  };
+  });
 
   battleIntroNodeId = null;
   currentScene = "battle";
@@ -1832,12 +2074,21 @@ function attachBattleEvents() {
             tileButton.dataset.tileY
           );
 
-          battleState =
+          const previousBattleState =
+            battleState;
+
+          const movedBattleState =
             moveSelectedUnitToTile(
               appData.stage1Map,
               battleState,
               x,
               y
+            );
+
+          battleState =
+            refreshEnemyReadabilityAfterPlayerMovement(
+              previousBattleState,
+              movedBattleState
             );
 
           renderApp();
@@ -1891,22 +2142,22 @@ function renderBattleScene() {
     : [];
 
   const validAttackTargets =
-    battleState.battleControlState ===
-    "attack_targeting"
-      ? getValidBasicAttackTargets(
-          appData.stage1Map,
-          battleState
-        )
-      : [];
+  battleState.battleControlState ===
+  "attack_targeting"
+    ? getValidBasicAttackTargets(
+        appData.stage1Map,
+        battleState
+      )
+    : [];
 
-  document.querySelector(
-    "#app"
-  ).innerHTML = renderBattleHud(
-    appData,
-    battleState,
-    movementTiles,
-    validAttackTargets
-  );
+document.querySelector(
+  "#app"
+).innerHTML = renderBattleHud(
+  appData,
+  battleState,
+  movementTiles,
+  validAttackTargets
+);
 
   attachBattleEvents();
   scheduleEnemyPhaseResolution();
@@ -2136,11 +2387,21 @@ function handleMovementInput(event, key) {
   if (movementKeyMap[key]) {
     event.preventDefault();
 
-    battleState = moveSelectedUnitByDirection(
-      appData.stage1Map,
-      battleState,
-      movementKeyMap[key]
-    );
+    const previousBattleState =
+      battleState;
+
+    const movedBattleState =
+      moveSelectedUnitByDirection(
+        appData.stage1Map,
+        battleState,
+        movementKeyMap[key]
+      );
+
+    battleState =
+      refreshEnemyReadabilityAfterPlayerMovement(
+        previousBattleState,
+        movedBattleState
+      );
 
     renderApp();
     return;

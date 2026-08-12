@@ -6,34 +6,16 @@ import {
   resolveBasicAttackBetweenUnits
 } from "./damageLogic.js";
 
-function chooseEnemyAttackTarget(validTargets) {
-  if (validTargets.length === 0) {
-    return null;
-  }
+import {
+  getEnemyCurrentTarget,
+  resolveEnemyCurrentTarget
+} from "./enemyTargetLogic.js";
 
-  return [...validTargets].sort((first, second) => {
-    // Prioritas pertama: target paling dekat.
-    if (first.distance !== second.distance) {
-      return first.distance - second.distance;
-    }
+import {
+  getEnemyCurrentIntent,
+  resolveEnemyCurrentIntent
+} from "./enemyIntentLogic.js";
 
-    // Jika jaraknya sama, pilih target dengan HP lebih rendah.
-    if (
-      first.unit.currentHP !==
-      second.unit.currentHP
-    ) {
-      return (
-        first.unit.currentHP -
-        second.unit.currentHP
-      );
-    }
-
-    // Tie-breaker agar hasil selalu konsisten.
-    return first.unit.battleUnitId.localeCompare(
-      second.unit.battleUnitId
-    );
-  })[0];
-}
 
 function exhaustEnemyWithoutAttack(
   battleState,
@@ -60,20 +42,23 @@ function exhaustEnemyWithoutAttack(
 
 export function resolveEnemyAttackPhase(
   mapData,
-  battleState
+  battleState,
+  enemyIds = null
 ) {
   let nextBattleState = battleState;
 
   const attackEvents = [];
 
   const enemyOrder =
-    battleState.enemyUnits
-      .filter((enemy) => {
-        return enemy.currentHP > 0;
-      })
-      .map((enemy) => {
-        return enemy.battleUnitId;
-      });
+    Array.isArray(enemyIds)
+      ? enemyIds
+      : battleState.enemyUnits
+          .filter((enemy) => {
+            return enemy.currentHP > 0;
+          })
+          .map((enemy) => {
+            return enemy.battleUnitId;
+          });
 
   enemyOrder.forEach((enemyId) => {
     const currentEnemy =
@@ -88,24 +73,137 @@ export function resolveEnemyAttackPhase(
       return;
     }
 
-    const livingPlayers =
-      nextBattleState.playerUnits.filter((unit) => {
-        return unit.currentHP > 0;
+  let target =
+      getEnemyCurrentTarget(
+        currentEnemy,
+        nextBattleState
+      );
+
+    if (!target) {
+      const targetResolution =
+        resolveEnemyCurrentTarget(
+          nextBattleState,
+          currentEnemy.battleUnitId
+        );
+
+      nextBattleState =
+        targetResolution.battleState;
+
+      target =
+        targetResolution.target;
+    }
+
+    if (!target) {
+      nextBattleState =
+        exhaustEnemyWithoutAttack(
+          nextBattleState,
+          currentEnemy.battleUnitId
+        );
+
+      attackEvents.push({
+        attackerId:
+          currentEnemy.battleUnitId,
+
+        attackerName:
+          currentEnemy.name,
+
+        targetId: null,
+        targetName: null,
+
+        attacked: false,
+
+        reason:
+          "no_current_target"
       });
 
-    if (livingPlayers.length === 0) {
+      return;
+    }
+
+    let refreshedEnemy =
+      nextBattleState.enemyUnits.find((enemy) => {
+        return (
+          enemy.battleUnitId ===
+          currentEnemy.battleUnitId
+        );
+      });
+
+    let currentIntent =
+      getEnemyCurrentIntent(
+        refreshedEnemy
+      );
+
+    const intentMatchesTarget =
+      currentIntent?.intentType ===
+        "basic_attack" &&
+      currentIntent?.targetId ===
+        target.battleUnitId;
+
+    if (!intentMatchesTarget) {
+      const intentResolution =
+        resolveEnemyCurrentIntent(
+          nextBattleState,
+          currentEnemy.battleUnitId
+        );
+
+      nextBattleState =
+        intentResolution.battleState;
+
+      currentIntent =
+        intentResolution.intent;
+
+      refreshedEnemy =
+        nextBattleState.enemyUnits.find((enemy) => {
+          return (
+            enemy.battleUnitId ===
+            currentEnemy.battleUnitId
+          );
+        });
+    }
+
+    if (
+      !currentIntent ||
+      currentIntent.intentType !==
+        "basic_attack" ||
+      currentIntent.targetId !==
+        target.battleUnitId
+    ) {
+      nextBattleState =
+        exhaustEnemyWithoutAttack(
+          nextBattleState,
+          currentEnemy.battleUnitId
+        );
+
+      attackEvents.push({
+        attackerId:
+          currentEnemy.battleUnitId,
+
+        attackerName:
+          currentEnemy.name,
+
+        targetId:
+          target.battleUnitId,
+
+        targetName:
+          target.name,
+
+        attacked: false,
+
+        reason:
+          "current_intent_unavailable"
+      });
+
       return;
     }
 
     const validTargets =
       getValidBasicAttackTargetsForUnit(
         mapData,
-        currentEnemy,
-        livingPlayers
+        refreshedEnemy,
+        [target]
       );
 
     const selectedTargetData =
-      chooseEnemyAttackTarget(validTargets);
+      validTargets[0] ?? null;
 
     if (!selectedTargetData) {
       nextBattleState =
@@ -121,8 +219,16 @@ export function resolveEnemyAttackPhase(
         attackerName:
           currentEnemy.name,
 
+        targetId:
+          target.battleUnitId,
+
+        targetName:
+          target.name,
+
         attacked: false,
-        reason: "no_valid_target"
+
+        reason:
+          "current_target_action_unavailable"
       });
 
       return;
@@ -159,6 +265,34 @@ export function resolveEnemyAttackPhase(
 
     nextBattleState =
       resolution.battleState;
+
+    if (
+      resolution
+        .attackResult
+        .targetDefeated
+    ) {
+      nextBattleState = {
+        ...nextBattleState,
+
+        enemyUnits:
+          nextBattleState.enemyUnits.map(
+            (enemy) => {
+              if (
+                enemy.battleUnitId !==
+                currentEnemy.battleUnitId
+              ) {
+                return enemy;
+              }
+
+              return {
+                ...enemy,
+                currentTargetId: null,
+currentIntent: null
+              };
+            }
+          )
+      };
+    }
 
     attackEvents.push({
       ...resolution.attackResult,
