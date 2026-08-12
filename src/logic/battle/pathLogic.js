@@ -13,6 +13,8 @@ const OBSTACLE_DEFINITIONS = {
   }
 };
 
+const LOS_BLOCKER_TILE_CODE = "LOS";
+
 const EPSILON = 0.0000001;
 
 function getUnitCenter(unit) {
@@ -140,60 +142,178 @@ function getCrossedObstacles(
   return crossedObstacles;
 }
 
+function getCrossedLosBlockers(
+  mapData,
+  attacker,
+  target
+) {
+  const start = getUnitCenter(attacker);
+  const end = getUnitCenter(target);
+  const crossedLosBlockers = [];
+
+  mapData.tiles.forEach((row, y) => {
+    row.forEach((tileCode, x) => {
+      if (
+        tileCode !==
+        LOS_BLOCKER_TILE_CODE
+      ) {
+        return;
+      }
+
+      const crossesInterior =
+        segmentCrossesTileInterior(
+          start,
+          end,
+          x,
+          y
+        );
+
+      if (!crossesInterior) {
+        return;
+      }
+
+      crossedLosBlockers.push({
+        x,
+        y,
+        tileCode
+      });
+    });
+  });
+
+  return crossedLosBlockers;
+}
+
 export function evaluateAttackPath(
   mapData,
   attacker,
   target
 ) {
-  const crossedObstacles = getCrossedObstacles(
-    mapData,
-    attacker,
-    target
-  );
+  const crossedObstacles =
+    getCrossedObstacles(
+      mapData,
+      attacker,
+      target
+    );
 
-  if (crossedObstacles.length === 0) {
-    return {
-      outcome: "clear",
-      coverPercentage: 0,
-      targetValid: true,
-      damageBlocked: false,
-      strongestObstacle: null,
-      crossedObstacles
-    };
-  }
+  const crossedLosBlockers =
+    getCrossedLosBlockers(
+      mapData,
+      attacker,
+      target
+    );
 
   const strongestObstacle =
-    crossedObstacles.reduce((strongest, obstacle) => {
-      return obstacle.coverPercentage >
-        strongest.coverPercentage
-        ? obstacle
-        : strongest;
-    });
+    crossedObstacles.length > 0
+      ? crossedObstacles.reduce(
+          (strongest, obstacle) => {
+            return (
+              obstacle.coverPercentage >
+              strongest.coverPercentage
+            )
+              ? obstacle
+              : strongest;
+          }
+        )
+      : null;
 
-  if (attacker.attackType === "melee") {
+  const coverPercentage =
+    strongestObstacle
+      ?.coverPercentage ?? 0;
+
+  const isFullCover =
+    coverPercentage >= 1;
+
+  const hasSolidPathObstacle =
+    crossedObstacles.length > 0 ||
+    crossedLosBlockers.length > 0;
+
+  if (
+    attacker.attackType === "melee" &&
+    hasSolidPathObstacle
+  ) {
     return {
       outcome: "melee_blocked",
-      coverPercentage:
-        strongestObstacle.coverPercentage,
-      targetValid: false,
+
+      coverPercentage,
+
+      actionPathValid: false,
+
+      losValid: true,
+
       damageBlocked: true,
+
       strongestObstacle,
-      crossedObstacles
+
+      crossedObstacles,
+
+      crossedLosBlockers
     };
   }
 
-  const isFullCover =
-    strongestObstacle.coverPercentage >= 1;
+  const losValid =
+    attacker.attackType !== "ranged" ||
+    crossedLosBlockers.length === 0;
+
+  if (!losValid) {
+    return {
+      outcome: "no_los",
+
+      coverPercentage,
+
+      actionPathValid: true,
+
+      losValid: false,
+
+      damageBlocked:
+        isFullCover,
+
+      strongestObstacle,
+
+      crossedObstacles,
+
+      crossedLosBlockers
+    };
+  }
+
+  if (!strongestObstacle) {
+    return {
+      outcome: "clear",
+
+      coverPercentage: 0,
+
+      actionPathValid: true,
+
+      losValid: true,
+
+      damageBlocked: false,
+
+      strongestObstacle: null,
+
+      crossedObstacles,
+
+      crossedLosBlockers
+    };
+  }
 
   return {
-    outcome: isFullCover
-      ? "full_cover"
-      : "partial_cover",
-    coverPercentage:
-      strongestObstacle.coverPercentage,
-    targetValid: true,
-    damageBlocked: isFullCover,
+    outcome:
+      isFullCover
+        ? "full_cover"
+        : "partial_cover",
+
+    coverPercentage,
+
+    actionPathValid: true,
+
+    losValid: true,
+
+    damageBlocked:
+      isFullCover,
+
     strongestObstacle,
-    crossedObstacles
+
+    crossedObstacles,
+
+    crossedLosBlockers
   };
 }

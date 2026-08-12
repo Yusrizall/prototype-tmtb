@@ -15,15 +15,14 @@ export function getTileDistance(
   return Math.hypot(deltaX, deltaY);
 }
 
-export function getValidBasicAttackTargetsForUnit(
+export function getBasicAttackCandidatesForUnit(
   mapData,
   attacker,
   candidateTargets
 ) {
   if (!attacker) return [];
-  if (attacker.currentHP <= 0) return [];
 
-  if (attacker.turnState === "exhausted") {
+  if (attacker.currentHP <= 0) {
     return [];
   }
 
@@ -48,25 +47,71 @@ export function getValidBasicAttackTargetsForUnit(
           target
         );
 
-      return {
-        unit: target,
-        distance,
-        pathResult
-      };
-    })
-    .filter((targetData) => {
-      const isInsideAtr =
-        targetData.distance <=
+      const rangeValid =
+        distance <=
         attacker.derivedStats.atr;
 
-      return (
-        isInsideAtr &&
-        targetData.pathResult.targetValid
-      );
+      const actionPathValid =
+        pathResult.actionPathValid;
+
+      const losValid =
+        pathResult.losValid;
+
+      const actionValid =
+        rangeValid &&
+        actionPathValid &&
+        losValid;
+
+      let invalidReason = null;
+
+      if (!rangeValid) {
+        invalidReason =
+          "outside_atr";
+      } else if (!actionPathValid) {
+        invalidReason =
+          "path_blocked";
+      } else if (!losValid) {
+        invalidReason =
+          "no_los";
+      }
+
+      return {
+        unit: target,
+
+        targetValid: true,
+
+        distance,
+
+        rangeValid,
+
+        actionPathValid,
+
+        losValid,
+
+        actionValid,
+
+        invalidReason,
+
+        pathResult
+      };
     });
 }
 
-export function getValidBasicAttackTargets(
+export function getValidBasicAttackTargetsForUnit(
+  mapData,
+  attacker,
+  candidateTargets
+) {
+  return getBasicAttackCandidatesForUnit(
+    mapData,
+    attacker,
+    candidateTargets
+  ).filter((targetData) => {
+    return targetData.actionValid;
+  });
+}
+
+export function getBasicAttackCandidates(
   mapData,
   battleState
 ) {
@@ -78,9 +123,21 @@ export function getValidBasicAttackTargets(
       );
     });
 
-  return getValidBasicAttackTargetsForUnit(
+  return getBasicAttackCandidatesForUnit(
     mapData,
     attacker,
     battleState.enemyUnits
   );
+}
+
+export function getValidBasicAttackTargets(
+  mapData,
+  battleState
+) {
+  return getBasicAttackCandidates(
+    mapData,
+    battleState
+  ).filter((targetData) => {
+    return targetData.actionValid;
+  });
 }

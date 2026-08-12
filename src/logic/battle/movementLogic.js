@@ -15,7 +15,8 @@ function isObstacleTile(tileCode) {
   return (
     tileCode === "O30" ||
     tileCode === "O70" ||
-    tileCode === "OF"
+    tileCode === "OF" ||
+    tileCode === "LOS"
   );
 }
 

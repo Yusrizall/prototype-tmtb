@@ -24,6 +24,7 @@ function getTileClass(tileCode) {
   if (tileCode === "O30") return "tile-cover-30";
   if (tileCode === "O70") return "tile-cover-70";
   if (tileCode === "OF") return "tile-full-cover";
+  if (tileCode === "LOS") return "tile-los-blocker";
 
   return "tile-unknown";
 }
@@ -476,6 +477,10 @@ ${renderUnitToken(
           <strong>OF</strong>
           = Full Cover
         </p>
+        <p>
+  <strong>LOS</strong>
+  = Prototype LOS Blocker
+</p>
       </div>
     </section>
   `;
