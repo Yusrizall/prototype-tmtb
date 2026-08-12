@@ -1,7 +1,9 @@
 import "./style.css";
 import { loadInitialPrototypeData } from "./logic/shared/dataLoader.js";
-import { createInitialBattleState } from "./logic/battle/battleSetup.js";
 import {
+  createInitialBattleState,
+  calculateTeamApCapacity
+} from "./logic/battle/battleSetup.js";import {
   getMovementTiles,
   moveSelectedUnitToTile,
   moveSelectedUnitByDirection,
@@ -105,52 +107,36 @@ function getSelectedPlayerUnit() {
   });
 }
 
-function getLivingPlayerUnits(state) {
-  return state.playerUnits.filter((unit) => {
-    return unit.currentHP > 0;
-  });
-}
-
-function areAllLivingPlayerUnitsExhausted(state) {
-  const livingPlayerUnits =
-    getLivingPlayerUnits(state);
-
-  return (
-    livingPlayerUnits.length > 0 &&
-    livingPlayerUnits.every((unit) => {
-      return unit.turnState === "exhausted";
-    })
-  );
-}
-
-function enterEnemyPhaseIfNeeded(nextState) {
+function enterEnemyPhase(nextState) {
   if (
-    !areAllLivingPlayerUnitsExhausted(nextState)
+    !nextState ||
+    nextState.phase !== "player_phase"
   ) {
     return nextState;
   }
+
   const nextEnemyUnits =
-  nextState.enemyUnits.map((enemy) => {
-    if (enemy.currentHP <= 0) {
+    nextState.enemyUnits.map((enemy) => {
+      if (enemy.currentHP <= 0) {
+        return {
+          ...enemy,
+          turnState: "exhausted",
+          hasActed: true
+        };
+      }
+
       return {
         ...enemy,
-        turnState: "exhausted",
-        hasActed: true
+
+        originTile: {
+          x: enemy.tileX,
+          y: enemy.tileY
+        },
+
+        turnState: "ready",
+        hasActed: false
       };
-    }
-
-    return {
-      ...enemy,
-
-      originTile: {
-        x: enemy.tileX,
-        y: enemy.tileY
-      },
-
-      turnState: "ready",
-      hasActed: false
-    };
-  });
+    });
 
   const previousFeedback =
     nextState.feedbackMessage
@@ -162,6 +148,9 @@ function enterEnemyPhaseIfNeeded(nextState) {
 
     phase: "enemy_phase",
     battleControlState: "enemy_phase",
+
+    teamApCurrent: 0,
+
     selectedUnitId: null,
 
     enemyUnits: nextEnemyUnits,
@@ -174,9 +163,28 @@ function enterEnemyPhaseIfNeeded(nextState) {
 
     feedbackMessage:
       `${previousFeedback}` +
-      "Player Turn selesai. " +
+      "Global End Turn digunakan. " +
+      "Sisa Team AP dibuang. " +
       "Enemy Phase dimulai."
   };
+}
+
+function endPlayerTurn() {
+  if (
+    !battleState ||
+    battleState.phase !== "player_phase" ||
+    battleState.battleControlState ===
+      "battle_result"
+  ) {
+    return;
+  }
+
+  battleState =
+    enterEnemyPhase(
+      battleState
+    );
+
+  renderApp();
 }
 
 function resolveEnemyPhaseActions() {
@@ -313,6 +321,13 @@ function resolveEnemyPhaseActions() {
             y: unit.tileY
           },
 
+          startGrid: {
+    x: unit.tileX,
+    y: unit.tileY
+  },
+
+  movementApCommitted: false,
+
           turnState: "ready",
           hasActed: false
         };
@@ -323,6 +338,11 @@ function resolveEnemyPhaseActions() {
     nextPlayerUnits.find((unit) => {
       return unit.currentHP > 0;
     });
+
+    const nextTeamApCapacity =
+  calculateTeamApCapacity(
+    nextPlayerUnits
+  );
 
   const defeatedText =
     defeatedPlayerNames.length > 0
@@ -339,6 +359,12 @@ function resolveEnemyPhaseActions() {
 
     turnCount:
       stateAfterEnemyActions.turnCount + 1,
+
+      teamApCurrent:
+  nextTeamApCapacity,
+
+teamApCapacity:
+  nextTeamApCapacity,
 
     selectedUnitId:
       firstLivingPlayerUnit?.battleUnitId ??
@@ -481,15 +507,13 @@ function resolveWaitAction() {
     feedbackMessage: null
   };
 
-  nextBattleState = selectNextReadyPlayerUnit(
-  nextBattleState
-);
+nextBattleState =
+  selectNextReadyPlayerUnit(
+    nextBattleState
+  );
 
-nextBattleState = enterEnemyPhaseIfNeeded(
-  nextBattleState
-);
-
-battleState = nextBattleState;
+battleState =
+  nextBattleState;
 }
 
 function openAttackTargeting() {
@@ -692,12 +716,8 @@ if (
     nextBattleState
   );
 
-nextBattleState =
-  enterEnemyPhaseIfNeeded(
-    nextBattleState
-  );
-
-battleState = nextBattleState;
+battleState =
+  nextBattleState;
 }
 
 function closeAttackTargeting() {
@@ -1764,6 +1784,19 @@ function attachBattleEvents() {
       }
     );
   }
+  const endPlayerTurnButton =
+  document.querySelector(
+    '[data-action="end-player-turn"]'
+  );
+
+if (endPlayerTurnButton) {
+  endPlayerTurnButton.addEventListener(
+    "click",
+    () => {
+      endPlayerTurn();
+    }
+  );
+}
 }
 
 function renderBattleScene() {
@@ -2276,6 +2309,16 @@ function handleKeyboardInput(event) {
 
     return;
   }
+
+  if (
+  key === "t" &&
+  battleState.phase === "player_phase"
+) {
+  event.preventDefault();
+
+  endPlayerTurn();
+  return;
+}
 
   if (
     battleState

@@ -264,13 +264,31 @@ export function getMovementTiles(
     return [];
   }
 
-  return getReachableTilesForUnit(
+  const movementTiles =
+  getReachableTilesForUnit(
     mapData,
     battleState,
     selectedUnit,
-    selectedUnit.originTile,
+    selectedUnit.startGrid,
     selectedUnit.derivedStats.move
   );
+
+const canSpendMovementAp =
+  battleState.teamApCurrent > 0;
+
+if (
+  selectedUnit.movementApCommitted ||
+  canSpendMovementAp
+) {
+  return movementTiles;
+}
+
+return movementTiles.filter((tile) => {
+  return (
+    tile.x === selectedUnit.startGrid.x &&
+    tile.y === selectedUnit.startGrid.y
+  );
+});
 }
 
 export function isValidMovementTile(
@@ -315,30 +333,103 @@ export function moveSelectedUnitToTile(
     return battleState;
   }
 
-  const nextPlayerUnits =
-    battleState.playerUnits.map((unit) => {
-      if (
-        unit.battleUnitId !==
-        selectedUnit.battleUnitId
-      ) {
-        return unit;
-      }
+  const isDestinationStartGrid =
+  x === selectedUnit.startGrid.x &&
+  y === selectedUnit.startGrid.y;
 
-      return {
-        ...unit,
-        tileX: x,
-        tileY: y,
-        turnState:
-          unit.hasActed
-            ? "exhausted"
-            : "positioned"
-      };
-    });
+const requiresMovementApCommit =
+  !selectedUnit.movementApCommitted &&
+  !isDestinationStartGrid;
 
+const requiresMovementApRefund =
+  selectedUnit.movementApCommitted &&
+  isDestinationStartGrid &&
+  !selectedUnit.hasActed;
+
+if (
+  requiresMovementApCommit &&
+  battleState.teamApCurrent <= 0
+) {
   return {
     ...battleState,
-    playerUnits: nextPlayerUnits
+
+    feedbackMessage:
+      "Team AP tidak cukup untuk meninggalkan StartGrid."
   };
+}
+
+const nextTeamApCurrent =
+  requiresMovementApCommit
+    ? battleState.teamApCurrent - 1
+    : requiresMovementApRefund
+      ? Math.min(
+          battleState.teamApCapacity,
+          battleState.teamApCurrent + 1
+        )
+      : battleState.teamApCurrent;
+
+const nextPlayerUnits =
+  battleState.playerUnits.map((unit) => {
+    if (
+      unit.battleUnitId !==
+      selectedUnit.battleUnitId
+    ) {
+      return unit;
+    }
+
+    return {
+      ...unit,
+
+      tileX: x,
+      tileY: y,
+
+      movementApCommitted:
+        requiresMovementApRefund
+          ? false
+          : (
+              unit.movementApCommitted ||
+              requiresMovementApCommit
+            ),
+
+      turnState:
+        unit.hasActed
+          ? "exhausted"
+          : requiresMovementApRefund
+            ? "ready"
+            : "positioned"
+    };
+  });
+
+let nextFeedbackMessage =
+  battleState.feedbackMessage;
+
+if (requiresMovementApCommit) {
+  nextFeedbackMessage =
+    "Movement committed. " +
+    `Team AP ${nextTeamApCurrent}/` +
+    `${battleState.teamApCapacity}.`;
+}
+
+if (requiresMovementApRefund) {
+  nextFeedbackMessage =
+    "Returned to StartGrid. " +
+    "Movement AP refunded. " +
+    `Team AP ${nextTeamApCurrent}/` +
+    `${battleState.teamApCapacity}.`;
+}
+
+return {
+  ...battleState,
+
+  teamApCurrent:
+    nextTeamApCurrent,
+
+  playerUnits:
+    nextPlayerUnits,
+
+  feedbackMessage:
+    nextFeedbackMessage
+};
 }
 
 export function selectNextReadyPlayerUnit(

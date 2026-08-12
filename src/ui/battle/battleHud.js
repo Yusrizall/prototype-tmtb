@@ -59,11 +59,19 @@ function renderRosterPanel(battleState) {
           <span>HP ${unit.currentHP}/${unit.maxHP}</span>
           <span>Status: ${unit.turnState}</span>
           <span>
-            Origin: ${unit.originTile.x},${unit.originTile.y}
-          </span>
+  StartGrid: ${unit.startGrid.x},${unit.startGrid.y}
+</span>
           <span>
             Current: ${unit.tileX},${unit.tileY}
           </span>
+          <span>
+  Movement Commitment:
+  ${
+    unit.movementApCommitted
+      ? "COMMITTED"
+      : "NOT COMMITTED"
+  }
+</span>
         </div>
       `;
     })
@@ -216,14 +224,22 @@ function renderUnitDetailPanel(
         <p>Move: ${selectedUnit.derivedStats.move}</p>
         <p>ATR: ${selectedUnit.derivedStats.atr}</p>
         <p>
-          Origin Tile:
-          ${selectedUnit.originTile.x},
-          ${selectedUnit.originTile.y}
-        </p>
+  StartGrid:
+  ${selectedUnit.startGrid.x},
+  ${selectedUnit.startGrid.y}
+</p>
         <p>
           Current Tile:
           ${selectedUnit.tileX},
           ${selectedUnit.tileY}
+          <p>
+  Movement Commitment:
+  ${
+    selectedUnit.movementApCommitted
+      ? "COMMITTED"
+      : "NOT COMMITTED"
+  }
+</p>
         </p>
         <p>Turn State: ${selectedUnit.turnState}</p>
         <p>
@@ -249,6 +265,14 @@ function renderBattleTopBar(battleState) {
         <span>${battleState.turnCount}</span>
       </div>
       <div>
+  <strong>Team AP</strong>
+  <span>
+    ${battleState.teamApCurrent}
+    /
+    ${battleState.teamApCapacity}
+  </span>
+</div>
+      <div>
         <strong>Objective</strong>
         <span>${battleState.objectiveType}</span>
       </div>
@@ -266,6 +290,12 @@ function renderCommandBand(battleState) {
 
   const isAttackTargeting =
     battleState.battleControlState === "attack_targeting";
+
+    const canEndPlayerTurn =
+  battleState.phase ===
+    "player_phase" &&
+  battleState.battleControlState !==
+    "battle_result";
 
   const actionButtons = ACTION_LABELS
     .map((label, index) => {
@@ -297,10 +327,22 @@ function renderCommandBand(battleState) {
     .join("");
 
   return `
-    <section class="command-band">
-      ${actionButtons}
-    </section>
-  `;
+  <section class="command-band">
+    ${actionButtons}
+
+    <button
+      type="button"
+      data-action="end-player-turn"
+      ${
+        canEndPlayerTurn
+          ? ""
+          : "disabled"
+      }
+    >
+      End Turn
+    </button>
+  </section>
+`;
 }
 
 function renderInputHintBar(battleState) {
@@ -446,20 +488,24 @@ if (isBattleResult) {
 
   if (allPlayersExhausted) {
     return `
-      <section class="input-hint-bar">
-        ${feedback}
-        <span>
-          Semua unit player sudah exhausted
-        </span>
-        <span>
-          Enemy Phase belum diimplementasikan
-        </span>
-        <span>
-          Refresh browser untuk mengulang battle
-          sementara
-        </span>
-      </section>
-    `;
+  <section class="input-hint-bar">
+    ${feedback}
+
+    <span>
+      Semua unit player sedang exhausted
+      oleh legacy action model
+    </span>
+
+    <span>
+      Player Turn belum selesai otomatis
+    </span>
+
+    <span>
+      T atau tombol End Turn
+      = Global End Turn
+    </span>
+  </section>
+`;
   }
 
   return `
@@ -478,6 +524,9 @@ if (isBattleResult) {
       <span>
         Movement belum membuat unit exhausted
       </span>
+      <span>
+  T / End Turn = End Player Turn
+</span>
     </section>
   `;
 }

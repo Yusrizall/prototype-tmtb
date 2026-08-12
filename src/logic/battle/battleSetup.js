@@ -219,13 +219,25 @@ function createPlayerBattleUnits(
           ?.[unitDefinition.unitId] ??
         null;
 
-      return createBattleUnit(
-        unitDefinition,
-        spawnData.spawnLabel,
-        position,
-        index,
-        unitPermanentUpgrades
-      );
+      const battleUnit =
+  createBattleUnit(
+    unitDefinition,
+    spawnData.spawnLabel,
+    position,
+    index,
+    unitPermanentUpgrades
+  );
+
+return {
+  ...battleUnit,
+
+  startGrid: {
+    x: position.x,
+    y: position.y
+  },
+
+  movementApCommitted: false
+};
     });
 }
 
@@ -255,6 +267,17 @@ function createEnemyBattleUnits(data) {
     });
 }
 
+export function calculateTeamApCapacity(
+  playerUnits
+) {
+  const livingPlayerUnitCount =
+    playerUnits.filter((unit) => {
+      return unit.currentHP > 0;
+    }).length;
+
+  return livingPlayerUnitCount * 2;
+}
+
 export function createInitialBattleState(
   data,
   permanentUpgrades = null
@@ -267,6 +290,11 @@ export function createInitialBattleState(
 
   const enemyUnits =
     createEnemyBattleUnits(data);
+
+    const teamApCapacity =
+  calculateTeamApCapacity(
+    playerUnits
+  );
 
   return {
     encounterId:
@@ -283,6 +311,11 @@ export function createInitialBattleState(
 
     phase: "player_phase",
     turnCount: 1,
+
+    teamApCurrent:
+  teamApCapacity,
+
+teamApCapacity,
 
     selectedUnitId:
       playerUnits[0]?.battleUnitId ??

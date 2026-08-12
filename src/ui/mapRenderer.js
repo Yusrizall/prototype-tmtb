@@ -49,6 +49,23 @@ function findUnitAtTile(battleState, x, y) {
   });
 }
 
+function findPlayerStartGridAtTile(
+  battleState,
+  x,
+  y
+) {
+  if (!battleState) return null;
+
+  return battleState.playerUnits.find((unit) => {
+    return (
+      unit.currentHP > 0 &&
+      unit.startGrid &&
+      unit.startGrid.x === x &&
+      unit.startGrid.y === y
+    );
+  });
+}
+
 function isMovementTile(movementTiles, x, y) {
   return movementTiles.some((tile) => {
     return tile.x === x && tile.y === y;
@@ -302,6 +319,27 @@ export function renderMapGrid(
             y
           );
 
+          const startGridOwner =
+  findPlayerStartGridAtTile(
+    battleState,
+    x,
+    y
+  );
+
+const startGridClass =
+  startGridOwner
+    ? "tile-start-grid"
+    : "";
+
+const startGridMarker =
+  startGridOwner
+    ? (
+        `<span class="start-grid-marker">` +
+        `START` +
+        `</span>`
+      )
+    : "";
+
         const movementClass =
           isMovementTile(
             movementTiles,
@@ -330,9 +368,10 @@ export function renderMapGrid(
         return `
           <button
             class="
-              map-tile
-              ${tileClass}
-              ${movementClass}
+  map-tile
+  ${tileClass}
+  ${startGridClass}
+  ${movementClass}
               ${attackTargetClass}
               ${selectedAttackTargetClass}
             "
@@ -345,10 +384,12 @@ export function renderMapGrid(
             </span>
 
             <span class="tile-label">
-              ${unit ? "" : tileLabel}
-            </span>
+  ${unit ? "" : tileLabel}
+</span>
 
-            ${renderUnitToken(
+${startGridMarker}
+
+${renderUnitToken(
               unit,
               battleState,
               validAttackTargets
@@ -407,6 +448,10 @@ export function renderMapGrid(
           <strong>Cyan Tile</strong>
           = Movement Area
         </p>
+        <p>
+  <strong>Purple Dashed</strong>
+  = Player StartGrid
+</p>
         <p>
           <strong>White Line</strong>
           = Clear Attack Path

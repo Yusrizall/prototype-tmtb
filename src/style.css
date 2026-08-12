@@ -379,6 +379,44 @@ h1 {
 .tile-movement:hover {
   background: rgba(8, 145, 178, 0.55);
 }
+
+.map-tile.tile-start-grid::after {
+  content: "";
+
+  position: absolute;
+  inset: 4px;
+
+  border: 2px dashed #c084fc;
+  border-radius: 8px;
+
+  pointer-events: none;
+
+  z-index: 1;
+}
+
+.start-grid-marker {
+  position: absolute;
+
+  right: 4px;
+  bottom: 4px;
+
+  z-index: 3;
+
+  padding: 2px 4px;
+
+  border: 1px solid #6b21a8;
+  border-radius: 4px;
+
+  background: #581c87;
+  color: #f3e8ff;
+
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1;
+
+  pointer-events: none;
+}
+
 .command-band button:not(:disabled) {
   cursor: default;
   color: #f9fafb;
