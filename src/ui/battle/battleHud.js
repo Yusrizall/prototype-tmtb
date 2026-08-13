@@ -5,6 +5,19 @@ const ACTION_LABELS = [
   "Skill"
 ];
 
+function isTutorialPhase4(
+  battleState
+) {
+  return (
+    battleState?.flowContext ===
+      "tutorial" &&
+    battleState
+      ?.tutorialState
+      ?.phaseId ===
+      "phase_4_tactical_space"
+  );
+}
+
 function getSelectedUnit(battleState) {
   const allUnits = [
     ...battleState.playerUnits,
@@ -47,9 +60,41 @@ function getSelectedAttackTarget(
 function renderEnemyIntentSummary(
   battleState
 ) {
-  if (
+  const isTutorialBattle =
+    battleState.flowContext ===
+      "tutorial";
+
+  const tutorialState =
+    isTutorialBattle
+      ? battleState.tutorialState
+      : null;
+
+  if (isTutorialBattle) {
+    const phase3IntentUnlocked =
+      tutorialState?.phaseId ===
+        "phase_3_turn_intent_combat" &&
+      tutorialState?.taskId !==
+        "end_player_turn" &&
+      tutorialState?.taskId !==
+        "enemy_turn_checkpoint" &&
+      tutorialState?.taskId !==
+        "introduce_sword_enemy";
+
+    const laterIntentPersistence =
+      tutorialState?.phaseId ===
+        "phase_4_tactical_space" ||
+      tutorialState?.phaseId ===
+        "phase_5_dynamic_threat_reading";
+
+    if (
+      !phase3IntentUnlocked &&
+      !laterIntentPersistence
+    ) {
+      return "";
+    }
+  } else if (
     battleState.phase !==
-    "player_phase"
+      "player_phase"
   ) {
     return "";
   }
@@ -77,7 +122,7 @@ function renderEnemyIntentSummary(
           battleState.playerUnits.find((unit) => {
             return (
               unit.battleUnitId ===
-              enemy.currentTargetId &&
+                enemy.currentTargetId &&
               unit.currentHP > 0
             );
           });
@@ -93,8 +138,15 @@ function renderEnemyIntentSummary(
             ? ` → ${target.name}`
             : "";
 
+        const pulseClass =
+          tutorialState
+            ?.intentPulseEnemyId ===
+              enemy.battleUnitId
+            ? "enemy-intent-row-pulse"
+            : "";
+
         return `
-          <p>
+          <p class="${pulseClass}">
             #${enemy.spawnOrder}
             ${intentLabel}${targetLabel}
           </p>
@@ -196,6 +248,38 @@ function renderTargetPreview(
             })
             .join(" | ");
 
+                const tutorialPhase4 =
+      isTutorialPhase4(
+        battleState
+      );
+
+    const losPreview =
+      tutorialPhase4
+        ? ""
+        : `
+          <p>
+            LOS:
+            <strong>
+              ${
+                selectedTargetData
+                  .losValid
+                  ? "VALID"
+                  : "BLOCKED"
+              }
+            </strong>
+          </p>
+        `;
+
+    const coverReductionPreview =
+      tutorialPhase4
+        ? ""
+        : `
+          <p>
+            Cover Reduction:
+            ${coverPercentage}%
+          </p>
+        `;
+
     return `
       <div class="target-preview-placeholder">
         <h3>Attack Target</h3>
@@ -231,16 +315,8 @@ function renderTargetPreview(
           </strong>
         </p>
 
-        <p>
-          LOS:
-          <strong>
-            ${
-              selectedTargetData.losValid
-                ? "VALID"
-                : "BLOCKED"
-            }
-          </strong>
-        </p>
+        
+         ${losPreview}
 
         <p>
           Action Path:
@@ -271,10 +347,7 @@ function renderTargetPreview(
           </strong>
         </p>
 
-        <p>
-          Cover Reduction:
-          ${coverPercentage}%
-        </p>
+        ${coverReductionPreview}
 
         <p>
           Crossed Obstacle:
@@ -313,6 +386,11 @@ function renderUnitDetailPanel(
 
   const isAttackTargeting =
     battleState.battleControlState === "attack_targeting";
+
+      const tutorialPhase4 =
+    isTutorialPhase4(
+      battleState
+    );
 
   const targetPreview = renderTargetPreview(
     battleState,
@@ -379,6 +457,40 @@ function renderUnitDetailPanel(
   `;
 }
 
+function renderTutorialPrompt(
+  battleState
+) {
+  if (
+    battleState.flowContext !==
+      "tutorial" ||
+    !battleState.tutorialState
+  ) {
+    return "";
+  }
+
+  const prompt =
+    battleState.tutorialState.prompt;
+
+  if (!prompt) {
+    return "";
+  }
+
+  return `
+    <section
+      class="tutorial-prompt"
+      aria-live="polite"
+    >
+      <span class="tutorial-prompt-label">
+        Tutorial
+      </span>
+
+      <strong>
+        ${prompt}
+      </strong>
+    </section>
+  `;
+}
+
 function renderBattleTopBar(battleState) {
   return `
     <header class="battle-top-bar">
@@ -417,11 +529,36 @@ function renderCommandBand(battleState) {
   const isAttackTargeting =
     battleState.battleControlState === "attack_targeting";
 
-    const canEndPlayerTurn =
-  battleState.phase ===
-    "player_phase" &&
-  battleState.battleControlState !==
-    "battle_result";
+  const tutorialEndTurnUnlocked =
+    battleState.flowContext !==
+      "tutorial" ||
+    (
+      battleState
+        .tutorialState
+        ?.phaseId ===
+        "phase_3_turn_intent_combat" &&
+      battleState
+        .tutorialState
+        ?.taskId ===
+        "end_player_turn"
+    ) ||
+    (
+      battleState
+        .tutorialState
+        ?.phaseId ===
+        "phase_4_tactical_space" &&
+      battleState
+        .tutorialState
+        ?.taskId ===
+        "end_turn_for_phase5"
+    );
+
+  const canEndPlayerTurn =
+    battleState.phase ===
+      "player_phase" &&
+    battleState.battleControlState !==
+      "battle_result" &&
+    tutorialEndTurnUnlocked;
 
   const actionButtons = ACTION_LABELS
     .map((label, index) => {
@@ -479,6 +616,11 @@ function renderInputHintBar(battleState) {
   const isAttackTargeting =
     battleState.battleControlState ===
     "attack_targeting";
+
+      const tutorialPhase4 =
+    isTutorialPhase4(
+      battleState
+    );
 
     const isEnemyPhase =
   battleState.phase === "enemy_phase";
@@ -580,8 +722,12 @@ if (isBattleResult) {
         <span>E = Confirm Attack</span>
         <span>Z = Back to Action Menu</span>
         <span>
-          Preview memakai ATR, LOS, path, dan cover
-        </span>
+  ${
+    tutorialPhase4
+      ? "Preview memakai ATR, path, dan Cover"
+      : "Preview memakai ATR, LOS, path, dan cover"
+  }
+</span>
       </section>
     `;
   }
@@ -762,7 +908,8 @@ export function renderBattleHud(
   data,
   battleState,
   movementTiles = [],
-  validAttackTargets = []
+  validAttackTargets = [],
+  attackCandidates = []
 ) {
   const actionMenuClass =
     battleState.battleControlState === "action_menu_open"
@@ -773,16 +920,21 @@ export function renderBattleHud(
     <main class="battle-screen ${actionMenuClass}">
       ${renderBattleTopBar(battleState)}
 
+      ${renderTutorialPrompt(
+        battleState
+      )}
+
       <section class="battle-layout">
         ${renderRosterPanel(battleState)}
 
         <section class="battlefield-panel">
          ${renderMapGrid(
-          data.stage1Map,
-          battleState,
-          movementTiles,
-          validAttackTargets
-        )}
+  data.stage1Map,
+  battleState,
+  movementTiles,
+  validAttackTargets,
+  attackCandidates
+)}
         </section>
 
         ${renderUnitDetailPanel(

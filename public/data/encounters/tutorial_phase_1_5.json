@@ -1,0 +1,26 @@
+{
+  "encounterId": "tutorial_phase_1_5",
+  "name": "Tutorial Phase 1-5",
+  "stageSlot": "tutorial",
+  "mapId": "tutorial_offset_courtyard",
+  "objectiveType": "eliminate_all",
+  "victoryCondition": "all_required_enemies_defeated",
+  "defeatCondition": "all_players_defeated",
+  "playerSpawns": [
+    {
+      "unitId": "guard",
+      "spawnLabel": "P1"
+    },
+    {
+      "unitId": "archer",
+      "spawnLabel": "P2"
+    }
+  ],
+  "enemySpawns": [
+    {
+      "unitId": "sword_enemy",
+      "spawnLabel": "E1"
+    }
+  ],
+  "notes": "Prototype validation encounter for Tutorial Phase 1-5. Geometry and coordinates are tentative."
+}

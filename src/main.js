@@ -47,6 +47,29 @@ import {
   completeRunIfFinalStageCompleted,
   markRunDefeated
 } from "./logic/run/runState.js";
+import {
+  createInitialTutorialState,
+  recordTutorialLookMovement,
+  recordTutorialUnitSelection,
+  recordTutorialPlayerMovement,
+  recordTutorialPhase3PlayerMovement,
+  recordTutorialPhase4PlayerMovement,
+recordTutorialPhase4AttackAttempt,
+recordTutorialPhase4AttackTargeting,
+recordTutorialPhase4BasicAttack,
+recordTutorialPhase5EndTurn,
+recordTutorialPhase5EnemyResolution,
+recordTutorialPhase5PlayerMovement,
+recordTutorialPhase5BasicAttack,
+recordTutorialActionMenuOpened,
+recordTutorialAttackTargeting,
+recordTutorialBasicAttack,
+  recordTutorialEndTurn,
+  recordTutorialEnemyResolution,
+shouldPauseTutorialEnemyResolution,
+  advanceTutorialBrief,
+  isTutorialInputAllowed
+} from "./logic/tutorial/tutorialFlow.js";
 import { renderBattleHud } from "./ui/battle/battleHud.js";
 import {
   renderTitleScreen,
@@ -71,6 +94,8 @@ let enemyPhaseTimerId = null;
 let currentScene = "title";
 
 const ENEMY_PHASE_DELAY_MS = 900;
+// PROTOTYPE ONLY Tutorial presentation timing.
+const TUTORIAL_BRIEF_DELAY_MS = 2000;
 
 // TENTATIVE prototype validation value.
 const PLAYER_BASIC_ATTACK_AP_COST = 1;
@@ -108,6 +133,21 @@ function renderErrorScreen(error) {
       </section>
     </main>
   `;
+}
+
+function getCurrentBattleMap() {
+  if (!appData || !battleState) {
+    return null;
+  }
+
+  if (
+    battleState.flowContext ===
+    "tutorial"
+  ) {
+    return appData.tutorialMap;
+  }
+
+  return appData.stage1Map;
 }
 
 function getSelectedPlayerUnit() {
@@ -269,19 +309,47 @@ function enterEnemyPhase(nextState) {
 function endPlayerTurn() {
   if (
     !battleState ||
-    battleState.phase !== "player_phase" ||
+    battleState.phase !==
+      "player_phase" ||
     battleState.battleControlState ===
       "battle_result"
   ) {
     return;
   }
 
-  battleState =
+  const previousBattleState =
+    battleState;
+
+  const enemyPhaseBattleState =
     enterEnemyPhase(
       battleState
     );
 
+   const phase3TutorialBattleState =
+    recordTutorialEndTurn(
+      previousBattleState,
+      enemyPhaseBattleState
+    );
+
+  battleState =
+    recordTutorialPhase5EndTurn(
+      previousBattleState,
+      phase3TutorialBattleState
+    );
+
+  const tutorialTaskId =
+    battleState
+      .tutorialState
+      ?.taskId;
+
   renderApp();
+
+  if (
+    tutorialTaskId ===
+      "enemy_turn_checkpoint"
+  ) {
+    scheduleTutorialBriefAdvance();
+  }
 }
 
 function resolveEnemyPhaseActions() {
@@ -358,7 +426,7 @@ function resolveEnemyPhaseActions() {
 
     const movementResolution =
       resolveEnemyMovementPhase(
-        appData.stage1Map,
+        getCurrentBattleMap(),
         stateAfterEnemyActions,
         [enemyId]
       );
@@ -373,7 +441,7 @@ function resolveEnemyPhaseActions() {
 
     const attackResolution =
       resolveEnemyAttackPhase(
-        appData.stage1Map,
+        getCurrentBattleMap(),
         stateAfterEnemyActions,
         [enemyId]
       );
@@ -565,47 +633,78 @@ function resolveEnemyPhaseActions() {
         )
       : "";
 
-  battleState =
+    const nextPlayerTurnState =
     refreshEnemyReadabilityState({
-    ...stateAfterEnemyActions,
+      ...stateAfterEnemyActions,
 
-    phase: "player_phase",
+      phase: "player_phase",
 
-    turnCount:
-      stateAfterEnemyActions.turnCount + 1,
+      turnCount:
+        stateAfterEnemyActions
+          .turnCount + 1,
 
-    teamApCurrent:
-      nextTeamApCapacity,
+      teamApCurrent:
+        nextTeamApCapacity,
 
-    teamApCapacity:
-      nextTeamApCapacity,
+      teamApCapacity:
+        nextTeamApCapacity,
 
-    selectedUnitId:
-      firstLivingPlayerUnit?.battleUnitId ??
-      null,
+      selectedUnitId:
+        firstLivingPlayerUnit
+          ?.battleUnitId ??
+        null,
 
-    battleControlState:
-      "unit_selected_movement",
+      battleControlState:
+        "unit_selected_movement",
 
-    actionMenuIndex: 0,
-    selectedAction: null,
+      actionMenuIndex: 0,
+      selectedAction: null,
 
-    targetIndex: 0,
-    targetUnitId: null,
+      targetIndex: 0,
+      targetUnitId: null,
 
-    playerUnits: nextPlayerUnits,
+      playerUnits:
+        nextPlayerUnits,
 
-    feedbackMessage:
-      `Enemy Phase selesai: ` +
-      `${movedEnemyCount}/${livingEnemyCount} ` +
-      `enemy bergerak, ` +
-      `${enemyAttackCount} attack, ` +
-      `${totalEnemyDamage} total damage. ` +
-      `Player Turn baru dimulai.`
-  });
+      feedbackMessage:
+        `Enemy Phase selesai: ` +
+        `${movedEnemyCount}/${livingEnemyCount} ` +
+        `enemy bergerak, ` +
+        `${enemyAttackCount} attack, ` +
+        `${totalEnemyDamage} total damage. ` +
+        `Player Turn baru dimulai.`
+    });
+
+   const previousEnemyPhaseState =
+    battleState;
+
+  const phase3TutorialBattleState =
+    recordTutorialEnemyResolution(
+      previousEnemyPhaseState,
+      nextPlayerTurnState
+    );
+
+  battleState =
+    recordTutorialPhase5EnemyResolution(
+      previousEnemyPhaseState,
+      phase3TutorialBattleState
+    );
+
+  const tutorialTaskId =
+    battleState
+      .tutorialState
+      ?.taskId;
 
   renderApp();
+
+  if (
+    tutorialTaskId ===
+      "explain_ap_refresh"
+  ) {
+    scheduleTutorialBriefAdvance();
+  }
 }
+
 
 function scheduleEnemyPhaseResolution() {
   if (
@@ -614,6 +713,23 @@ function scheduleEnemyPhaseResolution() {
   ) {
     if (enemyPhaseTimerId !== null) {
       window.clearTimeout(enemyPhaseTimerId);
+      enemyPhaseTimerId = null;
+    }
+
+    return;
+  }
+    if (
+    shouldPauseTutorialEnemyResolution(
+      battleState
+    )
+  ) {
+    if (
+      enemyPhaseTimerId !== null
+    ) {
+      window.clearTimeout(
+        enemyPhaseTimerId
+      );
+
       enemyPhaseTimerId = null;
     }
 
@@ -707,14 +823,14 @@ function openAttackTargeting() {
 
   const validTargets =
     getValidBasicAttackTargets(
-      appData.stage1Map,
+      getCurrentBattleMap(),
       battleState
     );
 
   if (validTargets.length === 0) {
   const attackCandidates =
     getBasicAttackCandidates(
-      appData.stage1Map,
+      getCurrentBattleMap(),
       battleState
     );
 
@@ -791,7 +907,7 @@ function confirmActionMenuSelection() {
 
 function moveAttackTargetSelection(direction) {
   const validTargets = getValidBasicAttackTargets(
-  appData.stage1Map,
+  getCurrentBattleMap(),
   battleState
 );
 
@@ -877,7 +993,7 @@ function confirmBasicAttack() {
 
   const validTargets =
     getValidBasicAttackTargets(
-      appData.stage1Map,
+      getCurrentBattleMap(),
       battleState
     );
 
@@ -1108,18 +1224,31 @@ currentScene = "main_menu";
 function startTutorialBattle() {
   clearEnemyPhaseTimer();
 
+  const tutorialBattleData = {
+  ...appData,
+
+  stage1Map:
+    appData.tutorialMap,
+
+  stage1Encounter:
+    appData.tutorialEncounter
+};
+
   battleState =
-    refreshEnemyReadabilityState({
-      ...createInitialBattleState(
-        appData
-      ),
+  refreshEnemyReadabilityState({
+    ...createInitialBattleState(
+      tutorialBattleData
+    ),
 
-      stageId: "tutorial_stage",
-      flowContext: "tutorial",
+    stageId: "tutorial_stage",
+    flowContext: "tutorial",
 
-      encounterName:
-        "Tutorial Stage (Placeholder)"
-    });
+    tutorialState:
+      createInitialTutorialState(),
+
+    encounterName:
+      "Tutorial Stage (Placeholder)"
+  });
 
   currentScene = "battle";
 
@@ -2059,6 +2188,14 @@ function attachBattleEvents() {
         "click",
         () => {
           if (
+  !isTutorialInputAllowed(
+    battleState,
+    "movement"
+  )
+) {
+  return;
+}
+          if (
             battleState
               .battleControlState !==
             "unit_selected_movement"
@@ -2079,7 +2216,7 @@ function attachBattleEvents() {
 
           const movedBattleState =
             moveSelectedUnitToTile(
-              appData.stage1Map,
+              getCurrentBattleMap(),
               battleState,
               x,
               y
@@ -2119,6 +2256,15 @@ if (endPlayerTurnButton) {
   endPlayerTurnButton.addEventListener(
     "click",
     () => {
+      if (
+        !isTutorialInputAllowed(
+          battleState,
+          "end_turn"
+        )
+      ) {
+        return;
+      }
+
       endPlayerTurn();
     }
   );
@@ -2136,27 +2282,48 @@ function renderBattleScene() {
 
   const movementTiles = isMovementState
     ? getMovementTiles(
-        appData.stage1Map,
+        getCurrentBattleMap(),
         battleState
       )
     : [];
 
+    const attackCandidates =
+    battleState.phase ===
+      "player_phase"
+      ? getBasicAttackCandidates(
+          getCurrentBattleMap(),
+          battleState
+        )
+      : [];
+
   const validAttackTargets =
-  battleState.battleControlState ===
-  "attack_targeting"
-    ? getValidBasicAttackTargets(
-        appData.stage1Map,
-        battleState
-      )
-    : [];
+    battleState
+      .battleControlState ===
+      "attack_targeting"
+      ? attackCandidates.filter(
+          (targetData) => {
+            return (
+              targetData.actionValid
+            );
+          }
+        )
+      : [];
+
+const battleRenderData = {
+  ...appData,
+
+  stage1Map:
+    getCurrentBattleMap()
+};
 
 document.querySelector(
   "#app"
 ).innerHTML = renderBattleHud(
-  appData,
+  battleRenderData,
   battleState,
   movementTiles,
-  validAttackTargets
+    validAttackTargets,
+  attackCandidates
 );
 
   attachBattleEvents();
@@ -2324,13 +2491,65 @@ function handleAttackTargetingInput(event, key) {
     return;
   }
 
-  if (key === "e") {
-  event.preventDefault();
+    if (key === "e") {
+    event.preventDefault();
 
-  confirmBasicAttack();
-  renderApp();
-  return;
-}
+    const previousBattleState =
+      battleState;
+
+    const selectedTargetData =
+      getBasicAttackCandidates(
+        getCurrentBattleMap(),
+        battleState
+      )
+        .find((targetData) => {
+          return (
+            targetData
+              .unit
+              .battleUnitId ===
+            battleState.targetUnitId
+          );
+        }) ?? null;
+
+    confirmBasicAttack();
+
+    const phase3TutorialBattleState =
+      recordTutorialBasicAttack(
+        previousBattleState,
+        battleState
+      );
+
+    const phase4TutorialBattleState =
+      recordTutorialPhase4BasicAttack(
+        previousBattleState,
+        phase3TutorialBattleState,
+        selectedTargetData
+      );
+
+    battleState =
+      recordTutorialPhase5BasicAttack(
+        previousBattleState,
+        phase4TutorialBattleState
+      );
+
+    const tutorialTaskId =
+      battleState
+        .tutorialState
+        ?.taskId;
+
+    renderApp();
+
+     if (
+      tutorialTaskId ===
+        "explain_attack_movement_lock" ||
+      tutorialTaskId ===
+        "phase_4_attack_checkpoint"
+    ) {
+      scheduleTutorialBriefAdvance();
+    }
+
+    return;
+  }
 
   if (key === "z") {
     event.preventDefault();
@@ -2357,11 +2576,53 @@ function handleActionMenuInput(event, key) {
     return;
   }
 
-  if (key === "e") {
+      if (key === "e") {
     event.preventDefault();
 
+    const previousBattleState =
+      battleState;
+
     confirmActionMenuSelection();
+
+    const attackCandidates =
+      getBasicAttackCandidates(
+        getCurrentBattleMap(),
+        battleState
+      );
+
+    const phase3TutorialBattleState =
+      recordTutorialAttackTargeting(
+        previousBattleState,
+        battleState
+      );
+
+    const phase4AttemptBattleState =
+      recordTutorialPhase4AttackAttempt(
+        previousBattleState,
+        phase3TutorialBattleState,
+        attackCandidates
+      );
+
+    battleState =
+      recordTutorialPhase4AttackTargeting(
+        previousBattleState,
+        phase4AttemptBattleState
+      );
+
+    const tutorialTaskId =
+      battleState
+        .tutorialState
+        ?.taskId;
+
     renderApp();
+
+    if (
+      tutorialTaskId ===
+        "explain_archer_atr"
+    ) {
+      scheduleTutorialBriefAdvance();
+    }
+
     return;
   }
 
@@ -2370,6 +2631,59 @@ function handleActionMenuInput(event, key) {
     closeActionMenu();
     renderApp();
   }
+}
+
+function scheduleTutorialBriefAdvance() {
+  window.setTimeout(() => {
+    if (
+      currentScene !== "battle" ||
+      !battleState
+    ) {
+      return;
+    }
+
+    const nextBattleState =
+      advanceTutorialBrief(
+        battleState
+      );
+
+    if (
+      nextBattleState ===
+      battleState
+    ) {
+      return;
+    }
+
+    battleState =
+      nextBattleState;
+
+    const nextTutorialTaskId =
+      battleState
+        .tutorialState
+        ?.taskId;
+
+    renderApp();
+
+  const shouldContinueBriefChain =
+  nextTutorialTaskId ===
+    "explain_movement_range" ||
+  nextTutorialTaskId ===
+    "introduce_sword_enemy" ||
+  nextTutorialTaskId ===
+    "explain_enemy_intent" ||
+  nextTutorialTaskId ===
+    "explain_new_startgrids" ||
+  nextTutorialTaskId ===
+    "explain_obstacle_blocking" ||
+  nextTutorialTaskId ===
+    "explain_obstacle_cover";
+
+    if (
+      shouldContinueBriefChain
+    ) {
+      scheduleTutorialBriefAdvance();
+    }
+  }, TUTORIAL_BRIEF_DELAY_MS);
 }
 
 function handleMovementInput(event, key) {
@@ -2392,37 +2706,167 @@ function handleMovementInput(event, key) {
 
     const movedBattleState =
       moveSelectedUnitByDirection(
-        appData.stage1Map,
+        getCurrentBattleMap(),
         battleState,
         movementKeyMap[key]
       );
 
-    battleState =
-      refreshEnemyReadabilityAfterPlayerMovement(
-        previousBattleState,
-        movedBattleState
-      );
+    const readableBattleState =
+  refreshEnemyReadabilityAfterPlayerMovement(
+    previousBattleState,
+    movedBattleState
+  );
 
-    renderApp();
+const phase2TutorialBattleState =
+  recordTutorialPlayerMovement(
+    previousBattleState,
+    readableBattleState
+  );
+
+const phase3TutorialBattleState =
+  recordTutorialPhase3PlayerMovement(
+    previousBattleState,
+    phase2TutorialBattleState
+  );
+
+const phase4AttackCandidates =
+  getBasicAttackCandidates(
+    getCurrentBattleMap(),
+    phase3TutorialBattleState
+  );
+
+const phase4TutorialBattleState =
+  recordTutorialPhase4PlayerMovement(
+    previousBattleState,
+    phase3TutorialBattleState,
+    phase4AttackCandidates
+  );
+
+battleState =
+  recordTutorialPhase5PlayerMovement(
+    previousBattleState,
+    phase4TutorialBattleState
+  );
+
+const tutorialTaskId =
+  battleState
+    .tutorialState
+    ?.taskId;
+
+renderApp();
+
+if (
+  tutorialTaskId ===
+    "explain_first_movement_ap" ||
+  tutorialTaskId ===
+    "explain_movement_ap_refund" ||
+  tutorialTaskId ===
+    "archer_target_b_checkpoint" ||
+  tutorialTaskId ===
+    "explain_shared_team_ap" ||
+  tutorialTaskId ===
+    "explain_full_cover" ||
+  tutorialTaskId ===
+    "explain_partial_cover" ||
+  tutorialTaskId ===
+    "explain_clear_shot"
+    ||
+tutorialTaskId ===
+  "explain_dynamic_intent"
+) {
+  scheduleTutorialBriefAdvance();
+}
     return;
   }
 
   if (key === "q") {
-    event.preventDefault();
+  event.preventDefault();
 
-    battleState = selectNextPlayerUnit(battleState);
+  const switchedBattleState =
+    selectNextPlayerUnit(
+      battleState
+    );
 
-    renderApp();
-    return;
-  }
+  battleState =
+    recordTutorialUnitSelection(
+      switchedBattleState
+    );
+
+  renderApp();
+  return;
+}
 
   const isOpenMenuInput =
     key === "enter" || event.code === "Space";
 
-  if (isOpenMenuInput) {
+   if (isOpenMenuInput) {
     event.preventDefault();
 
+    const previousBattleState =
+      battleState;
+
     openActionMenu();
+
+    battleState =
+      recordTutorialActionMenuOpened(
+        previousBattleState,
+        battleState
+      );
+
+    renderApp();
+  }
+}
+
+function handleTutorialMouseMove(
+  event
+) {
+  if (
+    currentScene !== "battle" ||
+    !battleState
+  ) {
+    return;
+  }
+
+  if (
+    !isTutorialInputAllowed(
+      battleState,
+      "mouse_look"
+    )
+  ) {
+    return;
+  }
+
+  const nextBattleState =
+    recordTutorialLookMovement(
+      battleState,
+      event.movementX,
+      event.movementY
+    );
+
+  if (
+    nextBattleState ===
+    battleState
+  ) {
+    return;
+  }
+
+  const previousTaskId =
+    battleState
+      .tutorialState
+      ?.taskId;
+
+  battleState =
+    nextBattleState;
+
+  const nextTaskId =
+    battleState
+      .tutorialState
+      ?.taskId;
+
+  if (
+    previousTaskId !==
+    nextTaskId
+  ) {
     renderApp();
   }
 }
@@ -2627,6 +3071,48 @@ function handleKeyboardInput(event) {
     return;
   }
 
+  const tutorialMovementKeys = [
+  "w",
+  "a",
+  "s",
+  "d",
+  "arrowup",
+  "arrowdown",
+  "arrowleft",
+  "arrowright"
+];
+
+const isTutorialOpenActionMenuInput =
+  key === "enter" ||
+  event.code === "Space";
+
+const tutorialInputType =
+  tutorialMovementKeys.includes(
+    key
+  )
+    ? "movement_keyboard"
+    : key === "q"
+      ? "switch_unit"
+      : key === "t"
+        ? "end_turn"
+        : isTutorialOpenActionMenuInput
+          ? "open_action_menu"
+          : key === "e"
+            ? "confirm_action"
+            : key === "z"
+              ? "back_action"
+              : "other_battle_input";
+
+if (
+  !isTutorialInputAllowed(
+    battleState,
+    tutorialInputType
+  )
+) {
+  event.preventDefault();
+  return;
+}
+
   if (
     battleState
       .battleControlState ===
@@ -2724,6 +3210,11 @@ currentScene = "title";
       "keydown",
       handleKeyboardInput
     );
+
+    document.addEventListener(
+  "mousemove",
+  handleTutorialMouseMove
+);
 
     renderApp();
   } catch (error) {

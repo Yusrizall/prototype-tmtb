@@ -1,0 +1,22 @@
+{
+  "mapId": "tutorial_offset_courtyard",
+  "name": "Tutorial - Offset Courtyard",
+  "width": 8,
+  "height": 6,
+  "tiles": [
+    [".", ".", ".", ".", ".", ".", ".", "."],
+    [".", "P1", ".", ".", ".", ".", ".", "."],
+    [".", ".", ".", "O30", ".", ".", ".", "E1"],
+    [".", "P2", ".", "OF", ".", ".", ".", "."],
+    [".", ".", ".", ".", ".", ".", ".", "."],
+    [".", ".", ".", ".", ".", ".", ".", "."]
+  ],
+  "legend": {
+    ".": "empty",
+    "P1": "player_spawn_1",
+    "P2": "player_spawn_2",
+    "E1": "enemy_spawn_1",
+    "O30": "partial_cover_30",
+    "OF": "full_cover"
+  }
+}

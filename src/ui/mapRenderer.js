@@ -67,6 +67,26 @@ function findPlayerStartGridAtTile(
   });
 }
 
+function isTutorialTargetTile(
+  battleState,
+  x,
+  y
+) {
+  const targetTile =
+    battleState
+      ?.tutorialState
+      ?.targetTile;
+
+  if (!targetTile) {
+    return false;
+  }
+
+  return (
+    targetTile.x === x &&
+    targetTile.y === y
+  );
+}
+
 function isMovementTile(movementTiles, x, y) {
   return movementTiles.some((tile) => {
     return tile.x === x && tile.y === y;
@@ -121,66 +141,163 @@ function getSelectedTargetData(
   });
 }
 
-function getAttackLineClass(pathResult) {
+function isTutorialPhase4(
+  battleState
+) {
+  return (
+    battleState?.flowContext ===
+      "tutorial" &&
+    battleState
+      ?.tutorialState
+      ?.phaseId ===
+      "phase_4_tactical_space"
+  );
+}
+
+function getAttackLineClass(
+  pathResult,
+  useTutorialCoverColors = false
+) {
   if (!pathResult) {
-    return "attack-line-clear";
+    return useTutorialCoverColors
+      ? "tutorial-attack-line-clear"
+      : "attack-line-clear";
   }
 
-  if (pathResult.outcome === "partial_cover") {
-    return "attack-line-partial";
+  if (
+    pathResult.outcome ===
+      "partial_cover"
+  ) {
+    return useTutorialCoverColors
+      ? "tutorial-attack-line-partial"
+      : "attack-line-partial";
   }
 
-  if (pathResult.outcome === "full_cover") {
-    return "attack-line-full";
+  if (
+    pathResult.outcome ===
+      "full_cover"
+  ) {
+    return useTutorialCoverColors
+      ? "tutorial-attack-line-full"
+      : "attack-line-full";
   }
 
-  if (pathResult.outcome === "melee_blocked") {
+  if (
+    pathResult.outcome ===
+      "melee_blocked"
+  ) {
     return "attack-line-blocked";
   }
 
-  return "attack-line-clear";
+  return useTutorialCoverColors
+    ? "tutorial-attack-line-clear"
+    : "attack-line-clear";
+}
+
+function getTutorialPhase4LineCandidate(
+  battleState,
+  attackCandidates
+) {
+  if (
+    !isTutorialPhase4(
+      battleState
+    )
+  ) {
+    return null;
+  }
+
+  const attacker =
+    getSelectedPlayerUnit(
+      battleState
+    );
+
+  if (
+    !attacker ||
+    attacker.unitDefId !==
+      "archer"
+  ) {
+    return null;
+  }
+
+  return (
+    attackCandidates.find(
+      (targetData) => {
+        return (
+          targetData
+            .unit
+            .unitDefId ===
+            "sword_enemy" &&
+          targetData.rangeValid ===
+            true
+        );
+      }
+    ) ?? null
+  );
 }
 
 function renderAttackLine(
   mapData,
   battleState,
-  validAttackTargets
+  validAttackTargets,
+  attackCandidates
 ) {
-  if (
-    battleState.battleControlState !==
-    "attack_targeting"
-  ) {
-    return "";
-  }
-
   const attacker =
-    getSelectedPlayerUnit(battleState);
-
-  const selectedTargetData =
-    getSelectedTargetData(
-      battleState,
-      validAttackTargets
+    getSelectedPlayerUnit(
+      battleState
     );
 
-  if (!attacker || !selectedTargetData) {
+  if (!attacker) {
     return "";
   }
 
-  const target = selectedTargetData.unit;
+  const tutorialPhase4 =
+    isTutorialPhase4(
+      battleState
+    ) &&
+    attacker.unitDefId ===
+      "archer";
 
-  // Nilai ini mengikuti ukuran tile dan gap
-  // yang dipakai oleh CSS prototype saat ini.
+  let selectedTargetData = null;
+
+  if (
+    battleState
+      .battleControlState ===
+      "attack_targeting"
+  ) {
+    selectedTargetData =
+      getSelectedTargetData(
+        battleState,
+        validAttackTargets
+      );
+  } else if (tutorialPhase4) {
+    selectedTargetData =
+      getTutorialPhase4LineCandidate(
+        battleState,
+        attackCandidates
+      );
+  }
+
+  if (!selectedTargetData) {
+    return "";
+  }
+
+  const target =
+    selectedTargetData.unit;
+
   const tileSize = 80;
   const tileGap = 8;
-  const tilePitch = tileSize + tileGap;
+  const tilePitch =
+    tileSize + tileGap;
 
   const gridWidth =
     mapData.width * tileSize +
-    (mapData.width - 1) * tileGap;
+    (mapData.width - 1) *
+      tileGap;
 
   const gridHeight =
     mapData.height * tileSize +
-    (mapData.height - 1) * tileGap;
+    (mapData.height - 1) *
+      tileGap;
 
   const startX =
     attacker.tileX * tilePitch +
@@ -198,9 +315,12 @@ function renderAttackLine(
     target.tileY * tilePitch +
     tileSize / 2;
 
-  const lineClass = getAttackLineClass(
-    selectedTargetData.pathResult
-  );
+  const lineClass =
+    getAttackLineClass(
+      selectedTargetData
+        .pathResult,
+      tutorialPhase4
+    );
 
   return `
     <svg
@@ -298,11 +418,118 @@ function renderUnitToken(
   `;
 }
 
+function renderMapLegend(
+  battleState
+) {
+  if (
+    isTutorialPhase4(
+      battleState
+    )
+  ) {
+    return `
+      <div class="map-legend">
+        <p>
+          <strong>Green Line</strong>
+          = no Cover affecting the shot
+        </p>
+
+        <p>
+          <strong>Yellow Line</strong>
+          = Partial Cover
+        </p>
+
+        <p>
+          <strong>Red Line</strong>
+          = Full Cover
+        </p>
+
+        <p>
+          <strong>Cyan Tile</strong>
+          = Movement Area
+        </p>
+
+        <p>
+          <strong>Purple Dashed</strong>
+          = Player StartGrid
+        </p>
+
+        <p>
+          Obstacles block movement.
+        </p>
+
+        <p>
+          Some obstacles also provide Cover.
+        </p>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="map-legend">
+      <p>
+        <strong>Green</strong>
+        = Player Unit
+      </p>
+
+      <p>
+        <strong>Red</strong>
+        = Enemy Unit
+      </p>
+
+      <p>
+        <strong>Cyan Tile</strong>
+        = Movement Area
+      </p>
+
+      <p>
+        <strong>Purple Dashed</strong>
+        = Player StartGrid
+      </p>
+
+      <p>
+        <strong>White Line</strong>
+        = Clear Attack Path
+      </p>
+
+      <p>
+        <strong>Orange Line</strong>
+        = Partial Cover
+      </p>
+
+      <p>
+        <strong>Red Line</strong>
+        = Full Cover / Blocked
+      </p>
+
+      <p>
+        <strong>O30</strong>
+        = Partial Cover 30%
+      </p>
+
+      <p>
+        <strong>O70</strong>
+        = Partial Cover 70%
+      </p>
+
+      <p>
+        <strong>OF</strong>
+        = Full Cover
+      </p>
+
+      <p>
+        <strong>LOS</strong>
+        = Prototype LOS Blocker
+      </p>
+    </div>
+  `;
+}
+
 export function renderMapGrid(
   mapData,
   battleState = null,
   movementTiles = [],
-  validAttackTargets = []
+  validAttackTargets = [],
+  attackCandidates = []
 ) {
   const cells = mapData.tiles
     .flatMap((row, y) => {
@@ -350,6 +577,19 @@ const startGridMarker =
             ? "tile-movement"
             : "";
 
+            const tutorialTargetMarker =
+  isTutorialTargetTile(
+    battleState,
+    x,
+    y
+  )
+    ? (
+        `<span class="target-marker">` +
+        `MOVE HERE` +
+        `</span>`
+      )
+    : "";
+
         const attackTargetClass =
           isValidAttackTarget(
             validAttackTargets,
@@ -389,6 +629,7 @@ const startGridMarker =
 </span>
 
 ${startGridMarker}
+${tutorialTargetMarker}
 
 ${renderUnitToken(
               unit,
@@ -419,10 +660,11 @@ ${renderUnitToken(
         class="map-grid-stage"
         style="width: ${gridPixelWidth}px;"
       >
-        ${renderAttackLine(
+       ${renderAttackLine(
           mapData,
           battleState,
-          validAttackTargets
+          validAttackTargets,
+          attackCandidates
         )}
 
         <div
@@ -436,52 +678,9 @@ ${renderUnitToken(
         </div>
       </div>
 
-      <div class="map-legend">
-        <p>
-          <strong>Green</strong>
-          = Player Unit
-        </p>
-        <p>
-          <strong>Red</strong>
-          = Enemy Unit
-        </p>
-        <p>
-          <strong>Cyan Tile</strong>
-          = Movement Area
-        </p>
-        <p>
-  <strong>Purple Dashed</strong>
-  = Player StartGrid
-</p>
-        <p>
-          <strong>White Line</strong>
-          = Clear Attack Path
-        </p>
-        <p>
-          <strong>Orange Line</strong>
-          = Partial Cover
-        </p>
-        <p>
-          <strong>Red Line</strong>
-          = Full Cover / Blocked
-        </p>
-        <p>
-          <strong>O30</strong>
-          = Partial Cover 30%
-        </p>
-        <p>
-          <strong>O70</strong>
-          = Partial Cover 70%
-        </p>
-        <p>
-          <strong>OF</strong>
-          = Full Cover
-        </p>
-        <p>
-  <strong>LOS</strong>
-  = Prototype LOS Blocker
-</p>
-      </div>
+      ${renderMapLegend(
+  battleState
+)}
     </section>
   `;
 }

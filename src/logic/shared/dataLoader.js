@@ -29,10 +29,22 @@ export async function loadInitialPrototypeData() {
     "data/encounters/r1_stage1_baseline_eval_encounter.json"
   );
 
+  const tutorialMap = await loadJson(
+  "data/maps/tutorial_offset_courtyard.json"
+);
+
+const tutorialEncounter = await loadJson(
+  "data/encounters/tutorial_phase_1_5.json"
+);
+
   return {
-    playerUnits,
-    enemyUnits,
-    stage1Map,
-    stage1Encounter
-  };
+  playerUnits,
+  enemyUnits,
+
+  stage1Map,
+  stage1Encounter,
+
+  tutorialMap,
+  tutorialEncounter
+};
 }
