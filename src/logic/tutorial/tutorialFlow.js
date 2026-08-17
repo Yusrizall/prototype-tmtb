@@ -15,7 +15,7 @@ const PHASE_2_GUARD_TARGET_C = {
 };
 
 const PHASE_3_GUARD_TARGET_D = {
-  x: 3,
+  x: 4,
   y: 1
 };
 
@@ -32,6 +32,21 @@ const PHASE_4_ARCHER_YELLOW_TARGET = {
 const PHASE_4_ARCHER_GREEN_TARGET = {
   x: 4,
   y: 4
+};
+
+const PHASE_5_GUARD_INTENT_TARGET = {
+  x: 5,
+  y: 0
+};
+
+const PHASE_5_ARCHER_RECOVERY_TARGET = {
+  x: 6,
+  y: 4
+};
+
+const PHASE_5_GUARD_RECOVERY_TARGET = {
+  x: 5,
+  y: 3
 };
 
 function isTutorialBattle(
@@ -140,13 +155,27 @@ phase5EnemyAttackDamage: null,
 phase5PlayerTurnRefreshObserved: false,
 phase5InitialGuardTargetObserved: false,
 
+phase5GuardIntentRepositionObserved: false,
 phase5DynamicTargetChangeObserved: false,
 phase5PreviousTargetId: null,
 phase5CurrentTargetId: null,
 
-phase5TacticalResponseObserved: false,
-phase5ResponseType: null,
-phase5ResponseAttackDamage: null
+phase5SwitchedToArcherForAttacks: false,
+phase5ArcherAttackCount: 0,
+phase5ArcherTotalDamage: 0,
+phase5RepeatedAttackObserved: false,
+phase5ArcherAttackSequenceObserved: false,
+
+phase5SecondEndTurnObserved: false,
+phase5SecondEnemyAttackObserved: false,
+phase5SecondEnemyAttackDamage: null,
+phase5SecondPlayerTurnRefreshObserved: false,
+
+phase5SwitchedToArcherForRecovery: false,
+phase5ArcherRecoveryObserved: false,
+phase5SwitchedToGuardForRecovery: false,
+phase5GuardRecoveryObserved: false,
+phase5PressureRedirectObserved: false
     }
   };
 }
@@ -481,6 +510,122 @@ export function recordTutorialUnitSelection(
       }
     };
   }
+
+  if (
+    tutorialState.phaseId ===
+      "phase_5_dynamic_threat_reading" &&
+    tutorialState.taskId ===
+      "switch_to_archer_for_repeated_attacks"
+  ) {
+    if (
+      selectedUnit.unitDefId !==
+        "archer"
+    ) {
+      return battleState;
+    }
+
+    return {
+      ...battleState,
+
+      tutorialState: {
+        ...tutorialState,
+
+        taskId:
+          "attack_sword_three_times",
+
+        targetTile: null,
+
+        prompt:
+          "Attack the Sword three times.",
+
+        evidence: {
+          ...tutorialState.evidence,
+
+          phase5SwitchedToArcherForAttacks:
+            true
+        }
+      }
+    };
+  }
+
+  if (
+    tutorialState.phaseId ===
+      "phase_5_dynamic_threat_reading" &&
+    tutorialState.taskId ===
+      "switch_to_archer_for_recovery"
+  ) {
+    if (
+      selectedUnit.unitDefId !==
+        "archer"
+    ) {
+      return battleState;
+    }
+
+    return {
+      ...battleState,
+
+      tutorialState: {
+        ...tutorialState,
+
+        taskId:
+          "move_archer_to_recovery",
+
+        targetTile: {
+          ...PHASE_5_ARCHER_RECOVERY_TARGET
+        },
+
+        prompt:
+          "Move Archer to the highlighted position.",
+
+        evidence: {
+          ...tutorialState.evidence,
+
+          phase5SwitchedToArcherForRecovery:
+            true
+        }
+      }
+    };
+  }
+
+  if (
+    tutorialState.phaseId ===
+      "phase_5_dynamic_threat_reading" &&
+    tutorialState.taskId ===
+      "switch_to_guard_for_recovery"
+  ) {
+    if (
+      selectedUnit.unitDefId !==
+        "guard"
+    ) {
+      return battleState;
+    }
+
+    return {
+      ...battleState,
+
+      tutorialState: {
+        ...tutorialState,
+
+        taskId:
+          "move_guard_to_recovery",
+
+        targetTile: {
+          ...PHASE_5_GUARD_RECOVERY_TARGET
+        },
+
+        prompt:
+          "Move Guard to the highlighted position.",
+
+        evidence: {
+          ...tutorialState.evidence,
+
+          phase5SwitchedToGuardForRecovery:
+            true
+        }
+      }
+    };
+  }
+
   return battleState;
 }
 
@@ -1304,7 +1449,7 @@ export function advanceTutorialBrief(
       };
     }
   }
-    if (
+  if (
     tutorialState.phaseId ===
       "phase_5_dynamic_threat_reading"
   ) {
@@ -1319,7 +1464,7 @@ export function advanceTutorialBrief(
           ...tutorialState,
 
           taskId:
-            "respond_to_threat",
+            "explain_nearest_target",
 
           intentPulseEnemyId:
             null,
@@ -1327,7 +1472,136 @@ export function advanceTutorialBrief(
           targetTile: null,
 
           prompt:
-            "Respond to the threat."
+            "This Sword attacks the nearest unit. Archer is closer now."
+        }
+      };
+    }
+
+    if (
+      tutorialState.taskId ===
+        "explain_nearest_target"
+    ) {
+      return {
+        ...battleState,
+
+        tutorialState: {
+          ...tutorialState,
+
+          taskId:
+            "explain_remaining_team_ap",
+
+          targetTile: null,
+
+          prompt:
+            "You still have 3 Team AP."
+        }
+      };
+    }
+
+    if (
+      tutorialState.taskId ===
+        "explain_remaining_team_ap"
+    ) {
+      return {
+        ...battleState,
+
+        tutorialState: {
+          ...tutorialState,
+
+          taskId:
+            "switch_to_archer_for_repeated_attacks",
+
+          targetTile: null,
+
+          prompt:
+            "Press Q to switch to Archer."
+        }
+      };
+    }
+
+    if (
+      tutorialState.taskId ===
+        "explain_archer_damage"
+    ) {
+      return {
+        ...battleState,
+
+        tutorialState: {
+          ...tutorialState,
+
+          taskId:
+            "explain_pressure_redirect",
+
+          targetTile: null,
+
+          prompt:
+            "Positioning can redirect enemy pressure."
+        }
+      };
+    }
+
+    if (
+      tutorialState.taskId ===
+        "explain_pressure_redirect"
+    ) {
+      return {
+        ...battleState,
+
+        tutorialState: {
+          ...tutorialState,
+
+          taskId:
+            "explain_guard_durability",
+
+          targetTile: null,
+
+          prompt:
+            "Guard is more durable than Archer."
+        }
+      };
+    }
+
+    if (
+      tutorialState.taskId ===
+        "explain_guard_durability"
+    ) {
+      return {
+        ...battleState,
+
+        tutorialState: {
+          ...tutorialState,
+
+          taskId:
+            "switch_to_archer_for_recovery",
+
+          targetTile: null,
+
+          prompt:
+            "Press Q to switch to Archer."
+        }
+      };
+    }
+
+    if (
+      tutorialState.taskId ===
+        "explain_recovered_intent"
+    ) {
+      return {
+        ...battleState,
+
+        tutorialState: {
+          ...tutorialState,
+
+          taskId:
+            "phase_5_recovery_checkpoint",
+
+          intentPulseEnemyId:
+            null,
+
+          targetTile: null,
+
+          prompt:
+            "You have 2 Team AP remaining."
         }
       };
     }
@@ -2302,15 +2576,34 @@ export function recordTutorialPhase5EndTurn(
   if (
     !isTutorialBattle(
       nextBattleState
-    ) ||
+    )
+  ) {
+    return nextBattleState;
+  }
+
+  const previousTutorialState =
     previousBattleState
-      ?.tutorialState
-      ?.phaseId !==
-      "phase_4_tactical_space" ||
-    previousBattleState
-      ?.tutorialState
-      ?.taskId !==
-      "end_turn_for_phase5"
+      ?.tutorialState;
+
+  const isInitialPhase5EndTurn =
+    previousTutorialState
+      ?.phaseId ===
+      "phase_4_tactical_space" &&
+    previousTutorialState
+      ?.taskId ===
+      "end_turn_for_phase5";
+
+  const isSecondPhase5EndTurn =
+    previousTutorialState
+      ?.phaseId ===
+      "phase_5_dynamic_threat_reading" &&
+    previousTutorialState
+      ?.taskId ===
+      "end_turn_after_archer_attacks";
+
+  if (
+    !isInitialPhase5EndTurn &&
+    !isSecondPhase5EndTurn
   ) {
     return nextBattleState;
   }
@@ -2358,17 +2651,45 @@ export function recordTutorialPhase5EndTurn(
   const tutorialState =
     nextBattleState.tutorialState;
 
+  if (isInitialPhase5EndTurn) {
+    return {
+      ...nextBattleState,
+
+      tutorialState: {
+        ...tutorialState,
+
+        phaseId:
+          "phase_5_dynamic_threat_reading",
+
+        taskId:
+          "phase5_enemy_turn",
+
+        targetTile: null,
+
+        intentPulseEnemyId:
+          null,
+
+        prompt:
+          "ENEMY TURN",
+
+        evidence: {
+          ...tutorialState.evidence,
+
+          phase5EndTurnObserved:
+            true
+        }
+      }
+    };
+  }
+
   return {
     ...nextBattleState,
 
     tutorialState: {
       ...tutorialState,
 
-      phaseId:
-        "phase_5_dynamic_threat_reading",
-
       taskId:
-        "phase5_enemy_turn",
+        "phase5_enemy_turn_after_archer_attacks",
 
       targetTile: null,
 
@@ -2381,7 +2702,7 @@ export function recordTutorialPhase5EndTurn(
       evidence: {
         ...tutorialState.evidence,
 
-        phase5EndTurnObserved:
+        phase5SecondEndTurnObserved:
           true
       }
     }
@@ -2399,14 +2720,15 @@ export function recordTutorialPhase5EnemyResolution(
     previousBattleState
       ?.tutorialState
       ?.phaseId !==
-      "phase_5_dynamic_threat_reading" ||
-    previousBattleState
-      ?.tutorialState
-      ?.taskId !==
-      "phase5_enemy_turn"
+      "phase_5_dynamic_threat_reading"
   ) {
     return nextBattleState;
   }
+
+  const previousTaskId =
+    previousBattleState
+      .tutorialState
+      .taskId;
 
   const previousGuard =
     previousBattleState
@@ -2450,8 +2772,8 @@ export function recordTutorialPhase5EnemyResolution(
         );
       });
 
-  const nextSword =
-    nextBattleState
+  const previousSword =
+    previousBattleState
       .enemyUnits
       .find((unit) => {
         return (
@@ -2461,27 +2783,28 @@ export function recordTutorialPhase5EnemyResolution(
         );
       });
 
+  const nextSword =
+    nextBattleState
+      .enemyUnits
+      .find((unit) => {
+        return (
+          unit.battleUnitId ===
+            previousSword
+              ?.battleUnitId &&
+          unit.currentHP > 0
+        );
+      });
+
   if (
     !previousGuard ||
     !nextGuard ||
     !previousArcher ||
     !nextArcher ||
+    !previousSword ||
     !nextSword
   ) {
     return nextBattleState;
   }
-
-  const guardDamageObserved =
-    Math.max(
-      0,
-
-      previousGuard.currentHP -
-        nextGuard.currentHP
-    );
-
-  const archerUnaffected =
-    previousArcher.currentHP ===
-      nextArcher.currentHP;
 
   const playerTurnStarted =
     previousBattleState.phase ===
@@ -2516,21 +2839,10 @@ export function recordTutorialPhase5EnemyResolution(
         );
       });
 
-  const initialGuardTargetObserved =
-    nextSword.currentTargetId ===
-      nextGuard.battleUnitId &&
-    nextSword
-      .currentIntent
-      ?.intentType ===
-      "basic_attack";
-
   if (
-    guardDamageObserved <= 0 ||
-    !archerUnaffected ||
     !playerTurnStarted ||
     !apRefreshed ||
-    !startGridsRefreshed ||
-    !initialGuardTargetObserved
+    !startGridsRefreshed
   ) {
     return nextBattleState;
   }
@@ -2538,40 +2850,149 @@ export function recordTutorialPhase5EnemyResolution(
   const tutorialState =
     nextBattleState.tutorialState;
 
-  return {
-    ...nextBattleState,
+  if (
+    previousTaskId ===
+      "phase5_enemy_turn"
+  ) {
+    const guardDamageObserved =
+      Math.max(
+        0,
 
-    tutorialState: {
-      ...tutorialState,
+        previousGuard.currentHP -
+          nextGuard.currentHP
+      );
 
-      taskId:
-        "watch_dynamic_intent",
+    const archerUnaffected =
+      previousArcher.currentHP ===
+        nextArcher.currentHP;
 
-      targetTile: null,
+    const initialGuardTargetObserved =
+      nextSword.currentTargetId ===
+        nextGuard.battleUnitId &&
+      nextSword
+        .currentIntent
+        ?.intentType ===
+        "basic_attack";
 
-      intentPulseEnemyId:
-        null,
-
-      prompt:
-        "Watch how the Sword's Intent changes.",
-
-      evidence: {
-        ...tutorialState.evidence,
-
-        phase5EnemyAttackObserved:
-          true,
-
-        phase5EnemyAttackDamage:
-          guardDamageObserved,
-
-        phase5PlayerTurnRefreshObserved:
-          true,
-
-        phase5InitialGuardTargetObserved:
-          true
-      }
+    if (
+      guardDamageObserved <= 0 ||
+      !archerUnaffected ||
+      !initialGuardTargetObserved
+    ) {
+      return nextBattleState;
     }
-  };
+
+    return {
+      ...nextBattleState,
+
+      tutorialState: {
+        ...tutorialState,
+
+        taskId:
+          "move_guard_for_intent_switch",
+
+        targetTile: {
+          ...PHASE_5_GUARD_INTENT_TARGET
+        },
+
+        intentPulseEnemyId:
+          null,
+
+        prompt:
+          "Move Guard to the highlighted position.",
+
+        evidence: {
+          ...tutorialState.evidence,
+
+          phase5EnemyAttackObserved:
+            true,
+
+          phase5EnemyAttackDamage:
+            guardDamageObserved,
+
+          phase5PlayerTurnRefreshObserved:
+            true,
+
+          phase5InitialGuardTargetObserved:
+            true
+        }
+      }
+    };
+  }
+
+  if (
+    previousTaskId ===
+      "phase5_enemy_turn_after_archer_attacks"
+  ) {
+    const archerDamageObserved =
+      Math.max(
+        0,
+
+        previousArcher.currentHP -
+          nextArcher.currentHP
+      );
+
+    const guardUnaffected =
+      previousGuard.currentHP ===
+        nextGuard.currentHP;
+
+    const swordMoved =
+      previousSword.tileX !==
+        nextSword.tileX ||
+      previousSword.tileY !==
+        nextSword.tileY;
+
+    const archerStillTargeted =
+      nextSword.currentTargetId ===
+        nextArcher.battleUnitId &&
+      nextSword
+        .currentIntent
+        ?.intentType ===
+        "basic_attack";
+
+    if (
+      archerDamageObserved <= 0 ||
+      !guardUnaffected ||
+      !swordMoved ||
+      !archerStillTargeted
+    ) {
+      return nextBattleState;
+    }
+
+    return {
+      ...nextBattleState,
+
+      tutorialState: {
+        ...tutorialState,
+
+        taskId:
+          "explain_archer_damage",
+
+        targetTile: null,
+
+        intentPulseEnemyId:
+          null,
+
+        prompt:
+          "Archer took heavy damage.",
+
+        evidence: {
+          ...tutorialState.evidence,
+
+          phase5SecondEnemyAttackObserved:
+            true,
+
+          phase5SecondEnemyAttackDamage:
+            archerDamageObserved,
+
+          phase5SecondPlayerTurnRefreshObserved:
+            true
+        }
+      }
+    };
+  }
+
+  return nextBattleState;
 }
 
 export function recordTutorialPhase5PlayerMovement(
@@ -2634,8 +3055,25 @@ export function recordTutorialPhase5PlayerMovement(
 
   if (
     tutorialState.taskId ===
-      "watch_dynamic_intent"
+      "move_guard_for_intent_switch"
   ) {
+    if (
+      currentSelectedUnit.unitDefId !==
+        "guard"
+    ) {
+      return nextBattleState;
+    }
+
+    const reachedIntentTarget =
+      currentSelectedUnit.tileX ===
+        PHASE_5_GUARD_INTENT_TARGET.x &&
+      currentSelectedUnit.tileY ===
+        PHASE_5_GUARD_INTENT_TARGET.y;
+
+    if (!reachedIntentTarget) {
+      return nextBattleState;
+    }
+
     const previousSword =
       previousBattleState
         .enemyUnits
@@ -2654,7 +3092,8 @@ export function recordTutorialPhase5PlayerMovement(
           return (
             unit.battleUnitId ===
               previousSword
-                ?.battleUnitId
+                ?.battleUnitId &&
+            unit.currentHP > 0
           );
         });
 
@@ -2701,7 +3140,18 @@ export function recordTutorialPhase5PlayerMovement(
         ?.intentType ===
         "basic_attack";
 
-    if (!dynamicTargetChanged) {
+    const movementApObserved =
+      currentSelectedUnit
+        .movementApCommitted ===
+        true &&
+      nextBattleState.teamApCurrent ===
+        nextBattleState
+          .teamApCapacity - 1;
+
+    if (
+      !dynamicTargetChanged ||
+      !movementApObserved
+    ) {
       return nextBattleState;
     }
 
@@ -2720,10 +3170,13 @@ export function recordTutorialPhase5PlayerMovement(
           currentSword.battleUnitId,
 
         prompt:
-          "Enemy Intent can change when the battlefield changes.",
+          "Enemy Intent updates as the battlefield changes.",
 
         evidence: {
           ...tutorialState.evidence,
+
+          phase5GuardIntentRepositionObserved:
+            true,
 
           phase5DynamicTargetChangeObserved:
             true,
@@ -2742,8 +3195,36 @@ export function recordTutorialPhase5PlayerMovement(
 
   if (
     tutorialState.taskId ===
-      "respond_to_threat"
+      "move_archer_to_recovery"
   ) {
+    if (
+      currentSelectedUnit.unitDefId !==
+        "archer"
+    ) {
+      return nextBattleState;
+    }
+
+    const reachedRecoveryTarget =
+      currentSelectedUnit.tileX ===
+        PHASE_5_ARCHER_RECOVERY_TARGET.x &&
+      currentSelectedUnit.tileY ===
+        PHASE_5_ARCHER_RECOVERY_TARGET.y;
+
+    const recoveryApObserved =
+      currentSelectedUnit
+        .movementApCommitted ===
+        true &&
+      nextBattleState.teamApCurrent ===
+        nextBattleState
+          .teamApCapacity - 1;
+
+    if (
+      !reachedRecoveryTarget ||
+      !recoveryApObserved
+    ) {
+      return nextBattleState;
+    }
+
     return {
       ...nextBattleState,
 
@@ -2751,24 +3232,150 @@ export function recordTutorialPhase5PlayerMovement(
         ...tutorialState,
 
         taskId:
-          "phase_5_complete_checkpoint",
+          "switch_to_guard_for_recovery",
 
         targetTile: null,
 
-        intentPulseEnemyId:
-          null,
-
         prompt:
-          "Threat response complete.",
+          "Press Q to switch to Guard.",
 
         evidence: {
           ...tutorialState.evidence,
 
-          phase5TacticalResponseObserved:
+          phase5ArcherRecoveryObserved:
+            true
+        }
+      }
+    };
+  }
+
+  if (
+    tutorialState.taskId ===
+      "move_guard_to_recovery"
+  ) {
+    if (
+      currentSelectedUnit.unitDefId !==
+        "guard"
+    ) {
+      return nextBattleState;
+    }
+
+    const reachedRecoveryTarget =
+      currentSelectedUnit.tileX ===
+        PHASE_5_GUARD_RECOVERY_TARGET.x &&
+      currentSelectedUnit.tileY ===
+        PHASE_5_GUARD_RECOVERY_TARGET.y;
+
+    if (!reachedRecoveryTarget) {
+      return nextBattleState;
+    }
+
+    const previousSword =
+      previousBattleState
+        .enemyUnits
+        .find((unit) => {
+          return (
+            unit.unitDefId ===
+              "sword_enemy" &&
+            unit.currentHP > 0
+          );
+        });
+
+    const currentSword =
+      nextBattleState
+        .enemyUnits
+        .find((unit) => {
+          return (
+            unit.battleUnitId ===
+              previousSword
+                ?.battleUnitId &&
+            unit.currentHP > 0
+          );
+        });
+
+    const previousTarget =
+      previousBattleState
+        .playerUnits
+        .find((unit) => {
+          return (
+            unit.battleUnitId ===
+              previousSword
+                ?.currentTargetId
+          );
+        });
+
+    const currentTarget =
+      nextBattleState
+        .playerUnits
+        .find((unit) => {
+          return (
+            unit.battleUnitId ===
+              currentSword
+                ?.currentTargetId
+          );
+        });
+
+    const pressureRedirectObserved =
+  tutorialState
+    .evidence
+    .phase5ArcherRecoveryObserved ===
+    true &&
+  tutorialState
+    .evidence
+    .phase5SwitchedToGuardForRecovery ===
+    true &&
+  currentTarget
+    ?.unitDefId ===
+    "guard" &&
+  currentSword
+    ?.currentTargetId ===
+    currentTarget
+      ?.battleUnitId &&
+  currentSword
+    ?.currentIntent
+    ?.intentType ===
+    "basic_attack";
+
+    const recoveryApObserved =
+      currentSelectedUnit
+        .movementApCommitted ===
+        true &&
+      nextBattleState.teamApCurrent ===
+        nextBattleState
+          .teamApCapacity - 2;
+
+    if (
+      !pressureRedirectObserved ||
+      !recoveryApObserved
+    ) {
+      return nextBattleState;
+    }
+
+    return {
+      ...nextBattleState,
+
+      tutorialState: {
+        ...tutorialState,
+
+        taskId:
+          "explain_recovered_intent",
+
+        targetTile: null,
+
+        intentPulseEnemyId:
+          currentSword.battleUnitId,
+
+        prompt:
+          "The Sword's Intent now points to Guard.",
+
+        evidence: {
+          ...tutorialState.evidence,
+
+          phase5GuardRecoveryObserved:
             true,
 
-          phase5ResponseType:
-            "reposition"
+          phase5PressureRedirectObserved:
+            true
         }
       }
     };
@@ -2792,60 +3399,65 @@ export function recordTutorialPhase5BasicAttack(
     previousBattleState
       ?.tutorialState
       ?.taskId !==
-      "respond_to_threat"
+      "attack_sword_three_times"
   ) {
     return nextBattleState;
   }
 
-  const previousAttacker =
+  const previousArcher =
     previousBattleState
       .playerUnits
       .find((unit) => {
         return (
           unit.battleUnitId ===
             previousBattleState
-              .selectedUnitId
+              .selectedUnitId &&
+          unit.unitDefId ===
+            "archer"
         );
       });
 
-  const currentAttacker =
+  const currentArcher =
     nextBattleState
       .playerUnits
       .find((unit) => {
         return (
           unit.battleUnitId ===
-            previousAttacker
+            previousArcher
               ?.battleUnitId
         );
       });
 
-  const previousTarget =
+  const previousSword =
     previousBattleState
       .enemyUnits
       .find((unit) => {
         return (
           unit.battleUnitId ===
             previousBattleState
-              .targetUnitId
+              .targetUnitId &&
+          unit.unitDefId ===
+            "sword_enemy" &&
+          unit.currentHP > 0
         );
       });
 
-  const currentTarget =
+  const currentSword =
     nextBattleState
       .enemyUnits
       .find((unit) => {
         return (
           unit.battleUnitId ===
-            previousTarget
+            previousSword
               ?.battleUnitId
         );
       });
 
   if (
-    !previousAttacker ||
-    !currentAttacker ||
-    !previousTarget ||
-    !currentTarget
+    !previousArcher ||
+    !currentArcher ||
+    !previousSword ||
+    !currentSword
   ) {
     return nextBattleState;
   }
@@ -2854,32 +3466,42 @@ export function recordTutorialPhase5BasicAttack(
     Math.max(
       0,
 
-      previousTarget.currentHP -
-        currentTarget.currentHP
+      previousSword.currentHP -
+        currentSword.currentHP
     );
 
-  const attackCommitted =
-    previousBattleState
-      .battleControlState ===
-      "attack_targeting" &&
+  const attackObserved =
+    attackDamage > 0 &&
     nextBattleState.teamApCurrent ===
       previousBattleState
         .teamApCurrent - 1 &&
-    previousAttacker
-      .movementLocked ===
-      false &&
-    currentAttacker
+    currentArcher
       .movementLocked ===
       true &&
-    currentTarget.currentHP <=
-      previousTarget.currentHP;
+    currentSword.currentHP > 0;
 
-  if (!attackCommitted) {
+  if (!attackObserved) {
     return nextBattleState;
   }
 
   const tutorialState =
     nextBattleState.tutorialState;
+
+  const nextAttackCount =
+    tutorialState
+      .evidence
+      .phase5ArcherAttackCount + 1;
+
+  const nextTotalDamage =
+    tutorialState
+      .evidence
+      .phase5ArcherTotalDamage +
+    attackDamage;
+
+  const sequenceComplete =
+    nextAttackCount === 3 &&
+    nextBattleState.teamApCurrent ===
+      0;
 
   return {
     ...nextBattleState,
@@ -2888,27 +3510,31 @@ export function recordTutorialPhase5BasicAttack(
       ...tutorialState,
 
       taskId:
-        "phase_5_complete_checkpoint",
+        sequenceComplete
+          ? "end_turn_after_archer_attacks"
+          : "attack_sword_three_times",
 
       targetTile: null,
 
-      intentPulseEnemyId:
-        null,
-
       prompt:
-        "Threat response complete.",
+        sequenceComplete
+          ? "End your turn."
+          : "Attack the Sword again.",
 
       evidence: {
         ...tutorialState.evidence,
 
-        phase5TacticalResponseObserved:
-          true,
+        phase5ArcherAttackCount:
+          nextAttackCount,
 
-        phase5ResponseType:
-          "attack",
+        phase5ArcherTotalDamage:
+          nextTotalDamage,
 
-        phase5ResponseAttackDamage:
-          attackDamage
+        phase5RepeatedAttackObserved:
+          nextAttackCount >= 2,
+
+        phase5ArcherAttackSequenceObserved:
+          sequenceComplete
       }
     }
   };
@@ -3398,7 +4024,11 @@ export function isTutorialInputAllowed(
   ) {
     if (
       tutorialState.taskId ===
-        "watch_dynamic_intent"
+        "move_guard_for_intent_switch" ||
+      tutorialState.taskId ===
+        "move_archer_to_recovery" ||
+      tutorialState.taskId ===
+        "move_guard_to_recovery"
     ) {
       return (
         inputType ===
@@ -3408,19 +4038,39 @@ export function isTutorialInputAllowed(
 
     if (
       tutorialState.taskId ===
-        "respond_to_threat"
+        "switch_to_archer_for_repeated_attacks" ||
+      tutorialState.taskId ===
+        "switch_to_archer_for_recovery" ||
+      tutorialState.taskId ===
+        "switch_to_guard_for_recovery"
     ) {
       return (
         inputType ===
-          "movement_keyboard" ||
-        inputType ===
-          "switch_unit" ||
+          "switch_unit"
+      );
+    }
+
+    if (
+      tutorialState.taskId ===
+        "attack_sword_three_times"
+    ) {
+      return (
         inputType ===
           "open_action_menu" ||
         inputType ===
           "confirm_action" ||
         inputType ===
           "back_action"
+      );
+    }
+
+    if (
+      tutorialState.taskId ===
+        "end_turn_after_archer_attacks"
+    ) {
+      return (
+        inputType ===
+          "end_turn"
       );
     }
 

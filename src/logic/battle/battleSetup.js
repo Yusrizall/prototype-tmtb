@@ -242,6 +242,52 @@ movementLocked: false
     });
 }
 
+function applyEncounterStatOverrides(
+  battleUnit,
+  statOverrides = null
+) {
+  if (!statOverrides) {
+    return battleUnit;
+  }
+
+  const nextDerivedStats = {
+    ...battleUnit.derivedStats,
+
+    maxHP:
+      Number.isFinite(
+        statOverrides.maxHP
+      ) &&
+      statOverrides.maxHP > 0
+        ? statOverrides.maxHP
+        : battleUnit
+            .derivedStats
+            .maxHP,
+
+    atk:
+      Number.isFinite(
+        statOverrides.atk
+      ) &&
+      statOverrides.atk >= 0
+        ? statOverrides.atk
+        : battleUnit
+            .derivedStats
+            .atk
+  };
+
+  return {
+    ...battleUnit,
+
+    currentHP:
+      nextDerivedStats.maxHP,
+
+    maxHP:
+      nextDerivedStats.maxHP,
+
+    derivedStats:
+      nextDerivedStats
+  };
+}
+
 function createEnemyBattleUnits(data) {
   return data
     .stage1Encounter
@@ -267,8 +313,14 @@ function createEnemyBattleUnits(data) {
           index
         );
 
+      const encounterBattleUnit =
+        applyEncounterStatOverrides(
+          battleUnit,
+          spawnData.statOverrides
+        );
+
       return {
-  ...battleUnit,
+  ...encounterBattleUnit,
 
   spawnOrder: index + 1,
 

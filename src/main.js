@@ -699,7 +699,9 @@ function resolveEnemyPhaseActions() {
 
   if (
     tutorialTaskId ===
-      "explain_ap_refresh"
+      "explain_ap_refresh" ||
+    tutorialTaskId ===
+      "explain_archer_damage"
   ) {
     scheduleTutorialBriefAdvance();
   }
@@ -2676,7 +2678,15 @@ function scheduleTutorialBriefAdvance() {
   nextTutorialTaskId ===
     "explain_obstacle_blocking" ||
   nextTutorialTaskId ===
-    "explain_obstacle_cover";
+    "explain_obstacle_cover" ||
+  nextTutorialTaskId ===
+    "explain_nearest_target" ||
+  nextTutorialTaskId ===
+    "explain_remaining_team_ap" ||
+  nextTutorialTaskId ===
+    "explain_pressure_redirect" ||
+  nextTutorialTaskId ===
+    "explain_guard_durability";
 
     if (
       shouldContinueBriefChain
@@ -2769,10 +2779,11 @@ if (
   tutorialTaskId ===
     "explain_partial_cover" ||
   tutorialTaskId ===
-    "explain_clear_shot"
-    ||
-tutorialTaskId ===
-  "explain_dynamic_intent"
+    "explain_clear_shot" ||
+  tutorialTaskId ===
+    "explain_dynamic_intent" ||
+  tutorialTaskId ===
+    "explain_recovered_intent"
 ) {
   scheduleTutorialBriefAdvance();
 }
