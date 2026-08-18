@@ -22,7 +22,7 @@
       "spawnLabel": "E1",
       "statOverrides": {
         "maxHP": 31,
-        "atk": 10
+        "atk": 8
       }
     }
   ],

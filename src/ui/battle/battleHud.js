@@ -492,6 +492,12 @@ function renderTutorialPrompt(
 }
 
 function renderBattleTopBar(battleState) {
+  const objectiveLabel =
+    battleState.flowContext ===
+      "tutorial"
+      ? "—"
+      : battleState.objectiveType;
+
   return `
     <header class="battle-top-bar">
       <div>
@@ -512,7 +518,7 @@ function renderBattleTopBar(battleState) {
 </div>
       <div>
         <strong>Objective</strong>
-        <span>${battleState.objectiveType}</span>
+        <span>${objectiveLabel}</span>
       </div>
       <div>
         <strong>Encounter</strong>

@@ -1,11 +1,6 @@
-function isInsideMap(mapData, x, y) {
-  return (
-    x >= 0 &&
-    y >= 0 &&
-    x < mapData.width &&
-    y < mapData.height
-  );
-}
+import {
+  isTacticalPositionActive
+} from "./tacticalPositionLogic.js";
 
 function getTileCode(mapData, x, y) {
   return mapData.tiles[y]?.[x];
@@ -58,7 +53,14 @@ function canTraverseTile(
   y,
   movingUnit
 ) {
-  if (!isInsideMap(mapData, x, y)) {
+  if (
+    !isTacticalPositionActive(
+      mapData,
+      battleState,
+      x,
+      y
+    )
+  ) {
     return false;
   }
 
@@ -96,7 +98,14 @@ function canEndMovementAtTile(
   y,
   movingUnit
 ) {
-  if (!isInsideMap(mapData, x, y)) {
+  if (
+    !isTacticalPositionActive(
+      mapData,
+      battleState,
+      x,
+      y
+    )
+  ) {
     return false;
   }
 

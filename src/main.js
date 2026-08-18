@@ -32,6 +32,9 @@ import {
   evaluateEliminateAllObjective
 } from "./logic/battle/objectiveLogic.js";
 import {
+  assertTutorialBattlefieldState
+} from "./logic/battle/tacticalPositionLogic.js";
+import {
   loadProfileState,
   markTutorialCompleted,
   resetProfileState,
@@ -68,9 +71,20 @@ recordTutorialBasicAttack,
   recordTutorialEnemyResolution,
 shouldPauseTutorialEnemyResolution,
   advanceTutorialBrief,
+  isTutorialStageVictoryReady,
   isTutorialInputAllowed
 } from "./logic/tutorial/tutorialFlow.js";
 import { renderBattleHud } from "./ui/battle/battleHud.js";
+import {
+  getBattleCameraTileBounds,
+  getBattleCameraActiveTileBounds,
+  getBattleCameraFocusKey,
+  getBattleCameraUnitTileBounds,
+  calculateCenteredBattleCameraTranslation,
+  clampBattleCameraTranslation,
+  panBattleCameraTranslation,
+  getBattleCameraDragUpdate
+} from "./ui/battle/battleCameraLogic.js";
 import {
   renderTitleScreen,
   renderMainMenuScreen,
@@ -90,6 +104,19 @@ let runState = null;
 let battleIntroNodeId = null;
 let battleState = null;
 let enemyPhaseTimerId = null;
+
+let battlefieldCameraState = {
+  initialized: false,
+  focusKey: null,
+  translateX: 0,
+  translateY: 0
+};
+
+let battlefieldCameraDragState = null;
+let battlefieldCameraFocusUnitId = null;
+let battlefieldCameraSuppressClickUntil = 0;
+
+const BATTLE_CAMERA_DRAG_THRESHOLD_PX = 6;
 
 let currentScene = "title";
 
@@ -1117,25 +1144,6 @@ function confirmBasicAttack() {
           `${battleState.teamApCapacity}.`
         );
 
-  const objectiveEvaluation =
-    evaluateEliminateAllObjective(
-      battleStateAfterAttackCommitment
-    );
-
-  if (
-    objectiveEvaluation.resolved &&
-    objectiveEvaluation.resultState ===
-      "victory"
-  ) {
-    battleState =
-      createVictoryBattleState(
-        battleStateAfterAttackCommitment,
-        resultMessage
-      );
-
-    return;
-  }
-
   battleState = {
     ...battleStateAfterAttackCommitment,
 
@@ -1151,6 +1159,39 @@ function confirmBasicAttack() {
     feedbackMessage:
       resultMessage
   };
+}
+
+function resolvePostAttackBattleOutcome(
+  sourceState
+) {
+  const objectiveEvaluation =
+    evaluateEliminateAllObjective(
+      sourceState
+    );
+
+  const objectiveVictory =
+    objectiveEvaluation.resolved &&
+    objectiveEvaluation.resultState ===
+      "victory";
+
+  if (!objectiveVictory) {
+    return sourceState;
+  }
+
+  if (
+    sourceState.flowContext ===
+      "tutorial" &&
+    !isTutorialStageVictoryReady(
+      sourceState
+    )
+  ) {
+    return sourceState;
+  }
+
+  return createVictoryBattleState(
+    sourceState,
+    sourceState.feedbackMessage ?? ""
+  );
 }
 
 function closeAttackTargeting() {
@@ -1225,6 +1266,7 @@ currentScene = "main_menu";
 
 function startTutorialBattle() {
   clearEnemyPhaseTimer();
+  resetBattlefieldCameraState();
 
   const tutorialBattleData = {
   ...appData,
@@ -1236,8 +1278,7 @@ function startTutorialBattle() {
     appData.tutorialEncounter
 };
 
-  battleState =
-  refreshEnemyReadabilityState({
+  const initialTutorialBattleState = {
     ...createInitialBattleState(
       tutorialBattleData
     ),
@@ -1250,7 +1291,17 @@ function startTutorialBattle() {
 
     encounterName:
       "Tutorial Stage (Placeholder)"
-  });
+  };
+
+  assertTutorialBattlefieldState(
+    appData.tutorialMap,
+    initialTutorialBattleState
+  );
+
+  battleState =
+    refreshEnemyReadabilityState(
+      initialTutorialBattleState
+    );
 
   currentScene = "battle";
 
@@ -1333,6 +1384,8 @@ function closeBattleIntro() {
 }
 
 function beginSelectedStageBattle() {
+  resetBattlefieldCameraState();
+
   if (
     !runState ||
     !battleIntroNodeId
@@ -2236,6 +2289,8 @@ function attachBattleEvents() {
     }
   );
 
+  attachBattlefieldCameraEvents();
+
   const resultPrimaryButton =
     document.querySelector(
       '[data-action="battle-result-primary"]'
@@ -2271,6 +2326,418 @@ if (endPlayerTurnButton) {
     }
   );
 }
+}
+
+function resetBattlefieldCameraState() {
+  battlefieldCameraState = {
+    initialized: false,
+    focusKey: null,
+    translateX: 0,
+    translateY: 0
+  };
+
+  battlefieldCameraDragState = null;
+  battlefieldCameraFocusUnitId = null;
+  battlefieldCameraSuppressClickUntil = 0;
+}
+
+function requestBattlefieldCameraFocusOnUnit(
+  unitId
+) {
+  battlefieldCameraFocusUnitId =
+    unitId ?? null;
+}
+
+function getBattlefieldCameraElements() {
+  const viewport =
+    document.querySelector(
+      "[data-battlefield-viewport]"
+    );
+
+  const world =
+    document.querySelector(
+      "[data-battlefield-world]"
+    );
+
+  if (!viewport || !world) {
+    return null;
+  }
+
+  return {
+    viewport,
+    world
+  };
+}
+
+function applyBattlefieldCameraTranslation(
+  world,
+  translation
+) {
+  world.style.transform =
+    `translate(` +
+    `${translation.translateX}px, ` +
+    `${translation.translateY}px` +
+    `)`;
+}
+
+function getBattlefieldCameraFocusUnit() {
+  if (
+    !battleState ||
+    !battlefieldCameraFocusUnitId
+  ) {
+    return null;
+  }
+
+  return [
+    ...battleState.playerUnits,
+    ...battleState.enemyUnits
+  ].find((unit) => {
+    return (
+      unit.battleUnitId ===
+      battlefieldCameraFocusUnitId
+    );
+  }) ?? null;
+}
+
+function updateBattlefieldCamera() {
+  if (
+    currentScene !== "battle" ||
+    !battleState
+  ) {
+    return;
+  }
+
+  const cameraElements =
+    getBattlefieldCameraElements();
+
+  if (!cameraElements) {
+    return;
+  }
+
+  const {
+    viewport,
+    world
+  } = cameraElements;
+
+  const mapData =
+    getCurrentBattleMap();
+
+  const activeTileBounds =
+    getBattleCameraActiveTileBounds(
+      mapData,
+      battleState
+    );
+
+  if (!activeTileBounds) {
+    return;
+  }
+
+  const focusKey =
+    getBattleCameraFocusKey(
+      battleState
+    );
+
+  const focusUnit =
+    getBattlefieldCameraFocusUnit();
+
+  const requestedFocusBounds =
+    focusUnit
+      ? getBattleCameraUnitTileBounds(
+          focusUnit
+        )
+      : getBattleCameraTileBounds(
+          mapData,
+          battleState
+        );
+
+  const shouldRecenter =
+    !battlefieldCameraState.initialized ||
+    battlefieldCameraState.focusKey !==
+      focusKey ||
+    Boolean(focusUnit);
+
+  let nextTranslation = null;
+
+  if (shouldRecenter) {
+    nextTranslation =
+      calculateCenteredBattleCameraTranslation({
+        tileBounds:
+          requestedFocusBounds ??
+          activeTileBounds,
+        viewportWidth:
+          viewport.clientWidth,
+        viewportHeight:
+          viewport.clientHeight
+      });
+  } else {
+    nextTranslation = {
+      translateX:
+        battlefieldCameraState
+          .translateX,
+      translateY:
+        battlefieldCameraState
+          .translateY
+    };
+  }
+
+  const clampedTranslation =
+    clampBattleCameraTranslation({
+      ...nextTranslation,
+      tileBounds: activeTileBounds,
+      viewportWidth:
+        viewport.clientWidth,
+      viewportHeight:
+        viewport.clientHeight
+    });
+
+  if (!clampedTranslation) {
+    return;
+  }
+
+  battlefieldCameraState = {
+    initialized: true,
+    focusKey,
+    ...clampedTranslation
+  };
+
+  battlefieldCameraFocusUnitId = null;
+
+  applyBattlefieldCameraTranslation(
+    world,
+    battlefieldCameraState
+  );
+}
+
+function finishBattlefieldCameraDrag(
+  viewport,
+  pointerId,
+  shouldSuppressClick
+) {
+  if (
+    viewport.hasPointerCapture?.(
+      pointerId
+    )
+  ) {
+    viewport.releasePointerCapture(
+      pointerId
+    );
+  }
+
+  viewport.classList.remove(
+    "is-camera-dragging"
+  );
+
+  if (shouldSuppressClick) {
+    battlefieldCameraSuppressClickUntil =
+      Date.now() + 150;
+  }
+
+  battlefieldCameraDragState = null;
+}
+
+function attachBattlefieldCameraEvents() {
+  const cameraElements =
+    getBattlefieldCameraElements();
+
+  if (!cameraElements) {
+    return;
+  }
+
+  const {
+    viewport,
+    world
+  } = cameraElements;
+
+  viewport.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (
+        !event.isPrimary ||
+        (
+          event.pointerType === "mouse" &&
+          event.button !== 0
+        )
+      ) {
+        return;
+      }
+
+      battlefieldCameraDragState = {
+        pointerId: event.pointerId,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startTranslation: {
+          translateX:
+            battlefieldCameraState
+              .translateX,
+          translateY:
+            battlefieldCameraState
+              .translateY
+        },
+        hasDragged: false
+      };
+    }
+  );
+
+  viewport.addEventListener(
+    "pointermove",
+    (event) => {
+      if (
+        !battlefieldCameraDragState ||
+        battlefieldCameraDragState
+          .pointerId !==
+          event.pointerId
+      ) {
+        return;
+      }
+
+      const dragUpdate =
+        getBattleCameraDragUpdate({
+          startClientX:
+            battlefieldCameraDragState
+              .startClientX,
+          startClientY:
+            battlefieldCameraDragState
+              .startClientY,
+          currentClientX:
+            event.clientX,
+          currentClientY:
+            event.clientY,
+          threshold:
+            BATTLE_CAMERA_DRAG_THRESHOLD_PX
+        });
+
+      if (
+        !battlefieldCameraDragState
+          .hasDragged &&
+        !dragUpdate.hasDragged
+      ) {
+        return;
+      }
+
+      if (
+        !battlefieldCameraDragState
+          .hasDragged
+      ) {
+        viewport.setPointerCapture?.(
+          event.pointerId
+        );
+      }
+
+      battlefieldCameraDragState = {
+        ...battlefieldCameraDragState,
+        hasDragged: true
+      };
+
+      event.preventDefault();
+
+      viewport.classList.add(
+        "is-camera-dragging"
+      );
+
+      const mapData =
+        getCurrentBattleMap();
+
+      const activeTileBounds =
+        getBattleCameraActiveTileBounds(
+          mapData,
+          battleState
+        );
+
+      if (!activeTileBounds) {
+        return;
+      }
+
+      const nextTranslation =
+        panBattleCameraTranslation({
+          currentTranslation:
+            battlefieldCameraDragState
+              .startTranslation,
+          deltaX: dragUpdate.deltaX,
+          deltaY: dragUpdate.deltaY,
+          tileBounds:
+            activeTileBounds,
+          viewportWidth:
+            viewport.clientWidth,
+          viewportHeight:
+            viewport.clientHeight
+        });
+
+      if (!nextTranslation) {
+        return;
+      }
+
+      battlefieldCameraState = {
+        initialized: true,
+        focusKey:
+          getBattleCameraFocusKey(
+            battleState
+          ),
+        ...nextTranslation
+      };
+
+      applyBattlefieldCameraTranslation(
+        world,
+        battlefieldCameraState
+      );
+    }
+  );
+
+  viewport.addEventListener(
+    "pointerup",
+    (event) => {
+      if (
+        !battlefieldCameraDragState ||
+        battlefieldCameraDragState
+          .pointerId !==
+          event.pointerId
+      ) {
+        return;
+      }
+
+      finishBattlefieldCameraDrag(
+        viewport,
+        event.pointerId,
+        battlefieldCameraDragState
+          .hasDragged
+      );
+    }
+  );
+
+  viewport.addEventListener(
+    "pointercancel",
+    (event) => {
+      if (
+        !battlefieldCameraDragState ||
+        battlefieldCameraDragState
+          .pointerId !==
+          event.pointerId
+      ) {
+        return;
+      }
+
+      finishBattlefieldCameraDrag(
+        viewport,
+        event.pointerId,
+        false
+      );
+    }
+  );
+
+  viewport.addEventListener(
+    "click",
+    (event) => {
+      if (
+        Date.now() >
+        battlefieldCameraSuppressClickUntil
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    true
+  );
 }
 
 function renderBattleScene() {
@@ -2329,6 +2796,7 @@ document.querySelector(
 );
 
   attachBattleEvents();
+  updateBattlefieldCamera();
   scheduleEnemyPhaseResolution();
 }
 
@@ -2534,6 +3002,16 @@ function handleAttackTargetingInput(event, key) {
         phase4TutorialBattleState
       );
 
+    assertTutorialBattlefieldState(
+      getCurrentBattleMap(),
+      battleState
+    );
+
+    battleState =
+      resolvePostAttackBattleOutcome(
+        battleState
+      );
+
     const tutorialTaskId =
       battleState
         .tutorialState
@@ -2686,7 +3164,9 @@ function scheduleTutorialBriefAdvance() {
   nextTutorialTaskId ===
     "explain_pressure_redirect" ||
   nextTutorialTaskId ===
-    "explain_guard_durability";
+    "explain_guard_durability" ||
+  nextTutorialTaskId ===
+    "phase_5_recovery_checkpoint";
 
     if (
       shouldContinueBriefChain
@@ -2802,6 +3282,10 @@ if (
     recordTutorialUnitSelection(
       switchedBattleState
     );
+
+  requestBattlefieldCameraFocusOnUnit(
+    battleState.selectedUnitId
+  );
 
   renderApp();
   return;
@@ -3226,6 +3710,11 @@ currentScene = "title";
   "mousemove",
   handleTutorialMouseMove
 );
+
+    window.addEventListener(
+      "resize",
+      updateBattlefieldCamera
+    );
 
     renderApp();
   } catch (error) {

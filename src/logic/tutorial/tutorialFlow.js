@@ -1,52 +1,52 @@
 const LOOK_DIRECTION_THRESHOLD = 24;
 const PHASE_2_GUARD_TARGET_A = {
-  x: 2,
-  y: 1
+  x: 3,
+  y: 10
 };
 
 const PHASE_2_ARCHER_TARGET_B = {
-  x: 1,
-  y: 5
+  x: 2,
+  y: 14
 };
 
 const PHASE_2_GUARD_TARGET_C = {
-  x: 2,
-  y: 0
+  x: 3,
+  y: 9
 };
 
 const PHASE_3_GUARD_TARGET_D = {
-  x: 4,
-  y: 1
+  x: 5,
+  y: 10
 };
 
 const PHASE_4_ARCHER_RED_TARGET = {
-  x: 2,
-  y: 4
+  x: 3,
+  y: 13
 };
 
 const PHASE_4_ARCHER_YELLOW_TARGET = {
-  x: 2,
-  y: 2
+  x: 3,
+  y: 11
 };
 
 const PHASE_4_ARCHER_GREEN_TARGET = {
-  x: 4,
-  y: 4
+  x: 5,
+  y: 13
 };
 
 const PHASE_5_GUARD_INTENT_TARGET = {
-  x: 5,
-  y: 0
+  x: 6,
+  y: 9
 };
 
 const PHASE_5_ARCHER_RECOVERY_TARGET = {
-  x: 6,
-  y: 4
+  x: 7,
+  y: 13
 };
 
 const PHASE_5_GUARD_RECOVERY_TARGET = {
-  x: 5,
-  y: 3
+  x: 6,
+  y: 12
 };
 
 function isTutorialBattle(
@@ -56,6 +56,44 @@ function isTutorialBattle(
     battleState?.flowContext ===
       "tutorial" &&
     battleState?.tutorialState
+  );
+}
+
+function activateTutorialRegion(
+  tutorialState,
+  regionId
+) {
+  const activeRegionIds =
+    Array.isArray(
+      tutorialState.activeRegionIds
+    )
+      ? tutorialState.activeRegionIds
+      : [];
+
+  if (activeRegionIds.includes(regionId)) {
+    return tutorialState;
+  }
+
+  return {
+    ...tutorialState,
+
+    activeRegionIds: [
+      ...activeRegionIds,
+      regionId
+    ]
+  };
+}
+
+export function isTutorialStageVictoryReady(
+  battleState
+) {
+  if (!isTutorialBattle(battleState)) {
+    return true;
+  }
+
+  return (
+    battleState.tutorialState.status ===
+      "complete"
   );
 }
 
@@ -72,6 +110,8 @@ export function createInitialTutorialState() {
 
     status:
       "active",
+
+    activeRegionIds: ["A"],
 
       targetTile: null,
           intentPulseEnemyId: null,
@@ -175,7 +215,12 @@ phase5SwitchedToArcherForRecovery: false,
 phase5ArcherRecoveryObserved: false,
 phase5SwitchedToGuardForRecovery: false,
 phase5GuardRecoveryObserved: false,
-phase5PressureRedirectObserved: false
+phase5PressureRedirectObserved: false,
+
+phase5FinalGuardAttackObserved: false,
+phase5FinalArcherAttackObserved: false,
+phase5SwordDefeated: false,
+phase5Complete: false
     }
   };
 }
@@ -622,6 +667,36 @@ export function recordTutorialUnitSelection(
           phase5SwitchedToGuardForRecovery:
             true
         }
+      }
+    };
+  }
+
+  if (
+    tutorialState.phaseId ===
+      "phase_5_dynamic_threat_reading" &&
+    tutorialState.taskId ===
+      "switch_to_archer_for_final_attack"
+  ) {
+    if (
+      selectedUnit.unitDefId !==
+        "archer"
+    ) {
+      return battleState;
+    }
+
+    return {
+      ...battleState,
+
+      tutorialState: {
+        ...tutorialState,
+
+        taskId:
+          "phase_5_final_archer_attack",
+
+        targetTile: null,
+
+        prompt:
+          "Attack the Sword with Archer."
       }
     };
   }
@@ -1602,6 +1677,27 @@ export function advanceTutorialBrief(
 
           prompt:
             "You have 2 Team AP remaining."
+        }
+      };
+    }
+
+    if (
+      tutorialState.taskId ===
+        "phase_5_recovery_checkpoint"
+    ) {
+      return {
+        ...battleState,
+
+        tutorialState: {
+          ...tutorialState,
+
+          taskId:
+            "phase_5_final_guard_attack",
+
+          targetTile: null,
+
+          prompt:
+            "Attack the Sword with Guard."
         }
       };
     }
@@ -3395,16 +3491,172 @@ export function recordTutorialPhase5BasicAttack(
     previousBattleState
       ?.tutorialState
       ?.phaseId !==
-      "phase_5_dynamic_threat_reading" ||
-    previousBattleState
-      ?.tutorialState
-      ?.taskId !==
-      "attack_sword_three_times"
+      "phase_5_dynamic_threat_reading"
   ) {
     return nextBattleState;
   }
 
-  const previousArcher =
+  const previousTaskId =
+    previousBattleState
+      .tutorialState
+      .taskId;
+
+  if (
+    previousTaskId ===
+      "attack_sword_three_times"
+  ) {
+    const previousArcher =
+      previousBattleState
+        .playerUnits
+        .find((unit) => {
+          return (
+            unit.battleUnitId ===
+              previousBattleState
+                .selectedUnitId &&
+            unit.unitDefId ===
+              "archer"
+          );
+        });
+
+    const currentArcher =
+      nextBattleState
+        .playerUnits
+        .find((unit) => {
+          return (
+            unit.battleUnitId ===
+              previousArcher
+                ?.battleUnitId
+          );
+        });
+
+    const previousSword =
+      previousBattleState
+        .enemyUnits
+        .find((unit) => {
+          return (
+            unit.battleUnitId ===
+              previousBattleState
+                .targetUnitId &&
+            unit.unitDefId ===
+              "sword_enemy" &&
+            unit.currentHP > 0
+          );
+        });
+
+    const currentSword =
+      nextBattleState
+        .enemyUnits
+        .find((unit) => {
+          return (
+            unit.battleUnitId ===
+              previousSword
+                ?.battleUnitId
+          );
+        });
+
+    if (
+      !previousArcher ||
+      !currentArcher ||
+      !previousSword ||
+      !currentSword
+    ) {
+      return nextBattleState;
+    }
+
+    const attackDamage =
+      Math.max(
+        0,
+
+        previousSword.currentHP -
+          currentSword.currentHP
+      );
+
+    const attackObserved =
+      attackDamage > 0 &&
+      nextBattleState.teamApCurrent ===
+        previousBattleState
+          .teamApCurrent - 1 &&
+      currentArcher
+        .movementLocked ===
+        true &&
+      currentSword.currentHP > 0;
+
+    if (!attackObserved) {
+      return nextBattleState;
+    }
+
+    const tutorialState =
+      nextBattleState.tutorialState;
+
+    const nextAttackCount =
+      tutorialState
+        .evidence
+        .phase5ArcherAttackCount + 1;
+
+    const nextTotalDamage =
+      tutorialState
+        .evidence
+        .phase5ArcherTotalDamage +
+      attackDamage;
+
+    const sequenceComplete =
+      nextAttackCount === 3 &&
+      nextBattleState.teamApCurrent ===
+        0;
+
+    return {
+      ...nextBattleState,
+
+      tutorialState: {
+        ...tutorialState,
+
+        taskId:
+          sequenceComplete
+            ? "end_turn_after_archer_attacks"
+            : "attack_sword_three_times",
+
+        targetTile: null,
+
+        prompt:
+          sequenceComplete
+            ? "End your turn."
+            : "Attack the Sword again.",
+
+        evidence: {
+          ...tutorialState.evidence,
+
+          phase5ArcherAttackCount:
+            nextAttackCount,
+
+          phase5ArcherTotalDamage:
+            nextTotalDamage,
+
+          phase5RepeatedAttackObserved:
+            nextAttackCount >= 2,
+
+          phase5ArcherAttackSequenceObserved:
+            sequenceComplete
+        }
+      }
+    };
+  }
+
+  if (
+    previousTaskId !==
+      "phase_5_final_guard_attack" &&
+    previousTaskId !==
+      "phase_5_final_archer_attack"
+  ) {
+    return nextBattleState;
+  }
+
+  const expectedAttackerUnitDefId =
+    previousTaskId ===
+      "phase_5_final_guard_attack"
+      ? "guard"
+      : "archer";
+
+  const previousAttacker =
     previousBattleState
       .playerUnits
       .find((unit) => {
@@ -3413,17 +3665,18 @@ export function recordTutorialPhase5BasicAttack(
             previousBattleState
               .selectedUnitId &&
           unit.unitDefId ===
-            "archer"
+            expectedAttackerUnitDefId &&
+          unit.currentHP > 0
         );
       });
 
-  const currentArcher =
+  const currentAttacker =
     nextBattleState
       .playerUnits
       .find((unit) => {
         return (
           unit.battleUnitId ===
-            previousArcher
+            previousAttacker
               ?.battleUnitId
         );
       });
@@ -3454,8 +3707,8 @@ export function recordTutorialPhase5BasicAttack(
       });
 
   if (
-    !previousArcher ||
-    !currentArcher ||
+    !previousAttacker ||
+    !currentAttacker ||
     !previousSword ||
     !currentSword
   ) {
@@ -3470,71 +3723,103 @@ export function recordTutorialPhase5BasicAttack(
         currentSword.currentHP
     );
 
-  const attackObserved =
-    attackDamage > 0 &&
+  const apSpendObserved =
     nextBattleState.teamApCurrent ===
       previousBattleState
-        .teamApCurrent - 1 &&
-    currentArcher
-      .movementLocked ===
-      true &&
-    currentSword.currentHP > 0;
+        .teamApCurrent - 1;
 
-  if (!attackObserved) {
+  const attackerCommitted =
+    currentAttacker.movementLocked ===
+      true;
+
+  if (
+    attackDamage <= 0 ||
+    !apSpendObserved ||
+    !attackerCommitted
+  ) {
     return nextBattleState;
   }
 
   const tutorialState =
     nextBattleState.tutorialState;
 
-  const nextAttackCount =
+  if (
+    previousTaskId ===
+      "phase_5_final_guard_attack"
+  ) {
+    if (currentSword.currentHP <= 0) {
+      return nextBattleState;
+    }
+
+    return {
+      ...nextBattleState,
+
+      tutorialState: {
+        ...tutorialState,
+
+        taskId:
+          "switch_to_archer_for_final_attack",
+
+        targetTile: null,
+
+        prompt:
+          "Press Q to switch to Archer.",
+
+        evidence: {
+          ...tutorialState.evidence,
+
+          phase5FinalGuardAttackObserved:
+            true
+        }
+      }
+    };
+  }
+
+  const finalAttackObserved =
     tutorialState
       .evidence
-      .phase5ArcherAttackCount + 1;
+      .phase5FinalGuardAttackObserved ===
+      true &&
+    currentSword.currentHP <= 0 &&
+    nextBattleState.teamApCurrent === 0;
 
-  const nextTotalDamage =
-    tutorialState
-      .evidence
-      .phase5ArcherTotalDamage +
-    attackDamage;
+  if (!finalAttackObserved) {
+    return nextBattleState;
+  }
 
-  const sequenceComplete =
-    nextAttackCount === 3 &&
-    nextBattleState.teamApCurrent ===
-      0;
+  const regionActivatedTutorialState =
+    activateTutorialRegion(
+      tutorialState,
+      "B"
+    );
 
   return {
     ...nextBattleState,
 
     tutorialState: {
-      ...tutorialState,
+      ...regionActivatedTutorialState,
+
+      phaseId:
+        "phase_6_spear_defensive_cover_objective",
 
       taskId:
-        sequenceComplete
-          ? "end_turn_after_archer_attacks"
-          : "attack_sword_three_times",
+        "phase_6_entry",
 
+      prompt: null,
       targetTile: null,
-
-      prompt:
-        sequenceComplete
-          ? "End your turn."
-          : "Attack the Sword again.",
+      intentPulseEnemyId: null,
 
       evidence: {
         ...tutorialState.evidence,
 
-        phase5ArcherAttackCount:
-          nextAttackCount,
+        phase5FinalArcherAttackObserved:
+          true,
 
-        phase5ArcherTotalDamage:
-          nextTotalDamage,
+        phase5SwordDefeated:
+          true,
 
-        phase5RepeatedAttackObserved:
-          nextAttackCount >= 2,
-
-        phase5ArcherAttackSequenceObserved:
-          sequenceComplete
+        phase5Complete:
+          true
       }
     }
   };
@@ -4042,7 +4327,9 @@ export function isTutorialInputAllowed(
       tutorialState.taskId ===
         "switch_to_archer_for_recovery" ||
       tutorialState.taskId ===
-        "switch_to_guard_for_recovery"
+        "switch_to_guard_for_recovery" ||
+      tutorialState.taskId ===
+        "switch_to_archer_for_final_attack"
     ) {
       return (
         inputType ===
@@ -4052,7 +4339,11 @@ export function isTutorialInputAllowed(
 
     if (
       tutorialState.taskId ===
-        "attack_sword_three_times"
+        "attack_sword_three_times" ||
+      tutorialState.taskId ===
+        "phase_5_final_guard_attack" ||
+      tutorialState.taskId ===
+        "phase_5_final_archer_attack"
     ) {
       return (
         inputType ===
@@ -4076,5 +4367,13 @@ export function isTutorialInputAllowed(
 
     return false;
   }
+
+  if (
+    tutorialState.phaseId ===
+      "phase_6_spear_defensive_cover_objective"
+  ) {
+    return false;
+  }
+
   return true;
 }
