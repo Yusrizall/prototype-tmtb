@@ -10,9 +10,12 @@ import {
 selectNextPlayerUnit
 } from "./logic/battle/movementLogic.js";
 import {
-  getBasicAttackCandidates,
-  getValidBasicAttackTargets
+  getBasicAttackCandidates
 } from "./logic/battle/atrLogic.js";
+import {
+  getPlayerBasicAttackCandidates,
+  getValidPlayerBasicAttackTargets
+} from "./logic/battle/playerAttackTargetLogic.js";
 import {
   resolveBasicAttack
 } from "./logic/battle/damageLogic.js";
@@ -74,6 +77,23 @@ shouldPauseTutorialEnemyResolution,
   isTutorialStageVictoryReady,
   isTutorialInputAllowed
 } from "./logic/tutorial/tutorialFlow.js";
+import {
+  initializeTutorialPhase6Content,
+  recordTutorialPhase6EndTurn,
+  recordTutorialPhase6EnemyResolution,
+  recordTutorialPhase6EnemyMovement,
+  recordTutorialPhase6PlayerTurnStart,
+  recordTutorialPhase6UnitSelection,
+  recordTutorialPhase6PlayerMovement,
+  recordTutorialPhase6BasicAttack,
+  isTutorialPhase6BasicAttackTargetAllowed,
+  getTutorialPhase6RequiredActorFailure,
+  getTutorialPhase6EnemyActivationMode
+} from "./logic/tutorial/tutorialPhase6Logic.js";
+import {
+  captureTutorialCheckpoint,
+  restoreTutorialCheckpoint
+} from "./logic/tutorial/tutorialCheckpointLogic.js";
 import { renderBattleHud } from "./ui/battle/battleHud.js";
 import {
   getBattleCameraTileBounds,
@@ -104,6 +124,7 @@ let runState = null;
 let battleIntroNodeId = null;
 let battleState = null;
 let enemyPhaseTimerId = null;
+let latestTutorialCheckpoint = null;
 
 let battlefieldCameraState = {
   initialized: false,
@@ -271,6 +292,62 @@ function refreshEnemyReadabilityAfterPlayerMovement(
   );
 }
 
+function initializeTutorialPhase6RuntimeIfNeeded(
+  sourceState
+) {
+  const isPhase6Entry =
+    sourceState?.flowContext === "tutorial" &&
+    sourceState?.tutorialState?.phaseId ===
+      "phase_6_spear_defensive_cover_objective" &&
+    sourceState?.tutorialState?.taskId ===
+      "phase_6_entry";
+
+  const alreadyInitialized =
+    Boolean(
+      sourceState?.tutorialState
+        ?.phase6Entities
+        ?.spearEnemyId &&
+      sourceState?.tutorialState
+        ?.phase6Entities
+        ?.hutStructureId
+    );
+
+  if (!isPhase6Entry || alreadyInitialized) {
+    return sourceState;
+  }
+
+  let nextState =
+    initializeTutorialPhase6Content(
+      {
+        enemyUnits: appData.enemyUnits,
+        structureDefinitions:
+          appData.structureDefinitions,
+        tutorialMap: appData.tutorialMap,
+        tutorialEncounter:
+          appData.tutorialEncounter
+      },
+      sourceState
+    );
+
+  nextState =
+    refreshEnemyReadabilityState(
+      nextState
+    );
+
+  assertTutorialBattlefieldState(
+    appData.tutorialMap,
+    nextState
+  );
+
+  latestTutorialCheckpoint =
+    captureTutorialCheckpoint(
+      "cp6",
+      nextState
+    );
+
+  return nextState;
+}
+
 function enterEnemyPhase(nextState) {
   if (
     !nextState ||
@@ -323,7 +400,8 @@ function enterEnemyPhase(nextState) {
     selectedAction: null,
 
     targetIndex: 0,
-    targetUnitId: null,
+    targetType: null,
+    targetId: null,
 
     feedbackMessage:
       `${previousFeedback}` +
@@ -358,10 +436,16 @@ function endPlayerTurn() {
       enemyPhaseBattleState
     );
 
-  battleState =
+  const phase5TutorialBattleState =
     recordTutorialPhase5EndTurn(
       previousBattleState,
       phase3TutorialBattleState
+    );
+
+  battleState =
+    recordTutorialPhase6EndTurn(
+      previousBattleState,
+      phase5TutorialBattleState
     );
 
   const tutorialTaskId =
@@ -392,6 +476,25 @@ function resolveEnemyPhaseActions() {
 
   const movementEvents = [];
   const attackEvents = [];
+  let phase6RequiredActorFailure = null;
+
+  if (
+    getTutorialPhase6EnemyActivationMode(
+      stateAfterEnemyActions
+    ) === "attack_only_continue"
+  ) {
+    const pendingMovementEvent =
+      stateAfterEnemyActions
+        .tutorialState
+        ?.evidence
+        ?.phase6SpearRetreatMovementEvent;
+
+    if (pendingMovementEvent) {
+      movementEvents.push(
+        pendingMovementEvent
+      );
+    }
+  }
 
   const enemyOrder =
     [...battleState.enemyUnits]
@@ -419,6 +522,9 @@ function resolveEnemyPhaseActions() {
     if (!hasLivingPlayer) {
       break;
     }
+
+    const stateBeforeActivation =
+      stateAfterEnemyActions;
 
     const targetResolution =
       resolveEnemyCurrentTarget(
@@ -451,12 +557,24 @@ function resolveEnemyPhaseActions() {
       continue;
     }
 
-    const movementResolution =
-      resolveEnemyMovementPhase(
-        getCurrentBattleMap(),
-        stateAfterEnemyActions,
-        [enemyId]
+    const phase6ActivationMode =
+      getTutorialPhase6EnemyActivationMode(
+        stateAfterEnemyActions
       );
+
+    const movementResolution =
+      phase6ActivationMode ===
+        "attack_only_continue"
+        ? {
+            battleState:
+              stateAfterEnemyActions,
+            movementEvents: []
+          }
+        : resolveEnemyMovementPhase(
+            getCurrentBattleMap(),
+            stateAfterEnemyActions,
+            [enemyId]
+          );
 
     stateAfterEnemyActions =
       movementResolution.battleState;
@@ -465,6 +583,35 @@ function resolveEnemyPhaseActions() {
       ...movementResolution
         .movementEvents
     );
+
+    const movementEvent =
+      movementResolution
+        .movementEvents[0] ??
+      null;
+
+    if (
+      phase6ActivationMode ===
+        "movement_only_pause"
+    ) {
+      stateAfterEnemyActions =
+        recordTutorialPhase6EnemyMovement(
+          stateBeforeActivation,
+          stateAfterEnemyActions,
+          movementEvent
+        );
+
+      battleState =
+        stateAfterEnemyActions;
+
+      console.log(
+        "Tutorial Phase 6 Spear movement pause:",
+        movementEvent
+      );
+
+      renderApp();
+      scheduleTutorialBriefAdvance();
+      return;
+    }
 
     const attackResolution =
       resolveEnemyAttackPhase(
@@ -480,6 +627,32 @@ function resolveEnemyPhaseActions() {
       ...attackResolution
         .attackEvents
     );
+
+    const attackEvent =
+      attackResolution
+        .attackEvents[0] ??
+      null;
+
+    stateAfterEnemyActions =
+      recordTutorialPhase6EnemyResolution(
+        stateBeforeActivation,
+        stateAfterEnemyActions,
+        {
+          movementEvent,
+          attackEvent
+        }
+      );
+
+    const requiredActorFailure =
+      getTutorialPhase6RequiredActorFailure(
+        stateAfterEnemyActions
+      );
+
+    if (requiredActorFailure.failed) {
+      phase6RequiredActorFailure =
+        requiredActorFailure;
+    }
+
     console.log(
       "Enemy activation resolved:",
       {
@@ -511,17 +684,35 @@ function resolveEnemyPhaseActions() {
         targetChanged:
           targetResolution.targetChanged,
 
-        movementEvent:
-          movementResolution
-            .movementEvents[0] ??
-          null,
-
-        attackEvent:
-          attackResolution
-            .attackEvents[0] ??
-          null
+        movementEvent,
+        attackEvent
       }
     );
+
+    if (phase6RequiredActorFailure) {
+      break;
+    }
+  }
+
+  if (phase6RequiredActorFailure) {
+    battleState = {
+      ...stateAfterEnemyActions,
+      phase: "battle_end",
+      battleControlState: "battle_result",
+      selectedUnitId: null,
+      actionMenuIndex: 0,
+      selectedAction: null,
+      targetIndex: 0,
+      targetType: null,
+      targetId: null,
+      resultState: "training_failed",
+      feedbackMessage:
+        "A required party member was defeated."
+    };
+
+    clearEnemyPhaseTimer();
+    renderApp();
+    return;
   }
 
   const livingPlayerUnits =
@@ -591,7 +782,8 @@ function resolveEnemyPhaseActions() {
       selectedAction: null,
 
       targetIndex: 0,
-      targetUnitId: null,
+      targetType: null,
+      targetId: null,
 
       resultState: "defeat",
 
@@ -688,7 +880,8 @@ function resolveEnemyPhaseActions() {
       selectedAction: null,
 
       targetIndex: 0,
-      targetUnitId: null,
+      targetType: null,
+      targetId: null,
 
       playerUnits:
         nextPlayerUnits,
@@ -711,10 +904,16 @@ function resolveEnemyPhaseActions() {
       nextPlayerTurnState
     );
 
-  battleState =
+  const phase5TutorialBattleState =
     recordTutorialPhase5EnemyResolution(
       previousEnemyPhaseState,
       phase3TutorialBattleState
+    );
+
+  battleState =
+    recordTutorialPhase6PlayerTurnStart(
+      previousEnemyPhaseState,
+      phase5TutorialBattleState
     );
 
   const tutorialTaskId =
@@ -728,7 +927,13 @@ function resolveEnemyPhaseActions() {
     tutorialTaskId ===
       "explain_ap_refresh" ||
     tutorialTaskId ===
-      "explain_archer_damage"
+      "explain_archer_damage" ||
+    tutorialTaskId ===
+      "explain_defensive_cover" ||
+    tutorialTaskId ===
+      "explain_cover_reduction" ||
+    tutorialTaskId ===
+      "structure_intro"
   ) {
     scheduleTutorialBriefAdvance();
   }
@@ -797,7 +1002,8 @@ function openActionMenu() {
     actionMenuIndex: 0,
     selectedAction: null,
     targetIndex: 0,
-    targetUnitId: null,
+    targetType: null,
+    targetId: null,
     feedbackMessage: null
   };
 }
@@ -809,7 +1015,8 @@ function closeActionMenu() {
     actionMenuIndex: 0,
     selectedAction: null,
     targetIndex: 0,
-    targetUnitId: null,
+    targetType: null,
+    targetId: null,
     feedbackMessage: null
   };
 }
@@ -842,77 +1049,85 @@ function openAttackTargeting() {
   ) {
     battleState = {
       ...battleState,
-
       feedbackMessage:
         "Team AP tidak cukup untuk Attack."
     };
-
     return;
   }
 
   const validTargets =
-    getValidBasicAttackTargets(
+    getValidPlayerBasicAttackTargets(
       getCurrentBattleMap(),
       battleState
     );
 
   if (validTargets.length === 0) {
-  const attackCandidates =
-    getBasicAttackCandidates(
-      getCurrentBattleMap(),
-      battleState
-    );
+    const attackCandidates =
+      getPlayerBasicAttackCandidates(
+        getCurrentBattleMap(),
+        battleState
+      );
 
-  const reasonLabels = {
-    outside_atr: "OUTSIDE ATR",
-    no_los: "NO LOS",
-    path_blocked: "PATH BLOCKED"
-  };
+    const reasonLabels = {
+      outside_atr: "OUTSIDE ATR",
+      no_los: "NO LOS",
+      path_blocked: "PATH BLOCKED"
+    };
 
-  const invalidSummary =
-    attackCandidates.length === 0
-      ? "No living opposing target."
-      : attackCandidates
-          .map((targetData) => {
-            const reason =
-              reasonLabels[
-                targetData.invalidReason
-              ] ?? "INVALID";
+    const invalidSummary =
+      attackCandidates.length === 0
+        ? "No living opposing target."
+        : attackCandidates
+            .map((targetData) => {
+              const reason =
+                reasonLabels[
+                  targetData.invalidReason
+                ] ?? "INVALID";
 
-            return (
-              `${targetData.unit.name}: ` +
-              `${reason}`
-            );
-          })
-          .join(" | ");
+              return (
+                `${targetData.entity.name}: ` +
+                `${reason}`
+              );
+            })
+            .join(" | ");
+
+    battleState = {
+      ...battleState,
+      feedbackMessage:
+        `Tidak ada target Attack valid. ` +
+        `${invalidSummary}`
+    };
+    return;
+  }
+
+  const mandatoryHutTargetIndex =
+    validTargets.findIndex((targetData) => {
+      return (
+        battleState.tutorialState?.taskId ===
+          "first_hut_attack" &&
+        isTutorialPhase6BasicAttackTargetAllowed(
+          battleState,
+          targetData
+        )
+      );
+    });
+
+  const initialTargetIndex =
+    mandatoryHutTargetIndex >= 0
+      ? mandatoryHutTargetIndex
+      : 0;
+
+  const initialTarget =
+    validTargets[initialTargetIndex];
 
   battleState = {
     ...battleState,
-
-    feedbackMessage:
-      `Tidak ada target Attack valid. ` +
-      `${invalidSummary}`
-  };
-
-  return;
-}
-
-  battleState = {
-    ...battleState,
-
     battleControlState:
       "attack_targeting",
-
-    selectedAction:
-      "attack",
-
-    targetIndex: 0,
-
-    targetUnitId:
-      validTargets[0]
-        .unit
-        .battleUnitId,
-
+    selectedAction: "attack",
+    targetIndex: initialTargetIndex,
+    targetType: initialTarget.targetType,
+    targetId: initialTarget.targetId,
     feedbackMessage: null
   };
 }
@@ -935,23 +1150,28 @@ function confirmActionMenuSelection() {
 }
 
 function moveAttackTargetSelection(direction) {
-  const validTargets = getValidBasicAttackTargets(
-  getCurrentBattleMap(),
-  battleState
-);
+  const validTargets =
+    getValidPlayerBasicAttackTargets(
+      getCurrentBattleMap(),
+      battleState
+    );
 
   if (validTargets.length === 0) {
     return;
   }
 
-  const currentIndex = validTargets.findIndex((targetData) => {
-    return (
-      targetData.unit.battleUnitId ===
-      battleState.targetUnitId
-    );
-  });
+  const currentIndex =
+    validTargets.findIndex((targetData) => {
+      return (
+        targetData.targetType ===
+          battleState.targetType &&
+        targetData.targetId ===
+          battleState.targetId
+      );
+    });
 
-  let nextIndex = currentIndex === -1 ? 0 : currentIndex;
+  let nextIndex =
+    currentIndex === -1 ? 0 : currentIndex;
 
   if (direction === "left") {
     nextIndex =
@@ -960,14 +1180,18 @@ function moveAttackTargetSelection(direction) {
   }
 
   if (direction === "right") {
-    nextIndex = (nextIndex + 1) % validTargets.length;
+    nextIndex =
+      (nextIndex + 1) % validTargets.length;
   }
+
+  const nextTarget =
+    validTargets[nextIndex];
 
   battleState = {
     ...battleState,
     targetIndex: nextIndex,
-    targetUnitId:
-      validTargets[nextIndex].unit.battleUnitId
+    targetType: nextTarget.targetType,
+    targetId: nextTarget.targetId
   };
 }
 
@@ -987,7 +1211,8 @@ function createVictoryBattleState(
     selectedAction: null,
 
     targetIndex: 0,
-    targetUnitId: null,
+    targetType: null,
+    targetId: null,
 
     resultState: "victory",
 
@@ -1005,81 +1230,80 @@ function confirmBasicAttack() {
   ) {
     battleState = {
       ...battleState,
-
       battleControlState:
         "unit_selected_movement",
-
       selectedAction: null,
       targetIndex: 0,
-      targetUnitId: null,
-
+      targetType: null,
+      targetId: null,
       feedbackMessage:
         "Team AP tidak cukup untuk Attack."
     };
-
-    return;
+    return null;
   }
 
   const validTargets =
-    getValidBasicAttackTargets(
+    getValidPlayerBasicAttackTargets(
       getCurrentBattleMap(),
       battleState
     );
 
   const selectedTargetData =
-    validTargets.find(
-      (targetData) => {
-        return (
-          targetData
-            .unit
-            .battleUnitId ===
-          battleState.targetUnitId
-        );
-      }
-    );
+    validTargets.find((targetData) => {
+      return (
+        targetData.targetType ===
+          battleState.targetType &&
+        targetData.targetId ===
+          battleState.targetId
+      );
+    }) ?? null;
 
   if (!selectedTargetData) {
     battleState = {
       ...battleState,
-
       feedbackMessage:
         "Target attack tidak lagi valid."
     };
+    return null;
+  }
 
-    return;
+  if (
+    !isTutorialPhase6BasicAttackTargetAllowed(
+      battleState,
+      selectedTargetData
+    )
+  ) {
+    battleState = {
+      ...battleState,
+      feedbackMessage:
+        "Attack the highlighted structure."
+    };
+    return null;
   }
 
   const resolution =
     resolveBasicAttack(
       battleState,
-
-      selectedTargetData
-        .unit
-        .battleUnitId,
-
-      selectedTargetData
-        .pathResult
+      selectedTargetData.targetType,
+      selectedTargetData.targetId,
+      selectedTargetData.pathResult
     );
 
   if (!resolution.attackResult) {
     battleState = {
       ...battleState,
-
       feedbackMessage:
         "Attack gagal diselesaikan."
     };
-
-    return;
+    return null;
   }
 
   const attackResult =
     resolution.attackResult;
 
   const committedPlayerUnits =
-    resolution
-      .battleState
-      .playerUnits
-      .map((unit) => {
+    resolution.battleState.playerUnits.map(
+      (unit) => {
         if (
           unit.battleUnitId !==
           attackResult.attackerId
@@ -1088,77 +1312,62 @@ function confirmBasicAttack() {
         }
 
         const isAtStartGrid =
-          unit.tileX ===
-            unit.startGrid.x &&
-          unit.tileY ===
-            unit.startGrid.y;
+          unit.tileX === unit.startGrid.x &&
+          unit.tileY === unit.startGrid.y;
 
         return {
           ...unit,
-
           movementLocked: true,
-
           turnState:
             isAtStartGrid
               ? "ready"
               : "positioned"
         };
-      });
+      }
+    );
 
   const nextTeamApCurrent =
     Math.max(
       0,
-
-      resolution
-        .battleState
-        .teamApCurrent -
+      resolution.battleState.teamApCurrent -
         PLAYER_BASIC_ATTACK_AP_COST
     );
 
   const battleStateAfterAttackCommitment = {
     ...resolution.battleState,
-
-    teamApCurrent:
-      nextTeamApCurrent,
-
-    playerUnits:
-      committedPlayerUnits
+    teamApCurrent: nextTeamApCurrent,
+    playerUnits: committedPlayerUnits
   };
 
-  const resultMessage =
-    attackResult.targetDefeated
-      ? (
-          `${attackResult.attackerName} memberikan ` +
-          `${attackResult.finalDamage} damage kepada ` +
-          `${attackResult.targetName}. Target defeated. ` +
-          `Team AP ${nextTeamApCurrent}/` +
-          `${battleState.teamApCapacity}.`
-        )
-      : (
-          `${attackResult.attackerName} memberikan ` +
-          `${attackResult.finalDamage} damage kepada ` +
-          `${attackResult.targetName}. ` +
-          `HP ${attackResult.targetHPBefore} → ` +
-          `${attackResult.targetHPAfter}. ` +
-          `Team AP ${nextTeamApCurrent}/` +
-          `${battleState.teamApCapacity}.`
-        );
+  const targetResolutionLabel =
+    attackResult.targetDestroyed
+      ? "Target destroyed."
+      : attackResult.targetDefeated
+        ? "Target defeated."
+        : (
+            `HP ${attackResult.targetHPBefore} → ` +
+            `${attackResult.targetHPAfter}.`
+          );
 
   battleState = {
     ...battleStateAfterAttackCommitment,
-
     battleControlState:
       "unit_selected_movement",
-
     actionMenuIndex: 0,
     selectedAction: null,
-
     targetIndex: 0,
-    targetUnitId: null,
-
+    targetType: null,
+    targetId: null,
     feedbackMessage:
-      resultMessage
+      `${attackResult.attackerName} memberikan ` +
+      `${attackResult.finalDamage} damage kepada ` +
+      `${attackResult.targetName}. ` +
+      `${targetResolutionLabel} ` +
+      `Team AP ${nextTeamApCurrent}/` +
+      `${battleState.teamApCapacity}.`
   };
+
+  return attackResult;
 }
 
 function resolvePostAttackBattleOutcome(
@@ -1200,7 +1409,8 @@ function closeAttackTargeting() {
     battleControlState: "action_menu_open",
     selectedAction: null,
     targetIndex: 0,
-    targetUnitId: null,
+    targetType: null,
+    targetId: null,
     feedbackMessage: null
   };
 }
@@ -1267,6 +1477,7 @@ currentScene = "main_menu";
 function startTutorialBattle() {
   clearEnemyPhaseTimer();
   resetBattlefieldCameraState();
+  latestTutorialCheckpoint = null;
 
   const tutorialBattleData = {
   ...appData,
@@ -1901,6 +2112,33 @@ function handleBattleResultPrimaryAction() {
     "tutorial";
 
   if (isTutorialBattle) {
+    if (
+      battleState.resultState ===
+        "training_failed"
+    ) {
+      if (!latestTutorialCheckpoint) {
+        throw new Error(
+          "CP6 checkpoint tidak tersedia untuk retry Tutorial."
+        );
+      }
+
+      clearEnemyPhaseTimer();
+      battleState =
+        restoreTutorialCheckpoint(
+          latestTutorialCheckpoint
+        );
+      resetBattlefieldCameraState();
+
+      assertTutorialBattlefieldState(
+        appData.tutorialMap,
+        battleState
+      );
+
+      renderApp();
+      scheduleTutorialBriefAdvance();
+      return;
+    }
+
     if (
       battleState.resultState ===
       "victory"
@@ -2759,7 +2997,7 @@ function renderBattleScene() {
     const attackCandidates =
     battleState.phase ===
       "player_phase"
-      ? getBasicAttackCandidates(
+      ? getPlayerBasicAttackCandidates(
           getCurrentBattleMap(),
           battleState
         )
@@ -2944,8 +3182,10 @@ function renderApp() {
 
 
 function handleAttackTargetingInput(event, key) {
-  const isLeft = key === "a" || key === "arrowleft";
-  const isRight = key === "d" || key === "arrowright";
+  const isLeft =
+    key === "a" || key === "arrowleft";
+  const isRight =
+    key === "d" || key === "arrowright";
 
   if (isLeft) {
     event.preventDefault();
@@ -2961,27 +3201,32 @@ function handleAttackTargetingInput(event, key) {
     return;
   }
 
-    if (key === "e") {
+  if (key === "e") {
     event.preventDefault();
 
     const previousBattleState =
       battleState;
 
     const selectedTargetData =
-      getBasicAttackCandidates(
+      getPlayerBasicAttackCandidates(
         getCurrentBattleMap(),
         battleState
-      )
-        .find((targetData) => {
-          return (
-            targetData
-              .unit
-              .battleUnitId ===
-            battleState.targetUnitId
-          );
-        }) ?? null;
+      ).find((targetData) => {
+        return (
+          targetData.targetType ===
+            battleState.targetType &&
+          targetData.targetId ===
+            battleState.targetId
+        );
+      }) ?? null;
 
-    confirmBasicAttack();
+    const attackResult =
+      confirmBasicAttack();
+
+    if (!attackResult) {
+      renderApp();
+      return;
+    }
 
     const phase3TutorialBattleState =
       recordTutorialBasicAttack(
@@ -2996,10 +3241,22 @@ function handleAttackTargetingInput(event, key) {
         selectedTargetData
       );
 
-    battleState =
+    const phase5TutorialBattleState =
       recordTutorialPhase5BasicAttack(
         previousBattleState,
         phase4TutorialBattleState
+      );
+
+    const phase6InitializedBattleState =
+      initializeTutorialPhase6RuntimeIfNeeded(
+        phase5TutorialBattleState
+      );
+
+    battleState =
+      recordTutorialPhase6BasicAttack(
+        previousBattleState,
+        phase6InitializedBattleState,
+        attackResult
       );
 
     assertTutorialBattlefieldState(
@@ -3013,17 +3270,17 @@ function handleAttackTargetingInput(event, key) {
       );
 
     const tutorialTaskId =
-      battleState
-        .tutorialState
-        ?.taskId;
+      battleState.tutorialState?.taskId;
 
     renderApp();
 
-     if (
+    if (
       tutorialTaskId ===
         "explain_attack_movement_lock" ||
       tutorialTaskId ===
-        "phase_4_attack_checkpoint"
+        "phase_4_attack_checkpoint" ||
+      tutorialTaskId ===
+        "phase_6_entry"
     ) {
       scheduleTutorialBriefAdvance();
     }
@@ -3166,7 +3423,13 @@ function scheduleTutorialBriefAdvance() {
   nextTutorialTaskId ===
     "explain_guard_durability" ||
   nextTutorialTaskId ===
-    "phase_5_recovery_checkpoint";
+    "phase_5_recovery_checkpoint" ||
+  nextTutorialTaskId ===
+    "introduce_spear" ||
+  nextTutorialTaskId ===
+    "explain_spear_spacing" ||
+  nextTutorialTaskId ===
+    "structure_targeting_intro";
 
     if (
       shouldContinueBriefChain
@@ -3232,10 +3495,16 @@ const phase4TutorialBattleState =
     phase4AttackCandidates
   );
 
-battleState =
+const phase5TutorialBattleState =
   recordTutorialPhase5PlayerMovement(
     previousBattleState,
     phase4TutorialBattleState
+  );
+
+battleState =
+  recordTutorialPhase6PlayerMovement(
+    previousBattleState,
+    phase5TutorialBattleState
   );
 
 const tutorialTaskId =
@@ -3278,9 +3547,14 @@ if (
       battleState
     );
 
-  battleState =
+  const phase1To5SelectionState =
     recordTutorialUnitSelection(
       switchedBattleState
+    );
+
+  battleState =
+    recordTutorialPhase6UnitSelection(
+      phase1To5SelectionState
     );
 
   requestBattlefieldCameraFocusOnUnit(

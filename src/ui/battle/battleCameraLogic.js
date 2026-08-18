@@ -24,6 +24,18 @@ function getTutorialFocusRegionId(
       ?.tutorialState
       ?.phaseId ?? "";
 
+  const taskId =
+    battleState
+      ?.tutorialState
+      ?.taskId ?? "";
+
+  if (
+    phaseId.startsWith("phase_6_") &&
+    taskId === "proceed_to_region_c"
+  ) {
+    return "C";
+  }
+
   if (phaseId.startsWith("phase_6_")) {
     return "B";
   }

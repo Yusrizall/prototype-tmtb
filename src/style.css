@@ -2113,3 +2113,60 @@ div > span {
     grid-column: auto;
   }
 }
+
+/* Tutorial Phase 6 Structure validation states. */
+.map-tile.structure-footprint {
+  background: rgba(120, 53, 15, 0.38);
+  border-color: #92400e;
+}
+
+.map-tile.structure-targetable {
+  box-shadow:
+    inset 0 0 0 3px rgba(251, 146, 60, 0.8);
+}
+
+.map-tile.structure-selected {
+  box-shadow:
+    inset 0 0 0 4px #fde047,
+    0 0 12px rgba(253, 224, 71, 0.8);
+  z-index: 2;
+}
+
+.map-tile.structure-objective {
+  outline: 2px dashed #67e8f9;
+  outline-offset: -6px;
+}
+
+.map-tile.structure-destroyed {
+  background: rgba(55, 65, 81, 0.72);
+  border-color: #6b7280;
+}
+
+.structure-token {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  gap: 2px;
+  padding: 5px;
+  border: 1px solid #d97706;
+  border-radius: 6px;
+  background: rgba(69, 26, 3, 0.9);
+  color: #fffbeb;
+  font-size: 10px;
+  line-height: 1.15;
+  pointer-events: none;
+}
+
+.structure-token .target-marker {
+  background: #facc15;
+  color: #111827;
+  border: 2px solid #713f12;
+}
+
+.battle-result-training-failed {
+  border-color: #fbbf24;
+}
+
+.battle-result-training-failed h2 {
+  color: #fbbf24;
+}

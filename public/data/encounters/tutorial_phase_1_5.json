@@ -26,5 +26,25 @@
       }
     }
   ],
-  "notes": "Prototype validation encounter for Tutorial Phase 1-5. Geometry and coordinates are tentative."
+  "notes": "Prototype validation encounter for Tutorial Phase 1-5. Geometry and coordinates are tentative.",
+  "phase6Content": {
+    "enemySpawns": [
+      {
+        "unitId": "spear_enemy",
+        "spawnLabel": "E2"
+      }
+    ],
+    "structures": [
+      {
+        "battleStructureId": "tutorial_hut_1",
+        "structureDefId": "tutorial_hut",
+        "topLeft": {
+          "x": 11,
+          "y": 9
+        },
+        "width": 3,
+        "height": 3
+      }
+    ]
+  }
 }

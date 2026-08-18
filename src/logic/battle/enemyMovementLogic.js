@@ -56,9 +56,22 @@ function evaluateDestinationForTarget(
       false,
 
     actionPathValid:
-      attackCandidate
-        ?.actionPathValid ??
+      attackCandidate?.actionPathValid ??
       false,
+
+    losValid:
+      attackCandidate?.losValid ??
+      false,
+
+    pathResult:
+      attackCandidate?.pathResult ??
+      null,
+
+    spacingError:
+      Math.abs(
+        targetDistance -
+        enemy.derivedStats.atr
+      ),
 
     engagementGap:
       Math.max(
@@ -84,38 +97,10 @@ function compareDeterministicTiles(
   return first.x - second.x;
 }
 
-function chooseEnemyDestination(
-  mapData,
-  battleState,
-  enemy,
-  target
+function chooseMeleeEngagementDestination(
+  evaluatedTiles,
+  enemy
 ) {
-  const reachableTiles =
-    getReachableTilesForUnit(
-      mapData,
-      battleState,
-      enemy,
-      {
-        x: enemy.tileX,
-        y: enemy.tileY
-      },
-      enemy.derivedStats.move
-    );
-
-  if (reachableTiles.length === 0) {
-    return null;
-  }
-
-  const evaluatedTiles =
-    reachableTiles.map((tile) => {
-      return evaluateDestinationForTarget(
-        mapData,
-        enemy,
-        target,
-        tile
-      );
-    });
-
   const engagementTiles =
     evaluatedTiles
       .filter((tile) => {
@@ -217,6 +202,160 @@ function chooseEnemyDestination(
   };
 }
 
+function compareSpearEffectiveTiles(
+  first,
+  second
+) {
+  if (first.spacingError !== second.spacingError) {
+    return first.spacingError - second.spacingError;
+  }
+
+  return compareDeterministicTiles(
+    first,
+    second
+  );
+}
+
+function compareSpearFallbackTiles(
+  first,
+  second
+) {
+  if (
+    first.actionPathValid !==
+    second.actionPathValid
+  ) {
+    return first.actionPathValid
+      ? -1
+      : 1;
+  }
+
+  if (first.spacingError !== second.spacingError) {
+    return first.spacingError - second.spacingError;
+  }
+
+  return compareDeterministicTiles(
+    first,
+    second
+  );
+}
+
+function chooseMaxEffectiveAtrDestination(
+  evaluatedTiles,
+  enemy
+) {
+  const effectiveTiles =
+    evaluatedTiles
+      .filter((tile) => {
+        return (
+          tile.actionValid === true &&
+          tile.pathResult?.damageBlocked !== true
+        );
+      })
+      .sort(compareSpearEffectiveTiles);
+
+  if (effectiveTiles.length > 0) {
+    const best = effectiveTiles[0];
+    const stayed =
+      best.x === enemy.tileX &&
+      best.y === enemy.tileY;
+
+    return {
+      ...best,
+      movementMode:
+        stayed
+          ? "stay_at_preferred_atr"
+          : "max_effective_atr_engagement"
+    };
+  }
+
+  const fallbackTiles =
+    [...evaluatedTiles]
+      .sort(compareSpearFallbackTiles);
+
+  const bestFallback = fallbackTiles[0];
+  const currentTile =
+    evaluatedTiles.find((tile) => {
+      return (
+        tile.x === enemy.tileX &&
+        tile.y === enemy.tileY
+      );
+    }) ?? null;
+
+  if (!bestFallback) {
+    return null;
+  }
+
+  const meaningfullyImproves =
+    !currentTile ||
+    compareSpearFallbackTiles(
+      bestFallback,
+      currentTile
+    ) < 0;
+
+  if (!meaningfullyImproves) {
+    return {
+      ...(currentTile ?? bestFallback),
+      movementMode: "stay"
+    };
+  }
+
+  return {
+    ...bestFallback,
+    movementMode: "fallback_preferred_spacing"
+  };
+}
+
+function chooseEnemyDestination(
+  mapData,
+  battleState,
+  enemy,
+  target
+) {
+  const reachableTiles =
+    getReachableTilesForUnit(
+      mapData,
+      battleState,
+      enemy,
+      {
+        x: enemy.tileX,
+        y: enemy.tileY
+      },
+      enemy.derivedStats.move
+    );
+
+  if (reachableTiles.length === 0) {
+    return null;
+  }
+
+  const evaluatedTiles =
+    reachableTiles.map((tile) => {
+      return evaluateDestinationForTarget(
+        mapData,
+        enemy,
+        target,
+        tile
+      );
+    });
+
+  switch (
+    enemy.movementRule ??
+    "seek_melee_engagement"
+  ) {
+    case "seek_max_effective_atr":
+      return chooseMaxEffectiveAtrDestination(
+        evaluatedTiles,
+        enemy
+      );
+
+    case "seek_melee_engagement":
+    default:
+      return chooseMeleeEngagementDestination(
+        evaluatedTiles,
+        enemy
+      );
+  }
+}
+
 function moveEnemyToTile(
   battleState,
   enemyId,
@@ -280,11 +419,11 @@ export function resolveEnemyMovementPhase(
       });
 
     if (
-  !currentEnemy ||
-  currentEnemy.currentHP <= 0
-) {
-  return;
-}
+      !currentEnemy ||
+      currentEnemy.currentHP <= 0
+    ) {
+      return;
+    }
 
     const target =
       getEnemyCurrentTarget(
@@ -361,13 +500,20 @@ export function resolveEnemyMovementPhase(
         y: destination.y
       },
 
-     moved,
+      moved,
 
       movementMode:
         destination.movementMode,
 
       targetDistance:
-        destination.targetDistance
+        destination.targetDistance,
+
+      spacingError:
+        destination.spacingError,
+
+      pathOutcome:
+        destination.pathResult?.outcome ??
+        null
     });
   });
 

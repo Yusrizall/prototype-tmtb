@@ -15,6 +15,59 @@ export function getTileDistance(
   return Math.hypot(deltaX, deltaY);
 }
 
+export function evaluateBasicAttackSpatialCandidate(
+  mapData,
+  attacker,
+  targetPoint
+) {
+  const distance =
+    getTileDistance(
+      attacker,
+      targetPoint
+    );
+
+  const pathResult =
+    evaluateAttackPath(
+      mapData,
+      attacker,
+      targetPoint
+    );
+
+  const rangeValid =
+    distance <= attacker.derivedStats.atr;
+
+  const actionPathValid =
+    pathResult.actionPathValid;
+
+  const losValid =
+    pathResult.losValid;
+
+  const actionValid =
+    rangeValid &&
+    actionPathValid &&
+    losValid;
+
+  let invalidReason = null;
+
+  if (!rangeValid) {
+    invalidReason = "outside_atr";
+  } else if (!actionPathValid) {
+    invalidReason = "path_blocked";
+  } else if (!losValid) {
+    invalidReason = "no_los";
+  }
+
+  return {
+    distance,
+    rangeValid,
+    actionPathValid,
+    losValid,
+    actionValid,
+    invalidReason,
+    pathResult
+  };
+}
+
 export function getBasicAttackCandidatesForUnit(
   mapData,
   attacker,
@@ -34,65 +87,14 @@ export function getBasicAttackCandidatesForUnit(
       );
     })
     .map((target) => {
-      const distance =
-        getTileDistance(
-          attacker,
-          target
-        );
-
-      const pathResult =
-        evaluateAttackPath(
+      return {
+        unit: target,
+        targetValid: true,
+        ...evaluateBasicAttackSpatialCandidate(
           mapData,
           attacker,
           target
-        );
-
-      const rangeValid =
-        distance <=
-        attacker.derivedStats.atr;
-
-      const actionPathValid =
-        pathResult.actionPathValid;
-
-      const losValid =
-        pathResult.losValid;
-
-      const actionValid =
-        rangeValid &&
-        actionPathValid &&
-        losValid;
-
-      let invalidReason = null;
-
-      if (!rangeValid) {
-        invalidReason =
-          "outside_atr";
-      } else if (!actionPathValid) {
-        invalidReason =
-          "path_blocked";
-      } else if (!losValid) {
-        invalidReason =
-          "no_los";
-      }
-
-      return {
-        unit: target,
-
-        targetValid: true,
-
-        distance,
-
-        rangeValid,
-
-        actionPathValid,
-
-        losValid,
-
-        actionValid,
-
-        invalidReason,
-
-        pathResult
+        )
       };
     });
 }

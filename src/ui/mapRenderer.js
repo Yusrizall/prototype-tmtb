@@ -59,6 +59,47 @@ function findUnitAtTile(battleState, x, y) {
   });
 }
 
+function findStructureAtTile(
+  battleState,
+  x,
+  y
+) {
+  return (
+    battleState?.structures?.find(
+      (structure) => {
+        return structure.footprint?.some(
+          (position) => {
+            return (
+              position.x === x &&
+              position.y === y
+            );
+          }
+        );
+      }
+    ) ?? null
+  );
+}
+
+function isStructureAnchorTile(
+  structure,
+  x,
+  y
+) {
+  if (!structure?.footprint?.length) {
+    return false;
+  }
+
+  const anchor = [...structure.footprint]
+    .sort((first, second) => {
+      return (
+        first.y - second.y ||
+        first.x - second.x
+      );
+    })[0];
+
+  return anchor.x === x && anchor.y === y;
+}
+
 function findPlayerStartGridAtTile(
   battleState,
   x,
@@ -104,28 +145,39 @@ function isMovementTile(movementTiles, x, y) {
 
 function isValidAttackTarget(
   validAttackTargets,
-  unit
+  targetType,
+  targetId
 ) {
-  if (!unit) return false;
+  if (!targetType || !targetId) {
+    return false;
+  }
 
   return validAttackTargets.some((targetData) => {
     return (
-      targetData.unit.battleUnitId ===
-      unit.battleUnitId
+      targetData.targetType ===
+        targetType &&
+      targetData.targetId ===
+        targetId
     );
   });
 }
 
 function isSelectedAttackTarget(
   battleState,
-  unit
+  targetType,
+  targetId
 ) {
-  if (!unit) return false;
+  if (!targetType || !targetId) {
+    return false;
+  }
 
   return (
     battleState.battleControlState ===
       "attack_targeting" &&
-    battleState.targetUnitId === unit.battleUnitId
+    battleState.targetType ===
+      targetType &&
+    battleState.targetId ===
+      targetId
   );
 }
 
@@ -144,8 +196,10 @@ function getSelectedTargetData(
 ) {
   return validAttackTargets.find((targetData) => {
     return (
-      targetData.unit.battleUnitId ===
-      battleState.targetUnitId
+      targetData.targetType ===
+        battleState.targetType &&
+      targetData.targetId ===
+        battleState.targetId
     );
   });
 }
@@ -232,8 +286,10 @@ function getTutorialPhase4LineCandidate(
     attackCandidates.find(
       (targetData) => {
         return (
+          targetData.targetType ===
+            "unit" &&
           targetData
-            .unit
+            .entity
             .unitDefId ===
             "sword_enemy" &&
           targetData.rangeValid ===
@@ -290,8 +346,12 @@ function renderAttackLine(
     return "";
   }
 
-  const target =
-    selectedTargetData.unit;
+  const interactionTile =
+    selectedTargetData.interactionTile;
+
+  if (!interactionTile) {
+    return "";
+  }
 
   const tileSize = BATTLE_TILE_SIZE;
   const tileGap = BATTLE_TILE_GAP;
@@ -317,11 +377,11 @@ function renderAttackLine(
     tileSize / 2;
 
   const endX =
-    target.tileX * tilePitch +
+    interactionTile.x * tilePitch +
     tileSize / 2;
 
   const endY =
-    target.tileY * tilePitch +
+    interactionTile.y * tilePitch +
     tileSize / 2;
 
   const lineClass =
@@ -385,13 +445,15 @@ function renderUnitToken(
   const targetable =
     isValidAttackTarget(
       validAttackTargets,
-      unit
+      "unit",
+      unit.battleUnitId
     );
 
   const selectedTarget =
     isSelectedAttackTarget(
       battleState,
-      unit
+      "unit",
+      unit.battleUnitId
     );
 
   const targetableClass =
@@ -422,6 +484,55 @@ function renderUnitToken(
       <strong>${unit.name}</strong>
       <span>
         HP ${unit.currentHP}/${unit.maxHP}
+      </span>
+    </div>
+  `;
+}
+
+function renderStructureToken(
+  structure,
+  battleState,
+  validAttackTargets,
+  x,
+  y
+) {
+  if (
+    !structure ||
+    !isStructureAnchorTile(
+      structure,
+      x,
+      y
+    )
+  ) {
+    return "";
+  }
+
+  const targetable =
+    isValidAttackTarget(
+      validAttackTargets,
+      "structure",
+      structure.battleStructureId
+    );
+
+  const selected =
+    isSelectedAttackTarget(
+      battleState,
+      "structure",
+      structure.battleStructureId
+    );
+
+  const marker = selected
+    ? `<span class="target-marker">TARGET</span>`
+    : targetable
+      ? `<span class="target-marker">IN ATR</span>`
+      : "";
+
+  return `
+    <div class="structure-token">
+      ${marker}
+      <strong>${structure.name}</strong>
+      <span>
+        HP ${structure.currentHP}/${structure.maxHP}
       </span>
     </div>
   `;
@@ -576,6 +687,13 @@ export function renderMapGrid(
             y
           );
 
+        const structure =
+          findStructureAtTile(
+            battleState,
+            x,
+            y
+          );
+
           const startGridOwner =
   findPlayerStartGridAtTile(
     battleState,
@@ -623,6 +741,15 @@ const startGridMarker =
           isValidAttackTarget(
             validAttackTargets,
             unit
+              ? "unit"
+              : structure
+                ? "structure"
+                : null,
+            unit
+              ?.battleUnitId ??
+              structure
+                ?.battleStructureId ??
+              null
           )
             ? "tile-attack-target"
             : "";
@@ -631,8 +758,63 @@ const startGridMarker =
           isSelectedAttackTarget(
             battleState,
             unit
+              ? "unit"
+              : structure
+                ? "structure"
+                : null,
+            unit
+              ?.battleUnitId ??
+              structure
+                ?.battleStructureId ??
+              null
           )
             ? "tile-attack-selected"
+            : "";
+
+        const structureFootprintClass =
+          structure
+            ? "structure-footprint"
+            : "";
+
+        const structureTargetableClass =
+          structure &&
+          isValidAttackTarget(
+            validAttackTargets,
+            "structure",
+            structure.battleStructureId
+          )
+            ? "structure-targetable"
+            : "";
+
+        const structureSelectedClass =
+          structure &&
+          isSelectedAttackTarget(
+            battleState,
+            "structure",
+            structure.battleStructureId
+          )
+            ? "structure-selected"
+            : "";
+
+        const structureObjectiveClass =
+          structure &&
+          battleState
+            ?.objectiveState
+            ?.status === "active" &&
+          battleState
+            ?.objectiveState
+            ?.targetType ===
+              "structure" &&
+          battleState
+            ?.objectiveState
+            ?.targetId ===
+              structure.battleStructureId
+            ? "structure-objective"
+            : "";
+
+        const structureDestroyedClass =
+          structure?.currentHP <= 0
+            ? "structure-destroyed"
             : "";
 
         return `
@@ -644,6 +826,11 @@ const startGridMarker =
   ${movementClass}
               ${attackTargetClass}
               ${selectedAttackTargetClass}
+              ${structureFootprintClass}
+              ${structureTargetableClass}
+              ${structureSelectedClass}
+              ${structureObjectiveClass}
+              ${structureDestroyedClass}
             "
             data-tile-x="${x}"
             data-tile-y="${y}"
@@ -654,7 +841,7 @@ const startGridMarker =
             </span>
 
             <span class="tile-label">
-  ${unit ? "" : tileLabel}
+  ${unit || structure ? "" : tileLabel}
 </span>
 
 ${startGridMarker}
@@ -664,6 +851,14 @@ ${renderUnitToken(
               unit,
               battleState,
               validAttackTargets
+            )}
+
+${renderStructureToken(
+              structure,
+              battleState,
+              validAttackTargets,
+              x,
+              y
             )}
           </button>
         `;

@@ -1,4 +1,7 @@
 import { renderMapGrid } from "../mapRenderer.js";
+import {
+  getObjectivePresentationLabel
+} from "../../logic/battle/objectiveLogic.js";
 
 const ACTION_LABELS = [
   "Attack",
@@ -39,8 +42,10 @@ function getSelectedAttackTarget(
 
   const targetById = validAttackTargets.find((targetData) => {
     return (
-      targetData.unit.battleUnitId ===
-      battleState.targetUnitId
+      targetData.targetType ===
+        battleState.targetType &&
+      targetData.targetId ===
+        battleState.targetId
     );
   });
 
@@ -84,7 +89,9 @@ function renderEnemyIntentSummary(
       tutorialState?.phaseId ===
         "phase_4_tactical_space" ||
       tutorialState?.phaseId ===
-        "phase_5_dynamic_threat_reading";
+        "phase_5_dynamic_threat_reading" ||
+      tutorialState?.phaseId ===
+        "phase_6_spear_defensive_cover_objective";
 
     if (
       !phase3IntentUnlocked &&
@@ -216,17 +223,23 @@ function renderTargetPreview(
   battleState,
   validAttackTargets
 ) {
-  const selectedTargetData = getSelectedAttackTarget(
-    battleState,
-    validAttackTargets
-  );
+  const selectedTargetData =
+    getSelectedAttackTarget(
+      battleState,
+      validAttackTargets
+    );
 
   if (
-    battleState.battleControlState === "attack_targeting" &&
+    battleState.battleControlState ===
+      "attack_targeting" &&
     selectedTargetData
   ) {
-    const target = selectedTargetData.unit;
-    const pathResult = selectedTargetData.pathResult;
+    const target =
+      selectedTargetData.entity;
+    const pathResult =
+      selectedTargetData.pathResult;
+    const interactionTile =
+      selectedTargetData.interactionTile;
 
     const pathLabels = {
       clear: "CLEAR",
@@ -236,22 +249,23 @@ function renderTargetPreview(
     };
 
     const coverPercentage = Math.round(
-      pathResult.coverPercentage * 100
+      (pathResult?.coverPercentage ?? 0) * 100
     );
 
+    const crossedObstacles =
+      pathResult?.crossedObstacles ?? [];
+
     const obstacleText =
-      pathResult.crossedObstacles.length === 0
+      crossedObstacles.length === 0
         ? "None"
-        : pathResult.crossedObstacles
+        : crossedObstacles
             .map((obstacle) => {
               return `${obstacle.tileCode} at ${obstacle.x},${obstacle.y}`;
             })
             .join(" | ");
 
-                const tutorialPhase4 =
-      isTutorialPhase4(
-        battleState
-      );
+    const tutorialPhase4 =
+      isTutorialPhase4(battleState);
 
     const losPreview =
       tutorialPhase4
@@ -261,8 +275,7 @@ function renderTargetPreview(
             LOS:
             <strong>
               ${
-                selectedTargetData
-                  .losValid
+                selectedTargetData.losValid
                   ? "VALID"
                   : "BLOCKED"
               }
@@ -280,18 +293,26 @@ function renderTargetPreview(
           </p>
         `;
 
+    const targetTypeLabel =
+      selectedTargetData.targetType ===
+        "structure"
+        ? "Structure"
+        : "Unit";
+
     return `
       <div class="target-preview-placeholder">
         <h3>Attack Target</h3>
 
         <p><strong>${target.name}</strong></p>
+        <p>Type: ${targetTypeLabel}</p>
 
         <p>
           HP: ${target.currentHP}/${target.maxHP}
         </p>
 
         <p>
-          Tile: ${target.tileX},${target.tileY}
+          Interaction Tile:
+          ${interactionTile.x},${interactionTile.y}
         </p>
 
         <p>
@@ -315,8 +336,7 @@ function renderTargetPreview(
           </strong>
         </p>
 
-        
-         ${losPreview}
+        ${losPreview}
 
         <p>
           Action Path:
@@ -343,7 +363,10 @@ function renderTargetPreview(
         <p>
           Path Outcome:
           <strong>
-            ${pathLabels[pathResult.outcome]}
+            ${
+              pathLabels[pathResult?.outcome] ??
+              "UNKNOWN"
+            }
           </strong>
         </p>
 
@@ -495,7 +518,9 @@ function renderBattleTopBar(battleState) {
   const objectiveLabel =
     battleState.flowContext ===
       "tutorial"
-      ? "—"
+      ? getObjectivePresentationLabel(
+          battleState
+        )
       : battleState.objectiveType;
 
   return `
@@ -557,6 +582,23 @@ function renderCommandBand(battleState) {
         .tutorialState
         ?.taskId ===
         "end_turn_for_phase5"
+    ) ||
+    (
+      battleState
+        .tutorialState
+        ?.phaseId ===
+        "phase_6_spear_defensive_cover_objective" &&
+      [
+        "end_turn_for_clear_attack",
+        "end_turn_for_spear_retreat",
+        "finish_spear",
+        "end_turn_after_spear_defeated",
+        "destroy_hut"
+      ].includes(
+        battleState
+          .tutorialState
+          ?.taskId
+      )
     );
 
   const canEndPlayerTurn =
@@ -788,6 +830,10 @@ function renderBattleResultOverlay(
     battleState.resultState ===
     "victory";
 
+  const isTrainingFailed =
+    battleState.resultState ===
+    "training_failed";
+
   const isTutorialBattle =
     battleState.flowContext ===
     "tutorial";
@@ -797,17 +843,25 @@ function renderBattleResultOverlay(
     "run_stage";
 
   const resultTitle =
-    isVictory
-      ? "VICTORY"
-      : "DEFEAT";
+    isTrainingFailed
+      ? "TRAINING FAILED"
+      : isVictory
+        ? "VICTORY"
+        : "DEFEAT";
 
   const resultClass =
-    isVictory
-      ? "battle-result-victory"
-      : "battle-result-defeat";
+    isTrainingFailed
+      ? "battle-result-training-failed"
+      : isVictory
+        ? "battle-result-victory"
+        : "battle-result-defeat";
 
   const resultDescription =
-    isVictory
+    isTrainingFailed
+      ? (
+          "A required party member was defeated."
+        )
+      : isVictory
       ? (
           isTutorialBattle
             ? (
@@ -834,7 +888,9 @@ function renderBattleResultOverlay(
    const primaryActionLabel =
   isTutorialBattle
     ? (
-        isVictory
+        isTrainingFailed
+          ? "Retry"
+          : isVictory
           ? "Continue to Map Selection"
           : "Retry Tutorial"
       )

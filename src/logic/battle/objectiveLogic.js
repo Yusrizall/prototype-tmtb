@@ -1,3 +1,36 @@
+export function createDormantObjectiveState() {
+  return {
+    status: "dormant",
+    objectiveType: null,
+    targetType: null,
+    targetId: null,
+    label: "—"
+  };
+}
+
+export function createDestroyStructureObjectiveState(
+  targetId,
+  label = "Destroy the Hut"
+) {
+  return {
+    status: "active",
+    objectiveType: "destroy_structure",
+    targetType: "structure",
+    targetId,
+    label
+  };
+}
+
+
+export function getObjectivePresentationLabel(
+  battleState
+) {
+  return (
+    battleState?.objectiveState?.label ??
+    "—"
+  );
+}
+
 export function evaluateEliminateAllObjective(
   battleState
 ) {

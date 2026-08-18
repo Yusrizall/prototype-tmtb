@@ -21,6 +21,10 @@ export async function loadInitialPrototypeData() {
     "data/units/enemy_units.json"
   );
 
+  const structureDefinitions = await loadJson(
+    "data/structures/structure_definitions.json"
+  );
+
   const stage1Map = await loadJson(
     "data/maps/r1_stage1_fixed.json"
   );
@@ -40,6 +44,7 @@ const tutorialEncounter = await loadJson(
   return {
   playerUnits,
   enemyUnits,
+  structureDefinitions,
 
   stage1Map,
   stage1Encounter,

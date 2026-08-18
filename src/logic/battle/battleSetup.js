@@ -190,6 +190,12 @@ function createBattleUnit(
     requiresPathCheck:
       unitDefinition.requiresPathCheck,
 
+    movementRule:
+      unitDefinition.movementRule ?? null,
+
+    actionRule:
+      unitDefinition.actionRule ?? "basic_attack",
+
     spawnLabel
   };
 }
@@ -288,45 +294,59 @@ function applyEncounterStatOverrides(
   };
 }
 
+export function createEnemyBattleUnitFromSpawn(
+  enemyDefinitions,
+  mapData,
+  spawnData,
+  spawnOrder
+) {
+  const unitDefinition =
+    findUnitDefinition(
+      enemyDefinitions,
+      spawnData.unitId
+    );
+
+  const position =
+    findSpawnPosition(
+      mapData,
+      spawnData.spawnLabel
+    );
+
+  const battleUnit =
+    createBattleUnit(
+      unitDefinition,
+      spawnData.spawnLabel,
+      position,
+      Math.max(0, spawnOrder - 1)
+    );
+
+  const encounterBattleUnit =
+    applyEncounterStatOverrides(
+      battleUnit,
+      spawnData.statOverrides
+    );
+
+  return {
+    ...encounterBattleUnit,
+
+    spawnOrder,
+
+    currentTargetId: null,
+    currentIntent: null
+  };
+}
+
 function createEnemyBattleUnits(data) {
   return data
     .stage1Encounter
     .enemySpawns
     .map((spawnData, index) => {
-      const unitDefinition =
-        findUnitDefinition(
-          data.enemyUnits,
-          spawnData.unitId
-        );
-
-      const position =
-        findSpawnPosition(
-          data.stage1Map,
-          spawnData.spawnLabel
-        );
-
-      const battleUnit =
-        createBattleUnit(
-          unitDefinition,
-          spawnData.spawnLabel,
-          position,
-          index
-        );
-
-      const encounterBattleUnit =
-        applyEncounterStatOverrides(
-          battleUnit,
-          spawnData.statOverrides
-        );
-
-      return {
-  ...encounterBattleUnit,
-
-  spawnOrder: index + 1,
-
-  currentTargetId: null,
-  currentIntent: null
-};
+      return createEnemyBattleUnitFromSpawn(
+        data.enemyUnits,
+        data.stage1Map,
+        spawnData,
+        index + 1
+      );
     });
 }
 
@@ -392,6 +412,11 @@ teamApCapacity,
 
     playerUnits,
     enemyUnits,
+    structures: [],
+
+    targetIndex: 0,
+    targetType: null,
+    targetId: null,
 
     resultState: "ongoing"
   };

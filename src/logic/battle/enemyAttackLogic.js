@@ -234,6 +234,50 @@ export function resolveEnemyAttackPhase(
       return;
     }
 
+    const requiresEffectiveShot =
+      refreshedEnemy.actionRule ===
+        "basic_attack_if_effective";
+
+    if (
+      requiresEffectiveShot &&
+      selectedTargetData
+        .pathResult
+        ?.damageBlocked === true
+    ) {
+      nextBattleState =
+        exhaustEnemyWithoutAttack(
+          nextBattleState,
+          currentEnemy.battleUnitId
+        );
+
+      attackEvents.push({
+        attackerId:
+          currentEnemy.battleUnitId,
+
+        attackerName:
+          currentEnemy.name,
+
+        targetId:
+          target.battleUnitId,
+
+        targetName:
+          target.name,
+
+        attacked: false,
+
+        reason:
+          "current_target_ineffective",
+
+        distance:
+          selectedTargetData.distance,
+
+        pathOutcome:
+          selectedTargetData.pathResult.outcome
+      });
+
+      return;
+    }
+
     const resolution =
       resolveBasicAttackBetweenUnits(
         nextBattleState,

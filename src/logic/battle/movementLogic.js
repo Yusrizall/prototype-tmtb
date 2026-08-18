@@ -2,6 +2,10 @@ import {
   isTacticalPositionActive
 } from "./tacticalPositionLogic.js";
 
+import {
+  isStructureBlockingTile
+} from "./structureLogic.js";
+
 function getTileCode(mapData, x, y) {
   return mapData.tiles[y]?.[x];
 }
@@ -74,6 +78,16 @@ function canTraverseTile(
     return false;
   }
 
+  if (
+    isStructureBlockingTile(
+      battleState,
+      x,
+      y
+    )
+  ) {
+    return false;
+  }
+
   const occupyingUnit =
     findOtherAliveUnitAtTile(
       battleState,
@@ -116,6 +130,16 @@ function canEndMovementAtTile(
   );
 
   if (isObstacleTile(tileCode)) {
+    return false;
+  }
+
+  if (
+    isStructureBlockingTile(
+      battleState,
+      x,
+      y
+    )
+  ) {
     return false;
   }
 

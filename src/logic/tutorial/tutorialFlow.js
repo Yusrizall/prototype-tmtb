@@ -1,3 +1,9 @@
+import {
+  advanceTutorialPhase6Brief,
+  isTutorialPhase6InputAllowed,
+  shouldPauseTutorialPhase6EnemyResolution
+} from "./tutorialPhase6Logic.js";
+
 const LOOK_DIRECTION_THRESHOLD = 24;
 const PHASE_2_GUARD_TARGET_A = {
   x: 3,
@@ -1082,6 +1088,15 @@ export function advanceTutorialBrief(
 
   if (
     tutorialState.phaseId ===
+      "phase_6_spear_defensive_cover_objective"
+  ) {
+    return advanceTutorialPhase6Brief(
+      battleState
+    );
+  }
+
+  if (
+    tutorialState.phaseId ===
       "phase_2_shared_ap_movement"
   ) {
     if (
@@ -1379,7 +1394,8 @@ export function advanceTutorialBrief(
         selectedAction: null,
 
         targetIndex: 0,
-        targetUnitId: null,
+        targetType: null,
+        targetId: null,
 
         feedbackMessage: null,
 
@@ -1917,9 +1933,10 @@ export function recordTutorialAttackTargeting(
       .enemyUnits
       .find((unit) => {
         return (
+          nextBattleState.targetType ===
+            "unit" &&
           unit.battleUnitId ===
-            nextBattleState
-              .targetUnitId
+            nextBattleState.targetId
         );
       });
 
@@ -2468,9 +2485,10 @@ export function recordTutorialPhase4AttackTargeting(
       .enemyUnits
       .find((unit) => {
         return (
+          nextBattleState.targetType ===
+            "unit" &&
           unit.battleUnitId ===
-            nextBattleState
-              .targetUnitId
+            nextBattleState.targetId
         );
       });
 
@@ -2563,10 +2581,12 @@ export function recordTutorialPhase4BasicAttack(
       .enemyUnits
       .find((unit) => {
         return (
+          selectedTargetData
+              ?.targetType ===
+            "unit" &&
           unit.battleUnitId ===
             selectedTargetData
-              ?.unit
-              ?.battleUnitId &&
+              ?.targetId &&
           unit.unitDefId ===
             "sword_enemy"
         );
@@ -3534,9 +3554,10 @@ export function recordTutorialPhase5BasicAttack(
         .enemyUnits
         .find((unit) => {
           return (
+            previousBattleState.targetType ===
+              "unit" &&
             unit.battleUnitId ===
-              previousBattleState
-                .targetUnitId &&
+              previousBattleState.targetId &&
             unit.unitDefId ===
               "sword_enemy" &&
             unit.currentHP > 0
@@ -3686,9 +3707,10 @@ export function recordTutorialPhase5BasicAttack(
       .enemyUnits
       .find((unit) => {
         return (
+          previousBattleState.targetType ===
+            "unit" &&
           unit.battleUnitId ===
-            previousBattleState
-              .targetUnitId &&
+            previousBattleState.targetId &&
           unit.unitDefId ===
             "sword_enemy" &&
           unit.currentHP > 0
@@ -4072,6 +4094,16 @@ export function shouldPauseTutorialEnemyResolution(
   battleState
 ) {
   if (
+    isTutorialBattle(battleState) &&
+    battleState.tutorialState.phaseId ===
+      "phase_6_spear_defensive_cover_objective"
+  ) {
+    return shouldPauseTutorialPhase6EnemyResolution(
+      battleState
+    );
+  }
+
+  if (
     !isTutorialBattle(
       battleState
     ) ||
@@ -4372,7 +4404,10 @@ export function isTutorialInputAllowed(
     tutorialState.phaseId ===
       "phase_6_spear_defensive_cover_objective"
   ) {
-    return false;
+    return isTutorialPhase6InputAllowed(
+      battleState,
+      inputType
+    );
   }
 
   return true;

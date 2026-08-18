@@ -187,5 +187,29 @@ export function assertTutorialBattlefieldState(
     }
   });
 
+  const structures =
+    Array.isArray(battleState.structures)
+      ? battleState.structures
+      : [];
+
+  structures.forEach((structure) => {
+    structure.footprint?.forEach((tile) => {
+      if (
+        !isTacticalPositionActive(
+          mapData,
+          battleState,
+          tile.x,
+          tile.y
+        )
+      ) {
+        throw new Error(
+          `Structure berada di tactical position inactive: ` +
+          `${structure.battleStructureId ?? structure.name} @ ` +
+          `${tile.x},${tile.y}`
+        );
+      }
+    });
+  });
+
   return true;
 }
