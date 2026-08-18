@@ -84,9 +84,9 @@ test("Wave 2 spawn immediately opens two-Sword Wave 3 Telegraph on preferred spl
   assert.equal(w(s,"phase8_wave_2_spear").status,"spawned");
   assert.equal(w(s,"phase8_wave_3_sword_a").status,"telegraphed");
   assert.equal(w(s,"phase8_wave_3_sword_b").status,"telegraphed");
-  assert.deepEqual(w(s,"phase8_wave_3_sword_a").spawnPosition,{x:10,y:0});
+  assert.deepEqual(w(s,"phase8_wave_3_sword_a").spawnPosition,{x:9,y:1});
   assert.deepEqual(w(s,"phase8_wave_3_sword_b").spawnPosition,{x:14,y:5});
-  assert.deepEqual(s.tutorialState.evidence.phase8Wave3SelectedSpawnPair,["E6","E7"]);
+  assert.deepEqual(s.tutorialState.evidence.phase8Wave3SelectedSpawnPair,["E8","E7"]);
   assert.equal(s.tutorialState.prompt,PHASE_8_FREE_PLAY_PROMPT);
 });
 
@@ -97,7 +97,7 @@ test("Wave 3 uses first fully available authored fallback pair when preferred pa
   s=spawnTelegraphedWaves(data.enemyUnits,data.tutorialMap,s).battleState;
   s={
     ...s,
-    playerUnits:s.playerUnits.map(u=>u.unitDefId==="guard"?{...u,tileX:10,tileY:0}:u)
+    playerUnits:s.playerUnits.map(u=>u.unitDefId==="guard"?{...u,tileX:14,tileY:5}:u)
   };
   s=startPlayerTurn(s);
   assert.deepEqual(s.tutorialState.evidence.phase8Wave3SelectedSpawnPair,["E8","E9"]);
@@ -111,7 +111,7 @@ test("Wave 3 fallback selection is deterministic through the authored pair order
   s=recordTutorialPhase8PlayerEndTurn(player,{...player,phase:"enemy_phase"});
   s=spawnTelegraphedWaves(data.enemyUnits,data.tutorialMap,s).battleState;
   const livingEnemies=s.enemyUnits.filter(e=>e.currentHP>0);
-  const blockers=[{x:10,y:0},{x:9,y:1},{x:14,y:0}];
+  const blockers=[{x:14,y:5},{x:9,y:1},{x:14,y:0}];
   s={
     ...s,
     playerUnits:s.playerUnits.map((u,index)=>index<2?{...u,tileX:blockers[index].x,tileY:blockers[index].y}:u),
