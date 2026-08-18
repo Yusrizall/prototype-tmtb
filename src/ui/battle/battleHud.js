@@ -98,7 +98,9 @@ function renderEnemyIntentSummary(
       tutorialState?.phaseId ===
         "phase_6_spear_defensive_cover_objective" ||
       tutorialState?.phaseId ===
-        "phase_7_status_temporal_threat";
+        "phase_7_status_temporal_threat" ||
+      tutorialState?.phaseId ===
+        "phase_8_wave_graduation";
 
     if (
       !phase3IntentUnlocked &&
@@ -601,6 +603,10 @@ function renderCommandBand(battleState) {
       "end_turn_for_shockwave",
       "end_turn_after_stun_adaptation",
       "end_turn_for_recovery"
+    ].includes(tutorialTaskId)) ||
+    (tutorialPhaseId === "phase_8_wave_graduation" && [
+      "prepare_for_wave_1",
+      "phase_8_free_play"
     ].includes(tutorialTaskId));
 
   const canEndPlayerTurn =
@@ -1005,14 +1011,14 @@ function renderTutorialPhaseJumpOverlay(uiState) {
         <input
           type="number"
           min="1"
-          max="7"
+          max="8"
           step="1"
           value="${phaseInput}"
           data-tutorial-phase-jump-input
           aria-label="Tutorial phase number"
         />
         <p class="tutorial-phase-jump-available">
-          Available phases: 1–7
+          Available phases: 1–8
         </p>
         ${errorMessage}
         <div class="tutorial-phase-jump-actions">

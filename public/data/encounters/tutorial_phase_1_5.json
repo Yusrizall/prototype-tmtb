@@ -75,5 +75,62 @@
     },
     "shockwaveRadius": 2,
     "stunPlayerTurns": 2
+  },
+  "phase8Content": {
+    "waves": [
+      {
+        "waveId": "phase8_wave_1_sword",
+        "required": true,
+        "unitId": "sword_enemy",
+        "spawnLabel": "E4",
+        "battleUnitId": "tutorial_wave_sword_1",
+        "telegraphLabel": "SWORD"
+      },
+      {
+        "waveId": "phase8_wave_2_spear",
+        "required": true,
+        "unitId": "spear_enemy",
+        "spawnLabel": "E5",
+        "battleUnitId": "tutorial_wave_spear_1",
+        "telegraphLabel": "SPEAR",
+        "statOverrides": {
+          "atk": 5
+        }
+      },
+      {
+        "waveId": "phase8_wave_3_sword_a",
+        "required": true,
+        "unitId": "sword_enemy",
+        "spawnLabel": "E6",
+        "battleUnitId": "tutorial_wave_sword_2",
+        "telegraphLabel": "SWORD"
+      },
+      {
+        "waveId": "phase8_wave_3_sword_b",
+        "required": true,
+        "unitId": "sword_enemy",
+        "spawnLabel": "E7",
+        "battleUnitId": "tutorial_wave_sword_3",
+        "telegraphLabel": "SWORD"
+      }
+    ],
+    "wave3SpawnPairs": [
+      [
+        "E8",
+        "E7"
+      ],
+      [
+        "E8",
+        "E9"
+      ],
+      [
+        "E10",
+        "E11"
+      ],
+      [
+        "E12",
+        "E13"
+      ]
+    ]
   }
 }

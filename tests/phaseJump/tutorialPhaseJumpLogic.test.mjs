@@ -40,27 +40,27 @@ function compactUnit(unit) {
   };
 }
 
-test("Phase Jump v1 exposes only implemented Tutorial phases 1-7", () => {
+test("Phase Jump exposes implemented Tutorial phases 1-8", () => {
   const options = getTutorialPhaseJumpOptions();
-  assert.deepEqual(options.map((option) => option.phaseNumber), [1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(options.map((option) => option.phaseNumber), [1, 2, 3, 4, 5, 6, 7, 8]);
   assert.equal(options[0].label, "Control / Party");
   assert.equal(options[5].label, "Spear / Defensive Cover / Objective");
 });
 
-test("Phase Jump input accepts only integer phases 1-7", () => {
-  assert.deepEqual(validateTutorialPhaseJumpInput("7"), {
+test("Phase Jump input accepts only integer phases 1-8", () => {
+  assert.deepEqual(validateTutorialPhaseJumpInput("8"), {
     valid: true,
-    phaseNumber: 7,
+    phaseNumber: 8,
     errorMessage: null
   });
   assert.equal(validateTutorialPhaseJumpInput("0").valid, false);
-  assert.equal(validateTutorialPhaseJumpInput("8").valid, false);
+  assert.equal(validateTutorialPhaseJumpInput("9").valid, false);
   assert.equal(validateTutorialPhaseJumpInput("").valid, false);
   assert.equal(validateTutorialPhaseJumpInput("abc").valid, false);
   assert.equal(validateTutorialPhaseJumpInput("2.5").valid, false);
   assert.equal(
-    validateTutorialPhaseJumpInput("8").errorMessage,
-    "Available tutorial phases: 1–7."
+    validateTutorialPhaseJumpInput("9").errorMessage,
+    "Available tutorial phases: 1–8."
   );
 });
 

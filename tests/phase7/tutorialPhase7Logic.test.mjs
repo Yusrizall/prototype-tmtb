@@ -163,7 +163,7 @@ test("required actors remain required until Phase 7 completion",()=>{
  assert.equal(getTutorialRequiredActorFailure(s).failed,false);
 });
 
-test("integrated Phase 7 resolves Charge → Shockwave → STUN2 → STUN1 → recovery → hold",()=>{
+test("integrated Phase 7 resolves Charge → Shockwave → STUN2 → STUN1 → recovery → Phase 8 transition",()=>{
  let s=createTutorialPhase7RetryCheckpointState(data);
  // Charge 1
  s=resolveBlue(enterEnemy(s));
@@ -224,8 +224,8 @@ test("integrated Phase 7 resolves Charge → Shockwave → STUN2 → STUN1 → r
  assert.equal(blue(s).currentIntent.intentLabel,"SHOCKWAVE");
  assert.equal(s.tutorialState.evidence.requiredTwoUnitCurriculumComplete,true);
  s=advanceTutorialPhase7Brief(s);
- assert.equal(s.tutorialState.taskId,"phase_7_complete_hold");
- assert.equal(s.tutorialState.prompt.includes("Phase 7 complete"),true);
+ assert.equal(s.tutorialState.taskId,"phase_7_complete_transition");
+ assert.equal(s.tutorialState.prompt,null);
 });
 
 

@@ -10,6 +10,10 @@ import {
   canPlayerUnitMove
 } from "./statusLogic.js";
 
+import {
+  isWaveReservedFinalPosition
+} from "./waveLogic.js";
+
 function getTileCode(mapData, x, y) {
   return mapData.tiles[y]?.[x];
 }
@@ -139,6 +143,16 @@ function canEndMovementAtTile(
 
   if (
     isStructureBlockingTile(
+      battleState,
+      x,
+      y
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    isWaveReservedFinalPosition(
       battleState,
       x,
       y

@@ -40,6 +40,9 @@ import {
   tickPlayerTurnStatuses
 } from "./logic/battle/statusLogic.js";
 import {
+  spawnTelegraphedWaves
+} from "./logic/battle/waveLogic.js";
+import {
   evaluateEliminateAllObjective
 } from "./logic/battle/objectiveLogic.js";
 import {
@@ -110,6 +113,13 @@ import {
   getTutorialRequiredActorFailure
 } from "./logic/tutorial/tutorialPhase7Logic.js";
 import {
+  initializeTutorialPhase8Content,
+  recordTutorialPhase8PlayerEndTurn,
+  recordTutorialPhase8PlayerTurnStart,
+  recordTutorialPhase8PlayerAttack,
+  isTutorialPhase8CheckpointReady
+} from "./logic/tutorial/tutorialPhase8Logic.js";
+import {
   captureTutorialCheckpoint,
   restoreTutorialCheckpoint
 } from "./logic/tutorial/tutorialCheckpointLogic.js";
@@ -117,6 +127,7 @@ import {
   createFreshTutorialBattleState,
   createTutorialPhaseJumpState,
   createTutorialPhase7RetryCheckpointState,
+  createTutorialPhase8RetryCheckpointState,
   validateTutorialPhaseJumpInput
 } from "./logic/tutorial/tutorialPhaseJumpLogic.js";
 import { renderBattleHud } from "./ui/battle/battleHud.js";
@@ -416,6 +427,41 @@ function initializeTutorialPhase7RuntimeIfNeeded(
   return nextState;
 }
 
+function initializeTutorialPhase8RuntimeIfNeeded(
+  sourceState
+) {
+  const shouldEnterPhase8 =
+    sourceState?.flowContext === "tutorial" &&
+    sourceState?.tutorialState?.phaseId ===
+      "phase_7_status_temporal_threat" &&
+    sourceState?.tutorialState?.taskId ===
+      "phase_7_complete_transition";
+
+  if (!shouldEnterPhase8) {
+    return sourceState;
+  }
+
+  let nextState = initializeTutorialPhase8Content(
+    {
+      tutorialMap: appData.tutorialMap,
+      tutorialEncounter: appData.tutorialEncounter
+    },
+    sourceState
+  );
+
+  nextState = refreshEnemyReadabilityState(nextState);
+  assertTutorialBattlefieldState(appData.tutorialMap, nextState);
+
+  if (isTutorialPhase8CheckpointReady(nextState)) {
+    latestTutorialCheckpoint = captureTutorialCheckpoint(
+      "cp8",
+      nextState
+    );
+  }
+
+  return nextState;
+}
+
 function enterEnemyPhase(nextState) {
   if (
     !nextState ||
@@ -521,10 +567,16 @@ function endPlayerTurn() {
       phase5TutorialBattleState
     );
 
-  battleState =
+  const phase7TutorialBattleState =
     recordTutorialPhase7PlayerEndTurn(
       previousBattleState,
       phase6TutorialBattleState
+    );
+
+  battleState =
+    recordTutorialPhase8PlayerEndTurn(
+      previousBattleState,
+      phase7TutorialBattleState
     );
 
   const tutorialTaskId =
@@ -843,6 +895,24 @@ function resolveEnemyPhaseActions() {
     return;
   }
 
+  const livingPlayersBeforeWaveSpawn =
+    stateAfterEnemyActions.playerUnits.filter((unit) => unit.currentHP > 0);
+
+  let waveSpawnEvents = [];
+
+  if (livingPlayersBeforeWaveSpawn.length > 0) {
+    const waveSpawnResolution = spawnTelegraphedWaves(
+      appData.enemyUnits,
+      getCurrentBattleMap(),
+      stateAfterEnemyActions
+    );
+
+    stateAfterEnemyActions = refreshEnemyReadabilityState(
+      waveSpawnResolution.battleState
+    );
+    waveSpawnEvents = waveSpawnResolution.spawnEvents;
+  }
+
   const livingPlayerUnits =
     stateAfterEnemyActions.playerUnits.filter(
       (unit) => {
@@ -1019,7 +1089,8 @@ function resolveEnemyPhaseActions() {
         `${movedEnemyCount}/${livingEnemyCount} ` +
         `enemy bergerak, ` +
         `${enemyAttackCount} attack, ` +
-        `${totalEnemyDamage} total damage. ` +
+        `${totalEnemyDamage} total damage.` +
+        `${waveSpawnEvents.length > 0 ? ` ${waveSpawnEvents.length} Wave enemy spawned.` : ""} ` +
         `Player Turn baru dimulai.`
     });
 
@@ -1044,10 +1115,20 @@ function resolveEnemyPhaseActions() {
       phase5TutorialBattleState
     );
 
-  battleState =
+  const phase7TutorialBattleState =
     recordTutorialPhase7PlayerTurnStart(
       previousEnemyPhaseState,
       phase6TutorialBattleState
+    );
+
+  battleState =
+    recordTutorialPhase8PlayerTurnStart(
+      {
+        tutorialMap: appData.tutorialMap,
+        tutorialEncounter: appData.tutorialEncounter
+      },
+      previousEnemyPhaseState,
+      phase7TutorialBattleState
     );
 
   const tutorialTaskId =
@@ -1711,6 +1792,12 @@ function performTutorialPhaseJump() {
     const retryState = createTutorialPhase7RetryCheckpointState(appData);
     latestTutorialCheckpoint = captureTutorialCheckpoint(
       "cp7",
+      retryState
+    );
+  } else if (validation.phaseNumber === 8) {
+    const retryState = createTutorialPhase8RetryCheckpointState(appData);
+    latestTutorialCheckpoint = captureTutorialCheckpoint(
+      "cp8",
       retryState
     );
   } else {
@@ -2488,8 +2575,25 @@ return;
 
     if (
       battleState.resultState ===
-      "defeat"
+        "defeat"
     ) {
+      if (latestTutorialCheckpoint?.checkpointId === "cp8") {
+        clearEnemyPhaseTimer();
+        battleState = restoreTutorialCheckpoint(
+          latestTutorialCheckpoint
+        );
+        resetBattlefieldCameraState();
+
+        assertTutorialBattlefieldState(
+          appData.tutorialMap,
+          battleState
+        );
+
+        renderApp();
+        scheduleTutorialBriefAdvance();
+        return;
+      }
+
       startTutorialBattle();
     }
 
@@ -3643,10 +3747,17 @@ function handleAttackTargetingInput(event, key) {
         phase6TutorialBattleState
       );
 
-    battleState =
+    const phase7AttackBattleState =
       recordTutorialPhase7PlayerAttack(
         previousBattleState,
         phase7InitializedBattleState,
+        attackResult
+      );
+
+    battleState =
+      recordTutorialPhase8PlayerAttack(
+        previousBattleState,
+        phase7AttackBattleState,
         attackResult
       );
 
@@ -3791,7 +3902,9 @@ function scheduleTutorialBriefAdvance() {
     }
 
     battleState =
-      nextBattleState;
+      initializeTutorialPhase8RuntimeIfNeeded(
+        nextBattleState
+      );
 
     const nextTutorialTaskId =
       battleState
@@ -3858,7 +3971,11 @@ function scheduleTutorialBriefAdvance() {
   nextTutorialTaskId ===
     "end_turn_for_recovery" ||
   nextTutorialTaskId ===
-    "phase_7_complete_hold";
+    "explain_wave_telegraph" ||
+  nextTutorialTaskId ===
+    "explain_wave_reservation" ||
+  nextTutorialTaskId ===
+    "explain_wave_preparation";
 
     if (
       shouldContinueBriefChain

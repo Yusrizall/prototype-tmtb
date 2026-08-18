@@ -376,7 +376,7 @@ export function advanceTutorialPhase7Brief(battleState) {
     explain_stun_shared_ap: { taskId: "switch_to_archer_for_stun_adaptation", prompt: "Press Q to switch to Archer." },
     explain_stun_persistence: { taskId: "explain_stun_duration_1", prompt: "STUN 1 means 1 Player Turn remains." },
     explain_stun_duration_1: { taskId: "end_turn_for_recovery", prompt: "End your turn." },
-    explain_guard_recovery: { taskId: "phase_7_complete_hold", prompt: "PROTOTYPE ONLY\nPhase 7 complete. Phase 8 is not implemented yet." }
+    explain_guard_recovery: { taskId: "phase_7_complete_transition", prompt: null }
   };
   const transition = transitions[tutorialState.taskId];
   if (!transition) return battleState;

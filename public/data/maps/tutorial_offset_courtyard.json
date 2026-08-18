@@ -15,11 +15,11 @@
       "X",
       "X",
       "X",
+      "E6",
       ".",
       ".",
       ".",
-      ".",
-      ".",
+      "E10",
       "X"
     ],
     [
@@ -32,13 +32,13 @@
       "X",
       "X",
       "X",
+      "E8",
       ".",
       ".",
       ".",
       ".",
       ".",
-      ".",
-      "."
+      "E12"
     ],
     [
       "X",
@@ -56,7 +56,7 @@
       "E3",
       ".",
       ".",
-      "."
+      "E5"
     ],
     [
       "X",
@@ -86,13 +86,13 @@
       "X",
       "X",
       "X",
+      "E11",
       ".",
       ".",
       ".",
       ".",
       ".",
-      ".",
-      "."
+      "E9"
     ],
     [
       "X",
@@ -105,11 +105,11 @@
       "X",
       "X",
       "X",
+      "E13",
       ".",
+      "E4",
       ".",
-      ".",
-      ".",
-      ".",
+      "E7",
       "X"
     ],
     [
@@ -590,6 +590,17 @@
     "P2": "player_spawn_2",
     "E1": "enemy_spawn_1",
     "O30": "partial_cover_30",
-    "OF": "full_cover"
+    "OF": "full_cover",
+    "E3": "enemy_spawn_blue_phase7",
+    "E4": "wave_1_sword_spawn",
+    "E5": "wave_2_spear_spawn",
+    "E6": "wave_3_sword_a_primary_spawn",
+    "E7": "wave_3_sword_b_primary_spawn",
+    "E8": "wave_3_sword_fallback_e8_spawn",
+    "E9": "wave_3_sword_fallback_e9_spawn",
+    "E10": "wave_3_sword_fallback_e10_spawn",
+    "E11": "wave_3_sword_fallback_e11_spawn",
+    "E12": "wave_3_sword_fallback_e12_spawn",
+    "E13": "wave_3_sword_fallback_e13_spawn"
   }
 }

@@ -30,11 +30,11 @@ test("Shockwave threat overlay appears only when Blue Current Intent is SHOCKWAV
  assert.equal(html.includes("tile-shockwave-threat"),true);
 });
 
-test("HUD Phase Jump overlay exposes phases 1-7",()=>{
+test("HUD Phase Jump overlay exposes phases 1-8",()=>{
  const s=createTutorialPhaseJumpState(data,7);
  const html=renderBattleHud({ stage1Map: data.tutorialMap },s,[],[],[],{open:true,phaseInput:"7",errorMessage:null});
- assert.equal(html.includes("Available phases: 1–7"),true);
- assert.equal(html.includes('max="7"'),true);
+ assert.equal(html.includes("Available phases: 1–8"),true);
+ assert.equal(html.includes('max="8"'),true);
 });
 
 import { getBattleCameraFocusKey } from "../../src/ui/battle/battleCameraLogic.js";

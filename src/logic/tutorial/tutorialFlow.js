@@ -10,6 +10,12 @@ import {
   shouldPauseTutorialPhase7EnemyResolution
 } from "./tutorialPhase7Logic.js";
 
+import {
+  advanceTutorialPhase8Brief,
+  isTutorialPhase8InputAllowed,
+  shouldPauseTutorialPhase8EnemyResolution
+} from "./tutorialPhase8Logic.js";
+
 const LOOK_DIRECTION_THRESHOLD = 24;
 const PHASE_2_GUARD_TARGET_A = {
   x: 3,
@@ -1106,6 +1112,15 @@ export function advanceTutorialBrief(
       "phase_7_status_temporal_threat"
   ) {
     return advanceTutorialPhase7Brief(
+      battleState
+    );
+  }
+
+  if (
+    tutorialState.phaseId ===
+      "phase_8_wave_graduation"
+  ) {
+    return advanceTutorialPhase8Brief(
       battleState
     );
   }
@@ -4129,6 +4144,16 @@ export function shouldPauseTutorialEnemyResolution(
   }
 
   if (
+    isTutorialBattle(battleState) &&
+    battleState.tutorialState.phaseId ===
+      "phase_8_wave_graduation"
+  ) {
+    return shouldPauseTutorialPhase8EnemyResolution(
+      battleState
+    );
+  }
+
+  if (
     !isTutorialBattle(
       battleState
     ) ||
@@ -4440,6 +4465,16 @@ export function isTutorialInputAllowed(
       "phase_7_status_temporal_threat"
   ) {
     return isTutorialPhase7InputAllowed(
+      battleState,
+      inputType
+    );
+  }
+
+  if (
+    tutorialState.phaseId ===
+      "phase_8_wave_graduation"
+  ) {
+    return isTutorialPhase8InputAllowed(
       battleState,
       inputType
     );

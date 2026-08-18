@@ -10,6 +10,9 @@ import {
   isBlueShockwaveEnemy,
   getBlueShockwaveThreatTiles
 } from "../logic/battle/blueShockwaveLogic.js";
+import {
+  getActiveWaveReservations
+} from "../logic/battle/waveLogic.js";
 
 function getTileLabel(tileCode) {
   if (tileCode === ".") return "";
@@ -662,6 +665,13 @@ export function renderMapGrid(
       .map((tile) => `${tile.x},${tile.y}`)
   );
 
+  const waveReservations = new Map(
+    getActiveWaveReservations(battleState).map((reservation) => [
+      `${reservation.x},${reservation.y}`,
+      reservation
+    ])
+  );
+
   const cells = mapData.tiles
     .flatMap((row, y) => {
       return row.map((tileCode, x) => {
@@ -833,6 +843,19 @@ const startGridMarker =
             ? "tile-shockwave-threat"
             : "";
 
+        const waveReservation =
+          waveReservations.get(`${x},${y}`) ?? null;
+
+        const waveReservationClass =
+          waveReservation
+            ? "tile-wave-reserved"
+            : "";
+
+        const waveReservationMarker =
+          waveReservation
+            ? `<span class="wave-reservation-marker">INCOMING ${waveReservation.label}</span>`
+            : "";
+
         return `
           <button
             class="
@@ -848,6 +871,7 @@ const startGridMarker =
               ${structureObjectiveClass}
               ${structureDestroyedClass}
               ${shockwaveThreatClass}
+              ${waveReservationClass}
             "
             data-tile-x="${x}"
             data-tile-y="${y}"
@@ -863,6 +887,7 @@ const startGridMarker =
 
 ${startGridMarker}
 ${tutorialTargetMarker}
+${waveReservationMarker}
 
 ${renderUnitToken(
               unit,
