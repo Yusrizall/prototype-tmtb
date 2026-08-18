@@ -220,7 +220,7 @@ function naturalReference(phaseNumber) {
       }
     ),
     enemyUnits: patchUnit(state.enemyUnits, "sword_enemy", {
-      currentHP: 23,
+      currentHP: 31,
       tileX: 5, tileY: 11,
       originTile: { x: 5, y: 11 },
       turnState: "ready", hasActed: false
@@ -231,7 +231,7 @@ function naturalReference(phaseNumber) {
   attack = resolveBasicAttackBetweenUnits(state, swordId, guardId, clearPath);
   state = attack.battleState;
 
-  // Three real Archer hits take Sword 23 -> 8 under current rules.
+  // Three real Archer hits take Sword 31 -> 10 under Tutorial no-DEF rules.
   for (let i = 0; i < 3; i += 1) {
     attack = resolveBasicAttackBetweenUnits(state, archerId, swordId, clearPath);
     state = attack.battleState;

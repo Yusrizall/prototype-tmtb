@@ -65,8 +65,8 @@ function deadSword() {
     tileX: 8,
     tileY: 11,
     currentHP: 0,
-    maxHP: 31,
-    derivedStats: { atk: 8, def: 2, move: 3, atr: 1.5 },
+    maxHP: 43,
+    derivedStats: { atk: 7, def: 2, move: 3, atr: 1.5 },
     attackType: "melee",
     movementRule: "seek_melee_engagement",
     actionRule: "basic_attack",
@@ -79,13 +79,13 @@ function deadSword() {
 }
 
 function entryState() {
-  const guard = player("guard", 6, 12, 21);
+  const guard = player("guard", 6, 12, 18);
   const archer = player("archer", 7, 13, 11);
   return {
     flowContext: "tutorial",
     stageId: "tutorial_stage",
     phase: "player_phase",
-    turnCount: 5,
+    turnCount: 4,
     teamApCurrent: 0,
     teamApCapacity: 4,
     selectedUnitId: archer.battleUnitId,
@@ -175,7 +175,7 @@ test("integrated revised Phase 6 resolves P1, Guard pressure, P2 pause, Spear fi
   const firstAttack = resolveEnemyAttackPhase(data.tutorialMap, state, [spearId]);
   state = firstAttack.battleState;
   assert.equal(firstAttack.attackEvents[0].pathOutcome, "clear");
-  assert.equal(firstAttack.attackEvents[0].finalDamage, 2);
+  assert.equal(firstAttack.attackEvents[0].finalDamage, 5);
   state = recordTutorialPhase6EnemyResolution(state, state, { attackEvent: firstAttack.attackEvents[0] });
 
   state = startPlayerTurn(state, guardId);
@@ -192,7 +192,7 @@ test("integrated revised Phase 6 resolves P1, Guard pressure, P2 pause, Spear fi
     .find((target) => target.targetType === "unit" && target.targetId === spearId);
   assert.ok(guardSpearTarget);
   let attack = resolveBasicAttack(state, "unit", spearId, guardSpearTarget.pathResult);
-  assert.equal(attack.attackResult.targetHPAfter, 12);
+  assert.equal(attack.attackResult.targetHPAfter, 10);
   state = recordTutorialPhase6BasicAttack(state, attack.battleState, attack.attackResult);
   assert.equal(state.tutorialState.taskId, "end_turn_for_spear_retreat");
 
@@ -210,18 +210,18 @@ test("integrated revised Phase 6 resolves P1, Guard pressure, P2 pause, Spear fi
   const coveredAttack = resolveEnemyAttackPhase(data.tutorialMap, state, [spearId]);
   state = coveredAttack.battleState;
   assert.equal(coveredAttack.attackEvents[0].pathOutcome, "partial_cover");
-  assert.equal(coveredAttack.attackEvents[0].finalDamage, 0);
+  assert.equal(coveredAttack.attackEvents[0].finalDamage, 3);
   state = recordTutorialPhase6EnemyResolution(state, state, { attackEvent: coveredAttack.attackEvents[0] });
   state = startPlayerTurn(state, guardId);
   state = advanceTutorialPhase6Brief(state);
   assert.equal(state.tutorialState.taskId, "finish_spear");
 
-  // Archer closes one tile, then uses repeated real Attacks to finish the 12 HP Spear.
+  // Archer closes one tile, then uses two real Attacks to finish the 10 HP Spear.
   state = { ...state, selectedUnitId: archerId };
   previous = state;
   state = moveSelectedUnitByDirection(data.tutorialMap, state, "right");
   state = recordTutorialPhase6PlayerMovement(previous, state);
-  for (let i = 0; i < 3; i += 1) {
+  for (let i = 0; i < 2; i += 1) {
     const target = getValidPlayerBasicAttackTargets(data.tutorialMap, state)
       .find((candidate) => candidate.targetType === "unit" && candidate.targetId === spearId);
     assert.ok(target);

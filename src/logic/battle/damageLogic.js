@@ -6,7 +6,8 @@ import {
 export function calculateBasicAttackDamage(
   attacker,
   target,
-  pathResult
+  pathResult,
+  options = {}
 ) {
   const coverPercentage =
     pathResult?.coverPercentage ?? 0;
@@ -15,11 +16,16 @@ export function calculateBasicAttackDamage(
     attacker.derivedStats.atk *
     (1 - coverPercentage);
 
+  const targetDefense =
+    options.ignoreDefense === true
+      ? 0
+      : target.derivedStats.def;
+
   const damageBeforeFloor =
     Math.max(
       0,
       attackAfterCover -
-        target.derivedStats.def
+        targetDefense
     );
 
   const finalDamage =
@@ -32,8 +38,7 @@ export function calculateBasicAttackDamage(
     coverPercentage,
     attackAfterCover,
 
-    targetDefense:
-      target.derivedStats.def,
+    targetDefense,
 
     finalDamage
   };
@@ -140,7 +145,12 @@ export function resolveBasicAttackBetweenUnits(
     calculateBasicAttackDamage(
       attacker,
       target,
-      pathResult
+      pathResult,
+      {
+        ignoreDefense:
+          battleState.flowContext ===
+          "tutorial"
+      }
     );
 
   const targetHPAfter =
@@ -243,7 +253,12 @@ export function resolveBasicAttackAgainstStructure(
     calculateBasicAttackDamage(
       attacker,
       target,
-      pathResult
+      pathResult,
+      {
+        ignoreDefense:
+          battleState.flowContext ===
+          "tutorial"
+      }
     );
 
   const targetHPAfter =

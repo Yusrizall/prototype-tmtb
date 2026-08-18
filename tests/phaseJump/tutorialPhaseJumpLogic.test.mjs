@@ -82,7 +82,7 @@ test("fresh Tutorial factory reproduces Phase 1 start", () => {
   assert.deepEqual(compactUnit(archer), {
     hp: 18, x: 2, y: 12, startGrid: { x: 2, y: 12 }, movementApCommitted: false, movementLocked: false
   });
-  assert.deepEqual({ hp: sword.currentHP, x: sword.tileX, y: sword.tileY }, { hp: 31, x: 8, y: 11 });
+  assert.deepEqual({ hp: sword.currentHP, x: sword.tileX, y: sword.tileY }, { hp: 43, x: 8, y: 11 });
   assert.equal(state.tutorialState.phaseId, "phase_1_control_orientation");
   assert.equal(state.tutorialState.taskId, "look_around");
   assert.equal(state.tutorialState.prompt, "Move the mouse to look around.");
@@ -106,7 +106,7 @@ test("Jump 2 contract starts Shared AP lesson from clean starting grids", () => 
   assert.deepEqual(compactUnit(archer), {
     hp: 18, x: 2, y: 12, startGrid: { x: 2, y: 12 }, movementApCommitted: false, movementLocked: false
   });
-  assert.equal(sword.currentHP, 31);
+  assert.equal(sword.currentHP, 43);
 });
 
 test("Jump 3 contract is Phase 2 completion before the first Enemy Turn", () => {
@@ -125,7 +125,7 @@ test("Jump 3 contract is Phase 2 completion before the first Enemy Turn", () => 
   assert.deepEqual(compactUnit(archer), {
     hp: 18, x: 2, y: 14, startGrid: { x: 2, y: 12 }, movementApCommitted: true, movementLocked: false
   });
-  assert.deepEqual({ hp: sword.currentHP, x: sword.tileX, y: sword.tileY }, { hp: 31, x: 8, y: 11 });
+  assert.deepEqual({ hp: sword.currentHP, x: sword.tileX, y: sword.tileY }, { hp: 43, x: 8, y: 11 });
 });
 
 test("Jump 4 contract preserves real Phase 3 Guard attack consequences", () => {
@@ -145,7 +145,7 @@ test("Jump 4 contract preserves real Phase 3 Guard attack consequences", () => {
   assert.deepEqual(compactUnit(archer), {
     hp: 18, x: 2, y: 14, startGrid: { x: 2, y: 14 }, movementApCommitted: false, movementLocked: false
   });
-  assert.deepEqual({ hp: sword.currentHP, x: sword.tileX, y: sword.tileY }, { hp: 28, x: 5, y: 11 });
+  assert.deepEqual({ hp: sword.currentHP, x: sword.tileX, y: sword.tileY }, { hp: 38, x: 5, y: 11 });
 });
 
 test("Jump 5 contract preserves Phase 4 completion before Phase 5-forming Enemy Turn", () => {
@@ -165,7 +165,7 @@ test("Jump 5 contract preserves Phase 4 completion before Phase 5-forming Enemy 
   assert.deepEqual(compactUnit(archer), {
     hp: 18, x: 5, y: 13, startGrid: { x: 2, y: 14 }, movementApCommitted: true, movementLocked: true
   });
-  assert.deepEqual({ hp: sword.currentHP, x: sword.tileX, y: sword.tileY }, { hp: 23, x: 5, y: 11 });
+  assert.deepEqual({ hp: sword.currentHP, x: sword.tileX, y: sword.tileY }, { hp: 31, x: 5, y: 11 });
 });
 
 test("Jump 6 contract reuses normal Phase 6 initialization", () => {
@@ -184,7 +184,7 @@ test("Jump 6 contract reuses normal Phase 6 initialization", () => {
   assert.equal(state.turnCount, 4);
   assert.equal(state.selectedUnitId, archer.battleUnitId);
   assert.deepEqual(compactUnit(guard), {
-    hp: 21, x: 6, y: 12, startGrid: { x: 6, y: 9 }, movementApCommitted: true, movementLocked: true
+    hp: 18, x: 6, y: 12, startGrid: { x: 6, y: 9 }, movementApCommitted: true, movementLocked: true
   });
   assert.deepEqual(compactUnit(archer), {
     hp: 11, x: 7, y: 13, startGrid: { x: 5, y: 13 }, movementApCommitted: true, movementLocked: true

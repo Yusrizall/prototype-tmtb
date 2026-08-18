@@ -19,6 +19,15 @@ test("Phase 6 authored data matches approved PVS contract", () => {
   assert.equal(sword.movementRule, "seek_melee_engagement");
   assert.equal(sword.actionRule, "basic_attack");
 
+
+  const tutorialSwordSpawn = encounter.enemySpawns.find(
+    (spawn) => spawn.unitId === "sword_enemy"
+  );
+  assert.deepEqual(tutorialSwordSpawn.statOverrides, {
+    maxHP: 43,
+    atk: 7
+  });
+
   const spear = enemies.find((unit) => unit.unitId === "spear_enemy");
   assert.deepEqual(
     {
@@ -55,7 +64,11 @@ test("Phase 6 authored data matches approved PVS contract", () => {
   assert.equal(map.regionIds[8][10], "B");
 
   assert.deepEqual(encounter.phase6Content.enemySpawns, [
-    { unitId: "spear_enemy", spawnLabel: "E2" }
+    {
+      unitId: "spear_enemy",
+      spawnLabel: "E2",
+      statOverrides: { atk: 5 }
+    }
   ]);
   assert.deepEqual(encounter.phase6Content.structures, [
     {

@@ -271,7 +271,7 @@ function buildPhase4Entry(state) {
       }
     ),
     enemyUnits: patchUnitByDefId(nextState.enemyUnits, "sword_enemy", {
-      currentHP: 28,
+      currentHP: 38,
       tileX: 5,
       tileY: 11,
       originTile: { x: 8, y: 11 },
@@ -300,7 +300,7 @@ function buildPhase4Entry(state) {
       phase3AttackSelected: true,
       phase3SwordTargetSelected: true,
       phase3AttackObserved: true,
-      phase3AttackDamage: 3,
+      phase3AttackDamage: 5,
       phase3AttackApSpendObserved: true,
       phase3MovementLockObserved: true
     }
@@ -341,7 +341,7 @@ function buildPhase5Entry(state) {
       }
     ),
     enemyUnits: patchUnitByDefId(nextState.enemyUnits, "sword_enemy", {
-      currentHP: 23,
+      currentHP: 31,
       tileX: 5,
       tileY: 11,
       originTile: { x: 8, y: 11 },
@@ -367,7 +367,7 @@ function buildPhase5Entry(state) {
       phase4ClearShotObserved: true,
       phase4AttackTargetingObserved: true,
       phase4AttackObserved: true,
-      phase4AttackDamage: 5,
+      phase4AttackDamage: 7,
       phase4AttackApSpendObserved: true,
       phase4MovementLockObserved: true
     }
@@ -386,7 +386,7 @@ function buildPhase6Entry(data, state) {
     selectedUnitId: archerId,
     playerUnits: patchUnitByDefId(
       patchUnitByDefId(nextState.playerUnits, "guard", {
-        currentHP: 21,
+        currentHP: 18,
         tileX: 6,
         tileY: 12,
         originTile: { x: 6, y: 9 },

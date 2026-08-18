@@ -40,7 +40,7 @@ function spear(x, y, targetId) {
     tileY: y,
     originTile: { x, y },
     currentHP: 15,
-    derivedStats: { atk: 6, def: 2, move: 4, atr: 3 },
+    derivedStats: { atk: 5, def: 2, move: 4, atr: 3 },
     attackType: "ranged",
     movementRule: "seek_max_effective_atr",
     actionRule: "basic_attack_if_effective",
@@ -98,7 +98,7 @@ test("Sword keeps existing melee-seeking destination preference", () => {
 });
 
 test("Spear naturally finds Phase 6 P1 from S0", () => {
-  const guard = player("guard", 6, 12, 21, 4);
+  const guard = player("guard", 6, 12, 18, 4);
   const archer = player("archer", 7, 13, 11, 1);
   const enemy = spear(10, 8, guard.battleUnitId);
   const state = tutorialState([guard, archer], enemy);
@@ -111,7 +111,7 @@ test("Spear naturally finds Phase 6 P1 from S0", () => {
 });
 
 test("Spear backs away to Phase 6 P2 after Guard moves into Cover", () => {
-  const guard = player("guard", 7, 11, 19, 4);
+  const guard = player("guard", 7, 11, 13, 4);
   const archer = player("archer", 7, 13, 11, 1);
   const enemy = spear(8, 10, guard.battleUnitId);
   const state = tutorialState([guard, archer], enemy);
@@ -123,8 +123,8 @@ test("Spear backs away to Phase 6 P2 after Guard moves into Cover", () => {
   assert.equal(result.movementEvents[0].pathOutcome, "partial_cover");
 });
 
-test("Partial Cover remains a usable Spear shot even when final damage floors to zero", () => {
-  const guard = player("guard", 7, 11, 19, 4);
+test("Partial Cover remains a usable Spear shot with reduced no-DEF Tutorial damage", () => {
+  const guard = player("guard", 7, 11, 13, 4);
   const enemy = spear(10, 11, guard.battleUnitId);
   const state = tutorialState([guard], enemy);
 
@@ -132,7 +132,7 @@ test("Partial Cover remains a usable Spear shot even when final damage floors to
   const event = result.attackEvents[0];
   assert.equal(event.attacked, true);
   assert.equal(event.pathOutcome, "partial_cover");
-  assert.equal(event.finalDamage, 0);
+  assert.equal(event.finalDamage, 3);
 });
 
 test("Spear effective-shot rule declines damageBlocked Full Cover", () => {

@@ -60,8 +60,8 @@ function deadSword() {
     tileX: 8,
     tileY: 11,
     currentHP: 0,
-    maxHP: 31,
-    derivedStats: { atk: 8, def: 2, move: 3, atr: 1.5 },
+    maxHP: 43,
+    derivedStats: { atk: 7, def: 2, move: 3, atr: 1.5 },
     attackType: "melee",
     movementRule: "seek_melee_engagement",
     actionRule: "basic_attack",
@@ -72,12 +72,12 @@ function deadSword() {
 }
 
 function phase6EntryState() {
-  const guard = player("guard", 6, 12, 21);
+  const guard = player("guard", 6, 12, 18);
   const archer = player("archer", 7, 13, 11);
   return {
     flowContext: "tutorial",
     phase: "player_phase",
-    turnCount: 5,
+    turnCount: 4,
     teamApCurrent: 0,
     teamApCapacity: 4,
     selectedUnitId: archer.battleUnitId,
@@ -110,7 +110,7 @@ test("Phase 6 initialization is idempotent and preserves carried tactical state"
   assert.equal(twice.structures[0].battleStructureId, "tutorial_hut_1");
   assert.equal(twice.structures[0].footprint.length, 9);
   assert.equal(twice.teamApCurrent, 0);
-  assert.deepEqual(twice.playerUnits.map((unit) => unit.currentHP), [21, 11]);
+  assert.deepEqual(twice.playerUnits.map((unit) => unit.currentHP), [18, 11]);
   assert.deepEqual(twice.tutorialState.activeRegionIds, ["A", "B"]);
   assert.equal(twice.objectiveState.status, "dormant");
   assert.equal(twice.tutorialState.phase6Entities.spearEnemyId, spears[0].battleUnitId);
@@ -136,7 +136,7 @@ test("revised Phase 6 teaches close pressure, Spear retreat, Cover, then Structu
       targetId: guardId,
       attacked: true,
       pathOutcome: "clear",
-      finalDamage: 2
+      finalDamage: 5
     }
   });
   assert.equal(state.tutorialState.taskId, "explain_defensive_cover");
@@ -161,7 +161,7 @@ test("revised Phase 6 teaches close pressure, Spear retreat, Cover, then Structu
   const afterGuardHit = {
     ...state,
     enemyUnits: state.enemyUnits.map((unit) =>
-      unit.battleUnitId === spearId ? { ...unit, currentHP: spearBefore - 3 } : unit
+      unit.battleUnitId === spearId ? { ...unit, currentHP: spearBefore - 5 } : unit
     )
   };
   state = recordTutorialPhase6BasicAttack(state, afterGuardHit, {
@@ -169,8 +169,8 @@ test("revised Phase 6 teaches close pressure, Spear retreat, Cover, then Structu
     targetType: "unit",
     targetId: spearId,
     targetHPBefore: spearBefore,
-    targetHPAfter: spearBefore - 3,
-    finalDamage: 3,
+    targetHPAfter: spearBefore - 5,
+    finalDamage: 5,
     targetDefeated: false
   });
   assert.equal(state.tutorialState.taskId, "end_turn_for_spear_retreat");
@@ -201,7 +201,7 @@ test("revised Phase 6 teaches close pressure, Spear retreat, Cover, then Structu
       targetId: guardId,
       attacked: true,
       pathOutcome: "partial_cover",
-      finalDamage: 0
+      finalDamage: 3
     }
   });
   assert.equal(state.tutorialState.taskId, "explain_cover_reduction");

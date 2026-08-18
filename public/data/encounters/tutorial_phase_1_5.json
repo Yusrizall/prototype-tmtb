@@ -21,8 +21,8 @@
       "unitId": "sword_enemy",
       "spawnLabel": "E1",
       "statOverrides": {
-        "maxHP": 31,
-        "atk": 8
+        "maxHP": 43,
+        "atk": 7
       }
     }
   ],
@@ -31,7 +31,10 @@
     "enemySpawns": [
       {
         "unitId": "spear_enemy",
-        "spawnLabel": "E2"
+        "spawnLabel": "E2",
+        "statOverrides": {
+          "atk": 5
+        }
       }
     ],
     "structures": [
