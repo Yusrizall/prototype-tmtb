@@ -7,6 +7,10 @@ import {
   isStructureTargetable
 } from "./structureLogic.js";
 
+import {
+  canPlayerUnitAttack
+} from "./statusLogic.js";
+
 function getSelectedLivingPlayerAttacker(
   battleState
 ) {
@@ -122,7 +126,7 @@ export function getPlayerBasicAttackCandidates(
       battleState
     );
 
-  if (!attacker) {
+  if (!attacker || !canPlayerUnitAttack(attacker)) {
     return [];
   }
 

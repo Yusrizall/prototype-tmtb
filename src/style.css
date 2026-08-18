@@ -2226,3 +2226,10 @@ div > span {
   gap: 10px;
   margin-top: 20px;
 }
+
+/* PROTOTYPE ONLY — Phase 7 Blue Shockwave telegraph. */
+.tile-shockwave-threat {
+  outline: 3px dashed rgba(151, 71, 255, 0.9);
+  outline-offset: -6px;
+  box-shadow: inset 0 0 0 999px rgba(151, 71, 255, 0.08);
+}

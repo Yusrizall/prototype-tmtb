@@ -49,5 +49,31 @@
         "height": 3
       }
     ]
+  },
+  "phase7Content": {
+    "enemySpawns": [
+      {
+        "unitId": "blue_charger_candidate",
+        "spawnLabel": "E3",
+        "battleUnitId": "tutorial_blue_1",
+        "statOverrides": {
+          "maxHP": 33
+        }
+      }
+    ],
+    "guardStaging": {
+      "x": 12,
+      "y": 4
+    },
+    "archerStaging": {
+      "x": 11,
+      "y": 3
+    },
+    "archerSafe": {
+      "x": 9,
+      "y": 2
+    },
+    "shockwaveRadius": 2,
+    "stunPlayerTurns": 2
   }
 }

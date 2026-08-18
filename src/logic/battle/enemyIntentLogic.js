@@ -1,4 +1,9 @@
 import {
+  isBlueShockwaveEnemy,
+  getBlueReadableState
+} from "./blueShockwaveLogic.js";
+
+import {
   getEnemyCurrentTarget
 } from "./enemyTargetLogic.js";
 
@@ -34,20 +39,32 @@ export function resolveEnemyCurrentIntent(
   }
 
   const target =
-    getEnemyCurrentTarget(
-      enemy,
-      battleState
-    );
+    isBlueShockwaveEnemy(enemy)
+      ? null
+      : getEnemyCurrentTarget(
+          enemy,
+          battleState
+        );
+
+  const blueReadable =
+    isBlueShockwaveEnemy(enemy)
+      ? getBlueReadableState(enemy)
+      : null;
 
   const nextIntent =
-    target
+    blueReadable?.intentType
       ? {
-          intentType: "basic_attack",
-
-          targetId:
-            target.battleUnitId
+          intentType: blueReadable.intentType,
+          intentLabel: blueReadable.intentLabel,
+          stateLabel: blueReadable.stateLabel,
+          targetId: null
         }
-      : null;
+      : target
+        ? {
+            intentType: "basic_attack",
+            targetId: target.battleUnitId
+          }
+        : null;
 
   const previousIntent =
     enemy.currentIntent ?? null;
@@ -56,7 +73,11 @@ export function resolveEnemyCurrentIntent(
     previousIntent?.intentType !==
       nextIntent?.intentType ||
     previousIntent?.targetId !==
-      nextIntent?.targetId;
+      nextIntent?.targetId ||
+    previousIntent?.intentLabel !==
+      nextIntent?.intentLabel ||
+    previousIntent?.stateLabel !==
+      nextIntent?.stateLabel;
 
   const nextEnemyUnits =
     battleState.enemyUnits.map((unit) => {

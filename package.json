@@ -9,8 +9,9 @@
     "preview": "vite preview",
     "test:phase6": "node --test tests/phase6/*.test.mjs",
     "test:phasejump": "node --test tests/phaseJump/*.test.mjs",
-    "test:tutorial": "npm run test:nodef && npm run test:phase6 && npm run test:phasejump",
-    "test:nodef": "node --test tests/tutorialDamage/*.test.mjs"
+    "test:tutorial": "npm run test:nodef && npm run test:phase6 && npm run test:phasejump && npm run test:phase7",
+    "test:nodef": "node --test tests/tutorialDamage/*.test.mjs",
+    "test:phase7": "node --test tests/phase7/*.test.mjs"
   },
   "devDependencies": {
     "vite": "^8.0.12"

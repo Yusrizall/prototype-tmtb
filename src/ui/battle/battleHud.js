@@ -8,6 +8,11 @@ const ACTION_LABELS = [
   "Skill"
 ];
 
+function getStunLabel(unit) {
+  const stun = (unit?.statuses ?? []).find((status) => status.statusId === "stun" && status.remainingPlayerTurns > 0);
+  return stun ? `STUN ${stun.remainingPlayerTurns}` : null;
+}
+
 function isTutorialPhase4(
   battleState
 ) {
@@ -91,7 +96,9 @@ function renderEnemyIntentSummary(
       tutorialState?.phaseId ===
         "phase_5_dynamic_threat_reading" ||
       tutorialState?.phaseId ===
-        "phase_6_spear_defensive_cover_objective";
+        "phase_6_spear_defensive_cover_objective" ||
+      tutorialState?.phaseId ===
+        "phase_7_status_temporal_threat";
 
     if (
       !phase3IntentUnlocked &&
@@ -109,7 +116,11 @@ function renderEnemyIntentSummary(
   const livingEnemies =
     [...battleState.enemyUnits]
       .filter((enemy) => {
-        return enemy.currentHP > 0;
+        if (enemy.currentHP <= 0) return false;
+        const isInactiveBlue =
+          enemy.actionRule === "blue_charge_shockwave" &&
+          enemy.patternState?.active === false;
+        return !isInactiveBlue;
       })
       .sort((first, second) => {
         return (
@@ -134,14 +145,22 @@ function renderEnemyIntentSummary(
             );
           });
 
-        const intentLabel =
-          enemy.currentIntent?.intentType ===
-            "basic_attack"
+        const isBluePattern =
+          enemy.currentIntent?.intentType === "blue_charge" ||
+          enemy.currentIntent?.intentType === "blue_shockwave";
+
+        const intentLabel = isBluePattern
+          ? (enemy.currentIntent?.intentLabel ?? "NONE")
+          : enemy.currentIntent?.intentType === "basic_attack"
             ? "ATTACK"
             : "NONE";
 
+        const stateLabel = isBluePattern && enemy.currentIntent?.stateLabel
+          ? `STATE ${enemy.currentIntent.stateLabel} · `
+          : "";
+
         const targetLabel =
-          target
+          !isBluePattern && target
             ? ` → ${target.name}`
             : "";
 
@@ -155,7 +174,7 @@ function renderEnemyIntentSummary(
         return `
           <p class="${pulseClass}">
             #${enemy.spawnOrder}
-            ${intentLabel}${targetLabel}
+            ${stateLabel}INTENT ${intentLabel}${targetLabel}
           </p>
         `;
       })
@@ -181,6 +200,7 @@ function renderRosterPanel(battleState) {
         <div class="roster-card ${selectedClass}">
           <strong>${unit.name}</strong>
           <span>HP ${unit.currentHP}/${unit.maxHP}</span>
+          ${getStunLabel(unit) ? `<span>${getStunLabel(unit)}</span>` : ""}
           <span>
   StartGrid: ${unit.startGrid.x},${unit.startGrid.y}
 </span>
@@ -439,6 +459,7 @@ function renderUnitDetailPanel(
         <p>
           HP: ${selectedUnit.currentHP}/${selectedUnit.maxHP}
         </p>
+        ${getStunLabel(selectedUnit) ? `<p>Status: ${getStunLabel(selectedUnit)}</p>` : ""}
         <p>ATK: ${selectedUnit.derivedStats.atk}</p>
         <p>DEF: ${selectedUnit.derivedStats.def}</p>
         <p>Move: ${selectedUnit.derivedStats.move}</p>
@@ -560,46 +581,27 @@ function renderCommandBand(battleState) {
   const isAttackTargeting =
     battleState.battleControlState === "attack_targeting";
 
+  const tutorialTaskId = battleState.tutorialState?.taskId;
+  const tutorialPhaseId = battleState.tutorialState?.phaseId;
   const tutorialEndTurnUnlocked =
-    battleState.flowContext !==
-      "tutorial" ||
-    (
-      battleState
-        .tutorialState
-        ?.phaseId ===
-        "phase_3_turn_intent_combat" &&
-      battleState
-        .tutorialState
-        ?.taskId ===
-        "end_player_turn"
-    ) ||
-    (
-      battleState
-        .tutorialState
-        ?.phaseId ===
-        "phase_4_tactical_space" &&
-      battleState
-        .tutorialState
-        ?.taskId ===
-        "end_turn_for_phase5"
-    ) ||
-    (
-      battleState
-        .tutorialState
-        ?.phaseId ===
-        "phase_6_spear_defensive_cover_objective" &&
-      [
-        "end_turn_for_clear_attack",
-        "end_turn_for_spear_retreat",
-        "finish_spear",
-        "end_turn_after_spear_defeated",
-        "destroy_hut"
-      ].includes(
-        battleState
-          .tutorialState
-          ?.taskId
-      )
-    );
+    battleState.flowContext !== "tutorial" ||
+    (tutorialPhaseId === "phase_3_turn_intent_combat" && tutorialTaskId === "end_player_turn") ||
+    (tutorialPhaseId === "phase_4_tactical_space" && tutorialTaskId === "end_turn_for_phase5") ||
+    (tutorialPhaseId === "phase_6_spear_defensive_cover_objective" && [
+      "end_turn_for_clear_attack",
+      "end_turn_for_spear_retreat",
+      "finish_spear",
+      "end_turn_after_spear_defeated",
+      "destroy_hut",
+      "proceed_to_region_c"
+    ].includes(tutorialTaskId)) ||
+    (tutorialPhaseId === "phase_7_status_temporal_threat" && [
+      "end_turn_to_begin_phase7",
+      "end_turn_for_second_charge",
+      "end_turn_for_shockwave",
+      "end_turn_after_stun_adaptation",
+      "end_turn_for_recovery"
+    ].includes(tutorialTaskId));
 
   const canEndPlayerTurn =
     battleState.phase ===
@@ -1003,14 +1005,14 @@ function renderTutorialPhaseJumpOverlay(uiState) {
         <input
           type="number"
           min="1"
-          max="6"
+          max="7"
           step="1"
           value="${phaseInput}"
           data-tutorial-phase-jump-input
           aria-label="Tutorial phase number"
         />
         <p class="tutorial-phase-jump-available">
-          Available phases: 1–6
+          Available phases: 1–7
         </p>
         ${errorMessage}
         <div class="tutorial-phase-jump-actions">

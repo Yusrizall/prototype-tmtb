@@ -6,6 +6,10 @@ import {
   isStructureBlockingTile
 } from "./structureLogic.js";
 
+import {
+  canPlayerUnitMove
+} from "./statusLogic.js";
+
 function getTileCode(mapData, x, y) {
   return mapData.tiles[y]?.[x];
 }
@@ -169,6 +173,7 @@ export function getReachableTilesForUnit(
 ) {
   if (!movingUnit) return [];
   if (movingUnit.currentHP <= 0) return [];
+  if (movingUnit.side === "player" && !canPlayerUnitMove(movingUnit)) return [];
   if (!originTile) return [];
   if (!Number.isFinite(moveRange)) return [];
 

@@ -45,6 +45,30 @@
         "basic",
         "spacing_pressure"
       ]
+    },
+    {
+      "unitId": "blue_charger_candidate",
+      "name": "Blue Charger Candidate",
+      "side": "enemy",
+      "role": "temporal_status_pressure",
+      "maxHP": 33,
+      "baseATK": 0,
+      "baseDEF": 0,
+      "move": 0,
+      "atr": 0,
+      "attackType": "special",
+      "targetPattern": "area",
+      "targetCategory": "player",
+      "usesProjectile": false,
+      "requiresPathCheck": false,
+      "movementRule": "stationary",
+      "actionRule": "blue_charge_shockwave",
+      "aiTags": [
+        "special_candidate",
+        "stationary",
+        "temporal_threat",
+        "status_pressure"
+      ]
     }
   ]
 }

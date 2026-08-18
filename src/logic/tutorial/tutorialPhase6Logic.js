@@ -853,7 +853,7 @@ export function isTutorialPhase6InputAllowed(
   }
 
   if (taskId === "proceed_to_region_c") {
-    return inputType === "movement_keyboard" || inputType === "switch_unit";
+    return ["movement_keyboard", "switch_unit", "end_turn"].includes(inputType);
   }
 
   return false;
@@ -933,7 +933,8 @@ export function shouldPauseTutorialPhase6EnemyResolution(
     "resolve_covered_spear_attack",
     "finish_spear",
     "refresh_before_structure_lesson",
-    "destroy_hut"
+    "destroy_hut",
+    "proceed_to_region_c"
   ].includes(battleState.tutorialState.taskId);
 }
 

@@ -7,9 +7,23 @@ import {
 import {
   initializeTutorialPhase6Content
 } from "./tutorialPhase6Logic.js";
+import {
+  initializeTutorialPhase7Content,
+  prepareTutorialPhase7EnemyActivation,
+  recordTutorialPhase7PlayerEndTurn,
+  recordTutorialPhase7EnemyActivation,
+  recordTutorialPhase7PlayerMovement,
+  recordTutorialPhase7PlayerTurnStart
+} from "./tutorialPhase7Logic.js";
+import {
+  resolveBlueShockwaveActivation
+} from "../battle/blueShockwaveLogic.js";
+import {
+  resolveEnemyCurrentIntent
+} from "../battle/enemyIntentLogic.js";
 
 export const TUTORIAL_PHASE_JUMP_MIN = 1;
-export const TUTORIAL_PHASE_JUMP_MAX = 6;
+export const TUTORIAL_PHASE_JUMP_MAX = 7;
 
 const PHASE_OPTIONS = [
   { phaseNumber: 1, label: "Control / Party" },
@@ -17,11 +31,12 @@ const PHASE_OPTIONS = [
   { phaseNumber: 3, label: "Turn / Intent / Basic Combat" },
   { phaseNumber: 4, label: "Tactical Range / Offensive Cover" },
   { phaseNumber: 5, label: "Dynamic Threat / Shared AP Application" },
-  { phaseNumber: 6, label: "Spear / Defensive Cover / Objective" }
+  { phaseNumber: 6, label: "Spear / Defensive Cover / Objective" },
+  { phaseNumber: 7, label: "Status / Temporal Threat" }
 ];
 
 const PHASE_JUMP_ERROR =
-  "Available tutorial phases: 1–6.";
+  "Available tutorial phases: 1–7.";
 
 export function getTutorialPhaseJumpOptions() {
   return PHASE_OPTIONS.map((option) => ({ ...option }));
@@ -436,6 +451,145 @@ function buildPhase6Entry(data, state) {
   return initializeTutorialPhase6Content(data, nextState);
 }
 
+function patchPhase7WorldCompletion(state) {
+  return {
+    ...state,
+    teamApCurrent: 4,
+    teamApCapacity: 4,
+    turnCount: 8,
+    selectedUnitId: getBattleUnitId(state, "player", "guard"),
+    playerUnits: patchUnitByDefId(
+      patchUnitByDefId(state.playerUnits, "guard", {
+        currentHP: 10,
+        tileX: 12,
+        tileY: 4,
+        originTile: { x: 12, y: 4 },
+        startGrid: { x: 12, y: 4 },
+        movementApCommitted: false,
+        movementLocked: false,
+        turnState: "ready",
+        hasActed: false,
+        statuses: []
+      }),
+      "archer",
+      {
+        currentHP: 11,
+        tileX: 11,
+        tileY: 3,
+        originTile: { x: 11, y: 3 },
+        startGrid: { x: 11, y: 3 },
+        movementApCommitted: false,
+        movementLocked: false,
+        turnState: "ready",
+        hasActed: false,
+        statuses: []
+      }
+    ),
+    enemyUnits: patchUnitByDefId(state.enemyUnits, "spear_enemy", {
+      currentHP: 0,
+      currentTargetId: null,
+      currentIntent: null,
+      turnState: "exhausted",
+      hasActed: true
+    }),
+    structures: (state.structures ?? []).map((structure) => {
+      if (structure.structureDefId !== "tutorial_hut") return structure;
+      return { ...structure, currentHP: 0, targetable: false };
+    }),
+    objectiveState: {
+      ...(state.objectiveState ?? {}),
+      status: "dormant",
+      objectiveType: null,
+      targetType: null,
+      targetId: null,
+      label: "—"
+    }
+  };
+}
+
+export function createTutorialPhase7RetryCheckpointState(data) {
+  const freshState = createFreshTutorialBattleState(data);
+  const phase6State = buildPhase6Entry(data, freshState);
+  let nextState = patchPhase7WorldCompletion(resetTransientCombatSelection(phase6State));
+
+  nextState = seedTutorialState(nextState, {
+    phaseId: "phase_6_spear_defensive_cover_objective",
+    taskId: "proceed_to_region_c",
+    prompt: "Proceed to the next area.",
+    targetTile: null,
+    activeRegionIds: ["A", "B", "C"],
+    evidence: {
+      phase6Complete: true,
+      requiredTwoUnitCurriculumComplete: false
+    }
+  });
+
+  nextState = initializeTutorialPhase7Content(
+    {
+      enemyUnits: data.enemyUnits,
+      tutorialMap: data.tutorialMap,
+      tutorialEncounter: data.tutorialEncounter
+    },
+    nextState
+  );
+
+  nextState = recordTutorialPhase7PlayerMovement(nextState, nextState);
+  return nextState;
+}
+
+function buildPhase7Entry(data) {
+  const retryState = createTutorialPhase7RetryCheckpointState(data);
+  const blueId = retryState.tutorialState.phase7Entities.blueEnemyId;
+
+  const enemyPhaseState = recordTutorialPhase7PlayerEndTurn(
+    retryState,
+    {
+      ...retryState,
+      phase: "enemy_phase"
+    }
+  );
+  const activatedState = prepareTutorialPhase7EnemyActivation(enemyPhaseState);
+  const chargeResolution = resolveBlueShockwaveActivation(
+    data.tutorialMap,
+    activatedState,
+    blueId
+  );
+  let enemyCheckpointState = recordTutorialPhase7EnemyActivation(
+    activatedState,
+    chargeResolution.battleState,
+    chargeResolution.event
+  );
+
+  const playerTurnState = {
+    ...enemyCheckpointState,
+    phase: "player_phase",
+    turnCount: enemyCheckpointState.turnCount + 1,
+    teamApCurrent: 4,
+    teamApCapacity: 4,
+    selectedUnitId: getBattleUnitId(enemyCheckpointState, "player", "guard"),
+    battleControlState: "unit_selected_movement",
+    playerUnits: enemyCheckpointState.playerUnits.map((unit) => {
+      if (unit.currentHP <= 0) return unit;
+      return {
+        ...unit,
+        originTile: { x: unit.tileX, y: unit.tileY },
+        startGrid: { x: unit.tileX, y: unit.tileY },
+        movementApCommitted: false,
+        movementLocked: false,
+        turnState: "ready",
+        hasActed: false
+      };
+    })
+  };
+
+  let nextState = recordTutorialPhase7PlayerTurnStart(
+    enemyCheckpointState,
+    playerTurnState
+  );
+  nextState = resolveEnemyCurrentIntent(nextState, blueId).battleState;
+  return nextState;
+}
+
 export function createTutorialPhaseJumpState(data, phaseNumber) {
   const validation = validateTutorialPhaseJumpInput(phaseNumber);
 
@@ -458,6 +612,8 @@ export function createTutorialPhaseJumpState(data, phaseNumber) {
       return buildPhase5Entry(freshState);
     case 6:
       return buildPhase6Entry(data, freshState);
+    case 7:
+      return buildPhase7Entry(data);
     default:
       throw new Error(PHASE_JUMP_ERROR);
   }
@@ -472,6 +628,12 @@ function normalizePlayerUnit(unit) {
     startGrid: unit.startGrid ? { ...unit.startGrid } : null,
     movementApCommitted: unit.movementApCommitted ?? false,
     movementLocked: unit.movementLocked ?? false,
+    statuses: (unit.statuses ?? [])
+      .map((status) => ({
+        statusId: status.statusId,
+        remainingPlayerTurns: status.remainingPlayerTurns
+      }))
+      .sort((a, b) => a.statusId.localeCompare(b.statusId)),
     turnState: unit.turnState ?? null,
     hasActed: unit.hasActed ?? false,
     alive: unit.currentHP > 0
@@ -479,18 +641,37 @@ function normalizePlayerUnit(unit) {
 }
 
 function normalizeEnemyUnit(unit) {
+  const currentIntent = unit.currentIntent
+    ? {
+        intentType: unit.currentIntent.intentType ?? null,
+        targetId: unit.currentIntent.targetId ?? null,
+        ...(unit.currentIntent.intentLabel != null
+          ? { intentLabel: unit.currentIntent.intentLabel }
+          : {}),
+        ...(unit.currentIntent.stateLabel != null
+          ? { stateLabel: unit.currentIntent.stateLabel }
+          : {})
+      }
+    : null;
+
+  const patternState = unit.patternState
+    ? {
+        active: unit.patternState.active !== false,
+        chargeProgress: unit.patternState.chargeProgress ?? null,
+        chargeGoal: unit.patternState.chargeGoal ?? null,
+        shockwaveRadius: unit.patternState.shockwaveRadius ?? null,
+        stunPlayerTurns: unit.patternState.stunPlayerTurns ?? null
+      }
+    : null;
+
   return {
     unitDefId: unit.unitDefId,
     currentHP: unit.currentHP,
     tileX: unit.tileX,
     tileY: unit.tileY,
     currentTargetId: unit.currentTargetId ?? null,
-    currentIntent: unit.currentIntent
-      ? {
-          intentType: unit.currentIntent.intentType ?? null,
-          targetId: unit.currentIntent.targetId ?? null
-        }
-      : null,
+    currentIntent,
+    patternState,
     alive: unit.currentHP > 0
   };
 }

@@ -6,6 +6,10 @@ import {
   BATTLE_TILE_GAP,
   BATTLE_TILE_PITCH
 } from "./battle/battleCameraLogic.js";
+import {
+  isBlueShockwaveEnemy,
+  getBlueShockwaveThreatTiles
+} from "../logic/battle/blueShockwaveLogic.js";
 
 function getTileLabel(tileCode) {
   if (tileCode === ".") return "";
@@ -651,6 +655,13 @@ export function renderMapGrid(
   validAttackTargets = [],
   attackCandidates = []
 ) {
+  const shockwaveThreatKeys = new Set(
+    (battleState?.enemyUnits ?? [])
+      .filter((enemy) => enemy.currentHP > 0 && isBlueShockwaveEnemy(enemy))
+      .flatMap((enemy) => getBlueShockwaveThreatTiles(mapData, battleState, enemy.battleUnitId))
+      .map((tile) => `${tile.x},${tile.y}`)
+  );
+
   const cells = mapData.tiles
     .flatMap((row, y) => {
       return row.map((tileCode, x) => {
@@ -817,6 +828,11 @@ const startGridMarker =
             ? "structure-destroyed"
             : "";
 
+        const shockwaveThreatClass =
+          shockwaveThreatKeys.has(`${x},${y}`)
+            ? "tile-shockwave-threat"
+            : "";
+
         return `
           <button
             class="
@@ -831,6 +847,7 @@ const startGridMarker =
               ${structureSelectedClass}
               ${structureObjectiveClass}
               ${structureDestroyedClass}
+              ${shockwaveThreatClass}
             "
             data-tile-x="${x}"
             data-tile-y="${y}"

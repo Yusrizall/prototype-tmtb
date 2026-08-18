@@ -32,6 +32,14 @@ import {
   resolveEnemyCurrentIntent
 } from "./logic/battle/enemyIntentLogic.js";
 import {
+  isBlueShockwaveEnemy,
+  resolveBlueShockwaveActivation
+} from "./logic/battle/blueShockwaveLogic.js";
+import {
+  isUnitStunned,
+  tickPlayerTurnStatuses
+} from "./logic/battle/statusLogic.js";
+import {
   evaluateEliminateAllObjective
 } from "./logic/battle/objectiveLogic.js";
 import {
@@ -86,9 +94,21 @@ import {
   recordTutorialPhase6PlayerMovement,
   recordTutorialPhase6BasicAttack,
   isTutorialPhase6BasicAttackTargetAllowed,
-  getTutorialPhase6RequiredActorFailure,
   getTutorialPhase6EnemyActivationMode
 } from "./logic/tutorial/tutorialPhase6Logic.js";
+import {
+  initializeTutorialPhase7Content,
+  recordTutorialPhase7PlayerMovement,
+  recordTutorialPhase7UnitSelection,
+  recordTutorialPhase7PlayerEndTurn,
+  prepareTutorialPhase7EnemyActivation,
+  recordTutorialPhase7EnemyActivation,
+  recordTutorialPhase7PlayerTurnStart,
+  recordTutorialPhase7PlayerAttack,
+  isTutorialPhase7CheckpointReady,
+  isTutorialPhase7BasicAttackTargetAllowed,
+  getTutorialRequiredActorFailure
+} from "./logic/tutorial/tutorialPhase7Logic.js";
 import {
   captureTutorialCheckpoint,
   restoreTutorialCheckpoint
@@ -96,6 +116,7 @@ import {
 import {
   createFreshTutorialBattleState,
   createTutorialPhaseJumpState,
+  createTutorialPhase7RetryCheckpointState,
   validateTutorialPhaseJumpInput
 } from "./logic/tutorial/tutorialPhaseJumpLogic.js";
 import { renderBattleHud } from "./ui/battle/battleHud.js";
@@ -236,14 +257,18 @@ function refreshEnemyReadabilityState(
       });
 
   enemyOrder.forEach((enemyId) => {
-    const targetResolution =
-      resolveEnemyCurrentTarget(
-        nextState,
-        enemyId
-      );
+    const enemy = nextState.enemyUnits.find((unit) => unit.battleUnitId === enemyId) ?? null;
 
-    nextState =
-      targetResolution.battleState;
+    if (!isBlueShockwaveEnemy(enemy)) {
+      const targetResolution =
+        resolveEnemyCurrentTarget(
+          nextState,
+          enemyId
+        );
+
+      nextState =
+        targetResolution.battleState;
+    }
 
     const intentResolution =
       resolveEnemyCurrentIntent(
@@ -359,6 +384,38 @@ function initializeTutorialPhase6RuntimeIfNeeded(
   return nextState;
 }
 
+function initializeTutorialPhase7RuntimeIfNeeded(
+  sourceState
+) {
+  const isPhase7Travel =
+    sourceState?.flowContext === "tutorial" &&
+    sourceState?.tutorialState?.phaseId ===
+      "phase_6_spear_defensive_cover_objective" &&
+    sourceState?.tutorialState?.taskId ===
+      "proceed_to_region_c";
+
+  const alreadyInitialized = Boolean(
+    sourceState?.tutorialState?.phase7Entities?.blueEnemyId
+  );
+
+  if (!isPhase7Travel || alreadyInitialized) {
+    return sourceState;
+  }
+
+  let nextState = initializeTutorialPhase7Content(
+    {
+      enemyUnits: appData.enemyUnits,
+      tutorialMap: appData.tutorialMap,
+      tutorialEncounter: appData.tutorialEncounter
+    },
+    sourceState
+  );
+
+  nextState = refreshEnemyReadabilityState(nextState);
+  assertTutorialBattlefieldState(appData.tutorialMap, nextState);
+  return nextState;
+}
+
 function enterEnemyPhase(nextState) {
   if (
     !nextState ||
@@ -436,9 +493,14 @@ function endPlayerTurn() {
   const previousBattleState =
     battleState;
 
+  const statusTickedBattleState =
+    tickPlayerTurnStatuses(
+      battleState
+    );
+
   const enemyPhaseBattleState =
     enterEnemyPhase(
-      battleState
+      statusTickedBattleState
     );
 
    const phase3TutorialBattleState =
@@ -453,10 +515,16 @@ function endPlayerTurn() {
       phase3TutorialBattleState
     );
 
-  battleState =
+  const phase6TutorialBattleState =
     recordTutorialPhase6EndTurn(
       previousBattleState,
       phase5TutorialBattleState
+    );
+
+  battleState =
+    recordTutorialPhase7PlayerEndTurn(
+      previousBattleState,
+      phase6TutorialBattleState
     );
 
   const tutorialTaskId =
@@ -487,7 +555,7 @@ function resolveEnemyPhaseActions() {
 
   const movementEvents = [];
   const attackEvents = [];
-  let phase6RequiredActorFailure = null;
+  let tutorialRequiredActorFailure = null;
 
   if (
     getTutorialPhase6EnemyActivationMode(
@@ -536,6 +604,55 @@ function resolveEnemyPhaseActions() {
 
     const stateBeforeActivation =
       stateAfterEnemyActions;
+
+    const currentEnemy =
+      stateAfterEnemyActions.enemyUnits.find((enemy) => {
+        return enemy.battleUnitId === enemyId;
+      }) ?? null;
+
+    if (isBlueShockwaveEnemy(currentEnemy)) {
+      const preparedBlueState =
+        prepareTutorialPhase7EnemyActivation(
+          stateAfterEnemyActions
+        );
+
+      const blueResolution =
+        resolveBlueShockwaveActivation(
+          getCurrentBattleMap(),
+          preparedBlueState,
+          enemyId
+        );
+
+      stateAfterEnemyActions =
+        refreshEnemyReadabilityState(
+          blueResolution.battleState
+        );
+
+      stateAfterEnemyActions =
+        recordTutorialPhase7EnemyActivation(
+          preparedBlueState,
+          stateAfterEnemyActions,
+          blueResolution.event
+        );
+
+      const requiredActorFailure =
+        getTutorialRequiredActorFailure(
+          stateAfterEnemyActions
+        );
+
+      if (requiredActorFailure.failed) {
+        tutorialRequiredActorFailure =
+          requiredActorFailure;
+        break;
+      }
+
+      console.log(
+        "Blue special activation resolved:",
+        blueResolution.event
+      );
+
+      continue;
+    }
 
     const targetResolution =
       resolveEnemyCurrentTarget(
@@ -655,12 +772,12 @@ function resolveEnemyPhaseActions() {
       );
 
     const requiredActorFailure =
-      getTutorialPhase6RequiredActorFailure(
+      getTutorialRequiredActorFailure(
         stateAfterEnemyActions
       );
 
     if (requiredActorFailure.failed) {
-      phase6RequiredActorFailure =
+      tutorialRequiredActorFailure =
         requiredActorFailure;
     }
 
@@ -700,12 +817,12 @@ function resolveEnemyPhaseActions() {
       }
     );
 
-    if (phase6RequiredActorFailure) {
+    if (tutorialRequiredActorFailure) {
       break;
     }
   }
 
-  if (phase6RequiredActorFailure) {
+  if (tutorialRequiredActorFailure) {
     battleState = {
       ...stateAfterEnemyActions,
       phase: "battle_end",
@@ -921,10 +1038,16 @@ function resolveEnemyPhaseActions() {
       phase3TutorialBattleState
     );
 
-  battleState =
+  const phase6TutorialBattleState =
     recordTutorialPhase6PlayerTurnStart(
       previousEnemyPhaseState,
       phase5TutorialBattleState
+    );
+
+  battleState =
+    recordTutorialPhase7PlayerTurnStart(
+      previousEnemyPhaseState,
+      phase6TutorialBattleState
     );
 
   const tutorialTaskId =
@@ -944,7 +1067,17 @@ function resolveEnemyPhaseActions() {
     tutorialTaskId ===
       "explain_cover_reduction" ||
     tutorialTaskId ===
-      "structure_intro"
+      "structure_intro" ||
+    tutorialTaskId ===
+      "introduce_blue_charge" ||
+    tutorialTaskId ===
+      "explain_charge_complete" ||
+    tutorialTaskId ===
+      "introduce_guard_stun" ||
+    tutorialTaskId ===
+      "explain_stun_persistence" ||
+    tutorialTaskId ===
+      "explain_guard_recovery"
   ) {
     scheduleTutorialBriefAdvance();
   }
@@ -997,13 +1130,21 @@ function canOpenActionMenu() {
 
   if (!selectedUnit) return false;
   if (battleState.phase !== "player_phase") return false;
-if (selectedUnit.currentHP <= 0) return false;
+  if (selectedUnit.currentHP <= 0) return false;
+  if (isUnitStunned(selectedUnit)) return false;
 
   return true;
 }
 
 function openActionMenu() {
   if (!canOpenActionMenu()) {
+    const selectedUnit = getSelectedPlayerUnit();
+    if (selectedUnit && isUnitStunned(selectedUnit)) {
+      battleState = {
+        ...battleState,
+        feedbackMessage: `${selectedUnit.name} is Stunned.`
+      };
+    }
     return;
   }
 
@@ -1292,6 +1433,20 @@ function confirmBasicAttack() {
     return null;
   }
 
+  if (
+    !isTutorialPhase7BasicAttackTargetAllowed(
+      battleState,
+      selectedTargetData
+    )
+  ) {
+    battleState = {
+      ...battleState,
+      feedbackMessage:
+        "Attack Blue with Archer."
+    };
+    return null;
+  }
+
   const resolution =
     resolveBasicAttack(
       battleState,
@@ -1547,13 +1702,20 @@ function performTutorialPhaseJump() {
 
   battleState = nextState;
 
-  latestTutorialCheckpoint =
-    validation.phaseNumber === 6
-      ? captureTutorialCheckpoint(
-          "cp6",
-          battleState
-        )
-      : null;
+  if (validation.phaseNumber === 6) {
+    latestTutorialCheckpoint = captureTutorialCheckpoint(
+      "cp6",
+      battleState
+    );
+  } else if (validation.phaseNumber === 7) {
+    const retryState = createTutorialPhase7RetryCheckpointState(appData);
+    latestTutorialCheckpoint = captureTutorialCheckpoint(
+      "cp7",
+      retryState
+    );
+  } else {
+    latestTutorialCheckpoint = null;
+  }
 
   tutorialPhaseJumpUiState = {
     open: false,
@@ -2283,7 +2445,7 @@ function handleBattleResultPrimaryAction() {
     ) {
       if (!latestTutorialCheckpoint) {
         throw new Error(
-          "CP6 checkpoint tidak tersedia untuk retry Tutorial."
+          "Tutorial checkpoint tidak tersedia untuk retry."
         );
       }
 
@@ -3469,10 +3631,22 @@ function handleAttackTargetingInput(event, key) {
         phase5TutorialBattleState
       );
 
-    battleState =
+    const phase6TutorialBattleState =
       recordTutorialPhase6BasicAttack(
         previousBattleState,
         phase6InitializedBattleState,
+        attackResult
+      );
+
+    const phase7InitializedBattleState =
+      initializeTutorialPhase7RuntimeIfNeeded(
+        phase6TutorialBattleState
+      );
+
+    battleState =
+      recordTutorialPhase7PlayerAttack(
+        previousBattleState,
+        phase7InitializedBattleState,
         attackResult
       );
 
@@ -3654,7 +3828,37 @@ function scheduleTutorialBriefAdvance() {
   nextTutorialTaskId ===
     "explain_spear_spacing" ||
   nextTutorialTaskId ===
-    "structure_targeting_intro";
+    "structure_targeting_intro" ||
+  nextTutorialTaskId ===
+    "explain_charge_progress" ||
+  nextTutorialTaskId ===
+    "explain_charge_delayed_payoff" ||
+  nextTutorialTaskId ===
+    "explain_charge_preparation_window" ||
+  nextTutorialTaskId ===
+    "explain_charge_next_intent" ||
+  nextTutorialTaskId ===
+    "end_turn_for_second_charge" ||
+  nextTutorialTaskId ===
+    "explain_shockwave_current_intent" ||
+  nextTutorialTaskId ===
+    "explain_shockwave_stun" ||
+  nextTutorialTaskId ===
+    "move_archer_to_safety" ||
+  nextTutorialTaskId ===
+    "end_turn_for_shockwave" ||
+  nextTutorialTaskId ===
+    "explain_stun_duration_2" ||
+  nextTutorialTaskId ===
+    "explain_stun_shared_ap" ||
+  nextTutorialTaskId ===
+    "switch_to_archer_for_stun_adaptation" ||
+  nextTutorialTaskId ===
+    "explain_stun_duration_1" ||
+  nextTutorialTaskId ===
+    "end_turn_for_recovery" ||
+  nextTutorialTaskId ===
+    "phase_7_complete_hold";
 
     if (
       shouldContinueBriefChain
@@ -3726,11 +3930,30 @@ const phase5TutorialBattleState =
     phase4TutorialBattleState
   );
 
-battleState =
+const phase6TutorialBattleState =
   recordTutorialPhase6PlayerMovement(
     previousBattleState,
     phase5TutorialBattleState
   );
+
+const phase7InitializedBattleState =
+  initializeTutorialPhase7RuntimeIfNeeded(
+    phase6TutorialBattleState
+  );
+
+battleState =
+  recordTutorialPhase7PlayerMovement(
+    previousBattleState,
+    phase7InitializedBattleState
+  );
+
+if (isTutorialPhase7CheckpointReady(battleState)) {
+  latestTutorialCheckpoint =
+    captureTutorialCheckpoint(
+      "cp7",
+      battleState
+    );
+}
 
 const tutorialTaskId =
   battleState
@@ -3757,7 +3980,9 @@ if (
   tutorialTaskId ===
     "explain_dynamic_intent" ||
   tutorialTaskId ===
-    "explain_recovered_intent"
+    "explain_recovered_intent" ||
+  tutorialTaskId ===
+    "preserve_guard_in_shockwave"
 ) {
   scheduleTutorialBriefAdvance();
 }
@@ -3777,9 +4002,14 @@ if (
       switchedBattleState
     );
 
-  battleState =
+  const phase6SelectionState =
     recordTutorialPhase6UnitSelection(
       phase1To5SelectionState
+    );
+
+  battleState =
+    recordTutorialPhase7UnitSelection(
+      phase6SelectionState
     );
 
   requestBattlefieldCameraFocusOnUnit(

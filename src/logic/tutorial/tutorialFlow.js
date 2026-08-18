@@ -4,6 +4,12 @@ import {
   shouldPauseTutorialPhase6EnemyResolution
 } from "./tutorialPhase6Logic.js";
 
+import {
+  advanceTutorialPhase7Brief,
+  isTutorialPhase7InputAllowed,
+  shouldPauseTutorialPhase7EnemyResolution
+} from "./tutorialPhase7Logic.js";
+
 const LOOK_DIRECTION_THRESHOLD = 24;
 const PHASE_2_GUARD_TARGET_A = {
   x: 3,
@@ -1091,6 +1097,15 @@ export function advanceTutorialBrief(
       "phase_6_spear_defensive_cover_objective"
   ) {
     return advanceTutorialPhase6Brief(
+      battleState
+    );
+  }
+
+  if (
+    tutorialState.phaseId ===
+      "phase_7_status_temporal_threat"
+  ) {
+    return advanceTutorialPhase7Brief(
       battleState
     );
   }
@@ -4104,6 +4119,16 @@ export function shouldPauseTutorialEnemyResolution(
   }
 
   if (
+    isTutorialBattle(battleState) &&
+    battleState.tutorialState.phaseId ===
+      "phase_7_status_temporal_threat"
+  ) {
+    return shouldPauseTutorialPhase7EnemyResolution(
+      battleState
+    );
+  }
+
+  if (
     !isTutorialBattle(
       battleState
     ) ||
@@ -4405,6 +4430,16 @@ export function isTutorialInputAllowed(
       "phase_6_spear_defensive_cover_objective"
   ) {
     return isTutorialPhase6InputAllowed(
+      battleState,
+      inputType
+    );
+  }
+
+  if (
+    tutorialState.phaseId ===
+      "phase_7_status_temporal_threat"
+  ) {
+    return isTutorialPhase7InputAllowed(
       battleState,
       inputType
     );

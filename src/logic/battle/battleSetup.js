@@ -172,6 +172,7 @@ function createBattleUnit(
 
     turnState: "ready",
     hasActed: false,
+    statuses: [],
 
     derivedStats,
 
