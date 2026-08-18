@@ -2170,3 +2170,59 @@ div > span {
 .battle-result-training-failed h2 {
   color: #fbbf24;
 }
+
+/* PROTOTYPE ONLY / NON UNITY Tutorial Phase Jump debug overlay. */
+.tutorial-phase-jump-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(0 0 0 / 0.68);
+}
+
+.tutorial-phase-jump-modal {
+  width: min(420px, 100%);
+  padding: 24px;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  background: #111820;
+  box-shadow: 0 18px 60px rgb(0 0 0 / 0.4);
+}
+
+.tutorial-phase-jump-eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.tutorial-phase-jump-modal h2 {
+  margin: 0 0 16px;
+  font-size: 1.15rem;
+}
+
+.tutorial-phase-jump-modal input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+.tutorial-phase-jump-available,
+.tutorial-phase-jump-error {
+  margin: 10px 0 0;
+  font-size: 0.86rem;
+}
+
+.tutorial-phase-jump-error {
+  font-weight: 700;
+}
+
+.tutorial-phase-jump-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}

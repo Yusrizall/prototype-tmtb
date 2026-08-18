@@ -966,12 +966,68 @@ const primaryButtonDisabled =
   `;
 }
 
+
+function escapeTutorialPhaseJumpValue(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function renderTutorialPhaseJumpOverlay(uiState) {
+  if (!uiState?.open) {
+    return "";
+  }
+
+  const phaseInput =
+    escapeTutorialPhaseJumpValue(
+      uiState.phaseInput
+    );
+
+  const errorMessage =
+    uiState.errorMessage
+      ? `<p class="tutorial-phase-jump-error">${uiState.errorMessage}</p>`
+      : "";
+
+  return `
+    <section
+      class="tutorial-phase-jump-overlay"
+      data-tutorial-phase-jump-overlay
+    >
+      <div class="tutorial-phase-jump-modal">
+        <p class="tutorial-phase-jump-eyebrow">
+          PROTOTYPE ONLY - NON UNITY
+        </p>
+        <h2>Skip to tutorial phase:</h2>
+        <input
+          type="number"
+          min="1"
+          max="6"
+          step="1"
+          value="${phaseInput}"
+          data-tutorial-phase-jump-input
+          aria-label="Tutorial phase number"
+        />
+        <p class="tutorial-phase-jump-available">
+          Available phases: 1–6
+        </p>
+        ${errorMessage}
+        <div class="tutorial-phase-jump-actions">
+          <button type="button" data-tutorial-phase-jump-go>GO</button>
+          <button type="button" data-tutorial-phase-jump-cancel>CANCEL</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
 export function renderBattleHud(
   data,
   battleState,
   movementTiles = [],
   validAttackTargets = [],
-  attackCandidates = []
+  attackCandidates = [],
+  tutorialPhaseJumpUiState = null
 ) {
   const actionMenuClass =
     battleState.battleControlState === "action_menu_open"
@@ -1008,6 +1064,9 @@ export function renderBattleHud(
       ${renderCommandBand(battleState)}
       ${renderInputHintBar(battleState)}
       ${renderBattleResultOverlay(battleState)}
+      ${renderTutorialPhaseJumpOverlay(
+        tutorialPhaseJumpUiState
+      )}
 </main>
   `;
 }

@@ -54,7 +54,6 @@ import {
   markRunDefeated
 } from "./logic/run/runState.js";
 import {
-  createInitialTutorialState,
   recordTutorialLookMovement,
   recordTutorialUnitSelection,
   recordTutorialPlayerMovement,
@@ -94,6 +93,11 @@ import {
   captureTutorialCheckpoint,
   restoreTutorialCheckpoint
 } from "./logic/tutorial/tutorialCheckpointLogic.js";
+import {
+  createFreshTutorialBattleState,
+  createTutorialPhaseJumpState,
+  validateTutorialPhaseJumpInput
+} from "./logic/tutorial/tutorialPhaseJumpLogic.js";
 import { renderBattleHud } from "./ui/battle/battleHud.js";
 import {
   getBattleCameraTileBounds,
@@ -124,7 +128,14 @@ let runState = null;
 let battleIntroNodeId = null;
 let battleState = null;
 let enemyPhaseTimerId = null;
+let tutorialBriefTimerId = null;
 let latestTutorialCheckpoint = null;
+
+let tutorialPhaseJumpUiState = {
+  open: false,
+  phaseInput: "1",
+  errorMessage: null
+};
 
 let battlefieldCameraState = {
   initialized: false,
@@ -1424,6 +1435,174 @@ function clearEnemyPhaseTimer() {
   enemyPhaseTimerId = null;
 }
 
+function clearTutorialBriefTimer() {
+  if (tutorialBriefTimerId === null) {
+    return;
+  }
+
+  window.clearTimeout(
+    tutorialBriefTimerId
+  );
+  tutorialBriefTimerId = null;
+}
+
+function canUseTutorialPhaseJump() {
+  return (
+    currentScene === "battle" &&
+    battleState?.flowContext ===
+      "tutorial"
+  );
+}
+
+function focusTutorialPhaseJumpInput() {
+  const input =
+    document.querySelector(
+      "[data-tutorial-phase-jump-input]"
+    );
+
+  if (!input) {
+    return;
+  }
+
+  input.focus();
+  input.select();
+}
+
+function openTutorialPhaseJump() {
+  if (!canUseTutorialPhaseJump()) {
+    return;
+  }
+
+  clearEnemyPhaseTimer();
+  clearTutorialBriefTimer();
+  battlefieldCameraDragState = null;
+
+  tutorialPhaseJumpUiState = {
+    ...tutorialPhaseJumpUiState,
+    open: true,
+    errorMessage: null
+  };
+
+  renderApp();
+  focusTutorialPhaseJumpInput();
+}
+
+function closeTutorialPhaseJump() {
+  if (!tutorialPhaseJumpUiState.open) {
+    return;
+  }
+
+  tutorialPhaseJumpUiState = {
+    ...tutorialPhaseJumpUiState,
+    open: false,
+    errorMessage: null
+  };
+
+  renderApp();
+  scheduleTutorialBriefAdvance();
+}
+
+function performTutorialPhaseJump() {
+  if (!canUseTutorialPhaseJump()) {
+    return;
+  }
+
+  const validation =
+    validateTutorialPhaseJumpInput(
+      tutorialPhaseJumpUiState
+        .phaseInput
+    );
+
+  if (!validation.valid) {
+    tutorialPhaseJumpUiState = {
+      ...tutorialPhaseJumpUiState,
+      errorMessage:
+        validation.errorMessage
+    };
+
+    renderApp();
+    focusTutorialPhaseJumpInput();
+    return;
+  }
+
+  clearEnemyPhaseTimer();
+  clearTutorialBriefTimer();
+  resetBattlefieldCameraState();
+
+  let nextState =
+    createTutorialPhaseJumpState(
+      appData,
+      validation.phaseNumber
+    );
+
+  nextState =
+    refreshEnemyReadabilityState(
+      nextState
+    );
+
+  assertTutorialBattlefieldState(
+    appData.tutorialMap,
+    nextState
+  );
+
+  battleState = nextState;
+
+  latestTutorialCheckpoint =
+    validation.phaseNumber === 6
+      ? captureTutorialCheckpoint(
+          "cp6",
+          battleState
+        )
+      : null;
+
+  tutorialPhaseJumpUiState = {
+    open: false,
+    phaseInput: String(
+      validation.phaseNumber
+    ),
+    errorMessage: null
+  };
+
+  renderApp();
+  scheduleTutorialBriefAdvance();
+}
+
+function handleTutorialPhaseJumpKeyboardInput(
+  event,
+  key
+) {
+  if (tutorialPhaseJumpUiState.open) {
+    if (
+      key === "p" ||
+      key === "escape"
+    ) {
+      event.preventDefault();
+      closeTutorialPhaseJump();
+      return true;
+    }
+
+    if (key === "enter") {
+      event.preventDefault();
+      performTutorialPhaseJump();
+      return true;
+    }
+
+    event.stopPropagation();
+    return true;
+  }
+
+  if (
+    key === "p" &&
+    canUseTutorialPhaseJump()
+  ) {
+    event.preventDefault();
+    openTutorialPhaseJump();
+    return true;
+  }
+
+  return false;
+}
+
 function openMainMenu() {
   battleIntroNodeId = null;
 
@@ -1476,33 +1655,19 @@ currentScene = "main_menu";
 
 function startTutorialBattle() {
   clearEnemyPhaseTimer();
+  clearTutorialBriefTimer();
   resetBattlefieldCameraState();
   latestTutorialCheckpoint = null;
-
-  const tutorialBattleData = {
-  ...appData,
-
-  stage1Map:
-    appData.tutorialMap,
-
-  stage1Encounter:
-    appData.tutorialEncounter
-};
-
-  const initialTutorialBattleState = {
-    ...createInitialBattleState(
-      tutorialBattleData
-    ),
-
-    stageId: "tutorial_stage",
-    flowContext: "tutorial",
-
-    tutorialState:
-      createInitialTutorialState(),
-
-    encounterName:
-      "Tutorial Stage (Placeholder)"
+  tutorialPhaseJumpUiState = {
+    open: false,
+    phaseInput: "1",
+    errorMessage: null
   };
+
+  const initialTutorialBattleState =
+    createFreshTutorialBattleState(
+      appData
+    );
 
   assertTutorialBattlefieldState(
     appData.tutorialMap,
@@ -2529,6 +2694,53 @@ function attachBattleEvents() {
 
   attachBattlefieldCameraEvents();
 
+  const phaseJumpInput =
+    document.querySelector(
+      "[data-tutorial-phase-jump-input]"
+    );
+
+  if (phaseJumpInput) {
+    phaseJumpInput.addEventListener(
+      "input",
+      (event) => {
+        tutorialPhaseJumpUiState = {
+          ...tutorialPhaseJumpUiState,
+          phaseInput:
+            event.target.value,
+          errorMessage: null
+        };
+      }
+    );
+  }
+
+  const phaseJumpGoButton =
+    document.querySelector(
+      "[data-tutorial-phase-jump-go]"
+    );
+
+  if (phaseJumpGoButton) {
+    phaseJumpGoButton.addEventListener(
+      "click",
+      () => {
+        performTutorialPhaseJump();
+      }
+    );
+  }
+
+  const phaseJumpCancelButton =
+    document.querySelector(
+      "[data-tutorial-phase-jump-cancel]"
+    );
+
+  if (phaseJumpCancelButton) {
+    phaseJumpCancelButton.addEventListener(
+      "click",
+      () => {
+        closeTutorialPhaseJump();
+      }
+    );
+  }
+
   const resultPrimaryButton =
     document.querySelector(
       '[data-action="battle-result-primary"]'
@@ -3029,13 +3241,17 @@ document.querySelector(
   battleRenderData,
   battleState,
   movementTiles,
-    validAttackTargets,
-  attackCandidates
+  validAttackTargets,
+  attackCandidates,
+  tutorialPhaseJumpUiState
 );
 
   attachBattleEvents();
   updateBattlefieldCamera();
-  scheduleEnemyPhaseResolution();
+
+  if (!tutorialPhaseJumpUiState.open) {
+    scheduleEnemyPhaseResolution();
+  }
 }
 
 function renderApp() {
@@ -3044,6 +3260,7 @@ function renderApp() {
 
   if (currentScene !== "battle") {
     clearEnemyPhaseTimer();
+    clearTutorialBriefTimer();
   }
 
   if (currentScene === "title") {
@@ -3371,10 +3588,18 @@ function handleActionMenuInput(event, key) {
 }
 
 function scheduleTutorialBriefAdvance() {
-  window.setTimeout(() => {
+  if (tutorialBriefTimerId !== null) {
+    return;
+  }
+
+  tutorialBriefTimerId =
+    window.setTimeout(() => {
+      tutorialBriefTimerId = null;
+
     if (
       currentScene !== "battle" ||
-      !battleState
+      !battleState ||
+      tutorialPhaseJumpUiState.open
     ) {
       return;
     }
@@ -3593,6 +3818,10 @@ function handleTutorialMouseMove(
     currentScene !== "battle" ||
     !battleState
   ) {
+    return;
+  }
+
+  if (tutorialPhaseJumpUiState.open) {
     return;
   }
 
@@ -3836,6 +4065,15 @@ function handleKeyboardInput(event) {
   if (
     currentScene !== "battle" ||
     !battleState
+  ) {
+    return;
+  }
+
+  if (
+    handleTutorialPhaseJumpKeyboardInput(
+      event,
+      key
+    )
   ) {
     return;
   }

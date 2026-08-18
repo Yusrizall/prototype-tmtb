@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:phase6": "node --test tests/phase6/*.test.mjs"
+    "test:phase6": "node --test tests/phase6/*.test.mjs",
+    "test:phasejump": "node --test tests/phaseJump/*.test.mjs",
+    "test:tutorial": "npm run test:phase6 && npm run test:phasejump"
   },
   "devDependencies": {
     "vite": "^8.0.12"
