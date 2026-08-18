@@ -1,3 +1,12 @@
+import {
+  getTacticalPositionState
+} from "../logic/battle/tacticalPositionLogic.js";
+import {
+  BATTLE_TILE_SIZE,
+  BATTLE_TILE_GAP,
+  BATTLE_TILE_PITCH
+} from "./battle/battleCameraLogic.js";
+
 function getTileLabel(tileCode) {
   if (tileCode === ".") return "";
 
@@ -284,10 +293,10 @@ function renderAttackLine(
   const target =
     selectedTargetData.unit;
 
-  const tileSize = 80;
-  const tileGap = 8;
+  const tileSize = BATTLE_TILE_SIZE;
+  const tileGap = BATTLE_TILE_GAP;
   const tilePitch =
-    tileSize + tileGap;
+    BATTLE_TILE_PITCH;
 
   const gridWidth =
     mapData.width * tileSize +
@@ -534,6 +543,26 @@ export function renderMapGrid(
   const cells = mapData.tiles
     .flatMap((row, y) => {
       return row.map((tileCode, x) => {
+        const tacticalPositionState =
+          getTacticalPositionState(
+            mapData,
+            battleState,
+            x,
+            y
+          );
+
+        if (
+          tacticalPositionState !==
+            "active"
+        ) {
+          return `
+            <div
+              class="map-tile-inactive"
+              aria-hidden="true"
+            ></div>
+          `;
+        }
+
         const tileClass =
           getTileClass(tileCode);
 
@@ -643,8 +672,16 @@ ${renderUnitToken(
     .join("");
 
   const gridPixelWidth =
-    mapData.width * 80 +
-    (mapData.width - 1) * 8;
+    mapData.width *
+      BATTLE_TILE_SIZE +
+    (mapData.width - 1) *
+      BATTLE_TILE_GAP;
+
+  const gridPixelHeight =
+    mapData.height *
+      BATTLE_TILE_SIZE +
+    (mapData.height - 1) *
+      BATTLE_TILE_GAP;
 
   return `
     <section class="map-section">
@@ -657,30 +694,42 @@ ${renderUnitToken(
       </div>
 
       <div
-        class="map-grid-stage"
-        style="width: ${gridPixelWidth}px;"
+        class="battlefield-viewport"
+        data-battlefield-viewport
       >
-       ${renderAttackLine(
-          mapData,
-          battleState,
-          validAttackTargets,
-          attackCandidates
-        )}
-
         <div
-          class="map-grid"
+          class="map-grid-stage"
+          data-battlefield-world
           style="
-            grid-template-columns:
-            repeat(${mapData.width}, 80px);
+            width: ${gridPixelWidth}px;
+            height: ${gridPixelHeight}px;
           "
         >
-          ${cells}
+         ${renderAttackLine(
+            mapData,
+            battleState,
+            validAttackTargets,
+            attackCandidates
+          )}
+
+          <div
+            class="map-grid"
+            style="
+              grid-template-columns:
+              repeat(
+                ${mapData.width},
+                ${BATTLE_TILE_SIZE}px
+              );
+            "
+          >
+            ${cells}
+          </div>
         </div>
       </div>
 
       ${renderMapLegend(
-  battleState
-)}
+        battleState
+      )}
     </section>
   `;
 }
