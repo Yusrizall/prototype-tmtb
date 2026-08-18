@@ -36,12 +36,12 @@ test("Phase Jump popup is absent when debug state is closed", () => {
   assert.equal(html.includes("data-tutorial-phase-jump-overlay"), false);
 });
 
-test("Phase Jump popup renders PROTOTYPE ONLY controls for phases 1-6", () => {
+test("Phase Jump popup renders PROTOTYPE ONLY controls for phases 1-7", () => {
   const html = render({ open: true, phaseInput: "6", errorMessage: null });
   assert.equal(html.includes("data-tutorial-phase-jump-overlay"), true);
   assert.equal(html.includes("PROTOTYPE ONLY - NON UNITY"), true);
   assert.equal(html.includes("Skip to tutorial phase:"), true);
-  assert.equal(html.includes("Available phases: 1–6"), true);
+  assert.equal(html.includes("Available phases: 1–7"), true);
   assert.equal(html.includes('value="6"'), true);
   assert.equal(html.includes("data-tutorial-phase-jump-go"), true);
   assert.equal(html.includes("data-tutorial-phase-jump-cancel"), true);
@@ -53,8 +53,8 @@ test("Phase Jump popup renders inline validation error", () => {
   const html = render({
     open: true,
     phaseInput: "9",
-    errorMessage: "Available tutorial phases: 1–6."
+    errorMessage: "Available tutorial phases: 1–7."
   });
-  assert.equal(html.includes("Available tutorial phases: 1–6."), true);
+  assert.equal(html.includes("Available tutorial phases: 1–7."), true);
   assert.equal(html.includes("tutorial-phase-jump-error"), true);
 });
