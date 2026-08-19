@@ -5,8 +5,8 @@
 **Development Group:** BeCan
 **Primary Game:** 3D Turn-Based Tactics
 **Target Production Environment:** Unity
-**Version:** 3.3
-**Last Updated:** 19 August 2026
+**Version:** 3.2
+**Last Updated:** 18 August 2026
 **Status:** **CANONICAL LIVING GAME DESIGN DOCUMENT**
 
 ---
@@ -87,7 +87,7 @@ This document consolidates design context from:
 - the Tutorial T1–T3 / Prototype Validation Scope correction pass completed on 11 August 2026;
 - the reviewed Tutorial Phase 6–8 / Objective / progressive-battlefield design consolidation completed on 16 August 2026.
 
-This v3.3 document carries forward v3.2 and adds a targeted post-implementation Tutorial clarification migration based on explicit Game Designer decisions and runtime validation through 19 August 2026. It preserves the v3.2 canonical migration while correcting Tutorial Phase 6 sequencing, clarifying Phase 7 Charge teaching language, and clarifying Phase 8 graduation guidance after prototype validation. It updates Tutorial architecture, Structure/Objective direction, Spear Tutorial placement, controlled Status/Charge onboarding, Wave/graduation direction, and Tutorial casualty/orchestration policy while preserving detailed choreography, coordinates, PVS numbers, and implementation truth in supporting/implementation-facing documentation.
+This v3.2 document carries forward v3.1 and performs the targeted canonical migration defined by the reviewed Canonical Migration Matrix. It updates Tutorial architecture, Structure/Objective direction, Spear Tutorial placement, controlled Status/Charge onboarding, Wave/graduation direction, and Tutorial casualty/orchestration policy while preserving detailed choreography, coordinates, PVS numbers, and implementation truth in supporting/implementation-facing documentation.
 
 Migration rules:
 
@@ -3759,11 +3759,8 @@ Phase 6 introduces three competencies in dependency order:
 ```text
 Basic Spear pressure
 → Defensive Cover
-→ finish / defeat Spear
 → Objective / Structure literacy
 ```
-
-**Post-v3.2 clarification:** the Spear lesson is completed before the Structure lesson begins. The earlier v3.2 wording that allowed Structure-vs-Spear priority to remain free after the first Structure interaction is **SUPERSEDED for the current authored Tutorial flow**.
 
 ### Spear
 
@@ -3802,14 +3799,11 @@ After defensive-Cover evidence, the first meaningful Tutorial Objective is intro
 Current lesson direction:
 
 ```text
-Defensive Cover evidence complete
-→ Spear must be defeated
-→ empty/normal turn boundary as authored
-→ Objective: Destroy the Structure/Hut
+Objective: Destroy the Structure/Hut
 → first Structure Attack guided
 → normal Attack targeting resolves real Structure damage
 → Tutorial Input Gate released
-→ Player finishes the Structure through normal combat rules
+→ Player may prioritize Structure, Spear, repositioning, or a mixture
 ```
 
 The learning target is:
@@ -3818,7 +3812,7 @@ The learning target is:
 
 The Tutorial does not need a separate Protect-Structure lesson now.
 
-Phase 6 is complete after the Spear lesson has been resolved and the required Structure is destroyed. The current authored Tutorial order requires the Spear to be defeated before Structure teaching begins; this sequencing is Tutorial pedagogy, not a universal combat-priority rule.
+Phase 6 is complete only after the required Structure is destroyed and the Spear is defeated. After the first guided Structure interaction, the order of those remaining priorities is intentionally not prescribed.
 
 ### Status
 
@@ -3877,9 +3871,9 @@ Charge progress is shown as current multi-activation behaviour.
 CHARGE X/Y
 ```
 
-`CHARGE` is an enemy Intent that builds over multiple Enemy activations. `X/Y` communicates progress toward completion. A Charge activation advances preparation; it does not resolve the prepared payoff on the same activation. When Charge progress completes, the prepared action becomes the enemy's next/current readable Intent.
+remains Charge until the Charge action/progress is actually complete. The payoff is not prematurely previewed as the next Intent.
 
-When Shockwave becomes Current Intent, its threat/effect becomes readable. Avoid wording such as “Intent becomes full”; the progress completes, then the prepared payoff becomes Current Intent.
+When Shockwave becomes Current Intent, its threat/effect becomes readable.
 
 ### Controlled first Stun evidence
 
@@ -3924,14 +3918,9 @@ Current direction uses:
 first required Wave
 → guided exposure to Telegraph/reservation/preparation
 
-later required Wave
-→ unassisted confirmation / free-play release
-
-additional required Wave pressure may continue during free play
-when prototype validation shows the graduation needs more combined pressure
+next required Wave
+→ unassisted confirmation
 ```
-
-The exact Wave count, roster, geometry, and timing remain supporting/PVS detail. The current prototype validation uses an additional later Wave after runtime evidence showed the earlier two-Wave composition was too easy under concentrated Archer AP play; this is not a universal main-game Wave-count rule.
 
 The first Wave should use already-known enemy pressure so the new lesson remains the Wave system rather than a new enemy archetype.
 
@@ -3939,7 +3928,7 @@ Exact current paper composition/timing remains supporting/PVS detail rather than
 
 ### Free-play release
 
-When the later Wave Telegraph is presented, **step-by-step tactical Tutorial guidance** is removed. A short high-level graduation prompt may remain to frame the exercise without prescribing a tactical solution.
+When the later Wave Telegraph is presented, tactical Tutorial guidance is removed.
 
 The Player continues with normal combat information:
 
@@ -3956,8 +3945,7 @@ The Player continues with normal combat information:
 Principle:
 
 ```text
-No step-by-step tactical guidance
-≠ No high-level graduation framing
+No Tutorial guidance
 ≠ No combat information
 ```
 
@@ -4130,25 +4118,19 @@ Phase 8 Wave / free-play graduation
 → current authored design
 
 Detailed geometry / PVS numbers / exact copy / runtime choreography
-→ supporting baseline + latest validation-update handoff
+→ supporting baseline
 
 Main-game LOS role
 → PLANNED FUTURE REVIEW / DEFERRED CURRENT PRIORITY
 ```
 
-Detailed Tutorial authority is layered:
+The detailed authoritative supporting reference for current Tutorial choreography/validation assumptions remains:
 
-```text
-TMTB_TUTORIAL_DESIGN_BASELINE_2026-08-16_v1.1.md
-→ pre-implementation consolidated baseline
-
-TMTB_TUTORIAL_PHASE8_VALIDATION_UPDATE_2026-08-19_v1.md
-→ post-baseline implementation/playtest delta; newer explicit decisions override conflicting baseline detail
-```
+`TMTB_TUTORIAL_DESIGN_BASELINE_2026-08-16_v1.1.md`
 
 ### Status
 
-**CURRENT CANONICAL TUTORIAL CONTEXT — v3.3**
+**CURRENT CANONICAL TUTORIAL CONTEXT — v3.2**
 
 ---
 
@@ -4771,7 +4753,7 @@ A prototype implementation that conflicts with Game Design Context may represent
 
 This is a living canonical game-design document.
 
-Version 3.3 performs the targeted migration of the reviewed 16 August Tutorial/Objectives baseline into canonical context. It updates current Tutorial architecture and orchestration, Structure/Objective direction, Spear placement, Blue/Status/Charge Tutorial role, Wave/graduation direction, and Tutorial casualty policy while intentionally leaving exact choreography, map coordinates, PVS values, and implementation truth in supporting/implementation-facing documentation. The 18 August LOS decision is deliberately a hold: a future Tactical Space / LOS review is planned, while no new universal LOS rule is made in this revision.
+Version 3.2 performs the targeted migration of the reviewed 16 August Tutorial/Objectives baseline into canonical context. It updates current Tutorial architecture and orchestration, Structure/Objective direction, Spear placement, Blue/Status/Charge Tutorial role, Wave/graduation direction, and Tutorial casualty policy while intentionally leaving exact choreography, map coordinates, PVS values, and implementation truth in supporting/implementation-facing documentation. The 18 August LOS decision is deliberately a hold: a future Tactical Space / LOS review is planned, while no new universal LOS rule is made in this revision.
 
 Update it when:
 
@@ -4805,7 +4787,7 @@ When migrating from a working handoff:
 
 # Part XVIII — Post-Migration Documentation Boundary
 
-Version 3.3 carries forward the v3.2 migration and adds the targeted post-implementation Tutorial clarification pass completed on 19 August 2026.
+Version 3.2 completes the targeted canonical migration of the reviewed 16 August Tutorial/Objectives baseline.
 
 Canonical recovery should now be able to identify:
 
@@ -4821,15 +4803,9 @@ Phase 8 Wave / graduation / free-play direction
 Tutorial casualty boundary
 ```
 
-Detailed Tutorial choreography, coordinates, PVS values, candidate Wave composition/timing, and validation-specific state remain owned by the supporting layer:
+Detailed Tutorial choreography, coordinates, PVS values, candidate Wave composition/timing, and validation-specific state remain owned by:
 
-```text
-TMTB_TUTORIAL_DESIGN_BASELINE_2026-08-16_v1.1.md
-+
-TMTB_TUTORIAL_PHASE8_VALIDATION_UPDATE_2026-08-19_v1.md
-```
-
-For conflicting post-baseline Phase 6–8 detail, the 19 August validation update is newer.
+`TMTB_TUTORIAL_DESIGN_BASELINE_2026-08-16_v1.1.md`
 
 Prototype implementation truth and implementation resume planning must be recovered from actual source/runtime and implementation-facing documentation, not from this Game Design Context.
 
