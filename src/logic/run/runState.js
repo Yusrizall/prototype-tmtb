@@ -1,3 +1,11 @@
+import {
+  isMatchingRunBattleResult
+} from "../battle/battleResultState.js";
+import {
+  generateBuffOffers,
+  getBuffDefinitions
+} from "./buffSystem.js";
+
 const STAGE_2_POOL = [
   {
     nodeId: "r1_s2_a",
@@ -149,65 +157,6 @@ const STAGE_4_NODE = {
 
   pathRole: "region_completion"
 };
-
-const PROTOTYPE_REWARD_POOL = [
-  {
-    rewardId: "reward_guard_max_hp",
-    name: "Guard Max HP",
-    category: "Guard",
-    description:
-      "Placeholder reward. Effect belum aktif."
-  },
-  {
-    rewardId: "reward_guard_atk",
-    name: "Guard ATK",
-    category: "Guard",
-    description:
-      "Placeholder reward. Effect belum aktif."
-  },
-  {
-    rewardId: "reward_guard_def",
-    name: "Guard DEF",
-    category: "Guard",
-    description:
-      "Placeholder reward. Effect belum aktif."
-  },
-  {
-    rewardId: "reward_archer_max_hp",
-    name: "Archer Max HP",
-    category: "Archer",
-    description:
-      "Placeholder reward. Effect belum aktif."
-  },
-  {
-    rewardId: "reward_archer_atk",
-    name: "Archer ATK",
-    category: "Archer",
-    description:
-      "Placeholder reward. Effect belum aktif."
-  },
-  {
-    rewardId: "reward_archer_def",
-    name: "Archer DEF",
-    category: "Archer",
-    description:
-      "Placeholder reward. Effect belum aktif."
-  },
-  {
-    rewardId: "reward_party_recovery",
-    name: "Party Recovery",
-    category: "Party",
-    description:
-      "Placeholder reward. Effect belum aktif."
-  },
-  {
-    rewardId: "reward_bonus_crystal",
-    name: "Bonus Run Crystal",
-    category: "Run",
-    description:
-      "Placeholder reward. Effect belum aktif."
-  }
-];
 
 function cloneData(value) {
   return JSON.parse(
@@ -419,8 +368,13 @@ blockedNodeIds: [],
 chosenRewardIds: [],
 rewardGrantedNodeIds: [],
 
+availableBuffIds:
+  getBuffDefinitions().map((buff) => buff.buffId),
+
 pendingRewardSourceNodeId: null,
 pendingRewardOptions: [],
+
+lastBattleResult: null,
 
 activeRunBuffs: []
   };
@@ -551,7 +505,8 @@ export function markRunNodeCurrent(
 
 export function prepareRunStageVictoryReward(
   runState,
-  nodeId
+  nodeId,
+  resultSnapshot = null
 ) {
   if (!runState) {
     return runState;
@@ -583,11 +538,12 @@ export function prepareRunStageVictoryReward(
     return runState;
   }
 
-  const rewardOptions =
-    chooseRandomUniqueItems(
-      PROTOTYPE_REWARD_POOL,
-      4
-    );
+  const rewardOptions = generateBuffOffers({
+    nodeType: stageNode.nodeType,
+    availableBuffIds: runState.availableBuffIds,
+    partyUnitIds: ["guard", "archer"],
+    offerCount: 2
+  });
 
   return {
     ...runState,
@@ -605,7 +561,16 @@ export function prepareRunStageVictoryReward(
       nodeId,
 
     pendingRewardOptions:
-      rewardOptions
+      rewardOptions,
+
+    lastBattleResult:
+      isMatchingRunBattleResult(
+        resultSnapshot,
+        nodeId,
+        "victory"
+      )
+        ? cloneData(resultSnapshot)
+        : runState.lastBattleResult
   };
 }
 
@@ -613,10 +578,7 @@ export function chooseRunReward(
   runState,
   rewardId
 ) {
-  if (
-    !runState ||
-    !rewardId
-  ) {
+  if (!runState) {
     return runState;
   }
 
@@ -633,15 +595,16 @@ export function chooseRunReward(
     runState.pendingRewardOptions ??
     [];
 
-  const selectedReward =
-    rewardOptions.find(
+  const selectedReward = rewardId
+    ? rewardOptions.find(
       (reward) => {
         return (
-          reward.rewardId ===
+          reward.buffId ===
           rewardId
         );
       }
-    );
+    )
+    : null;
 
   const isValidCurrentSource =
     sourceNode &&
@@ -651,7 +614,7 @@ export function chooseRunReward(
 
   if (
     !isValidCurrentSource ||
-    !selectedReward
+    (rewardId && !selectedReward)
   ) {
     return runState;
   }
@@ -743,10 +706,19 @@ export function chooseRunReward(
     completedNodeIds:
       nextCompletedNodeIds,
 
-    chosenRewardIds: [
-      ...chosenRewardIds,
-      selectedReward.rewardId
-    ],
+    chosenRewardIds: selectedReward
+      ? [...chosenRewardIds, selectedReward.buffId]
+      : chosenRewardIds,
+
+    availableBuffIds: selectedReward
+      ? (runState.availableBuffIds ?? []).filter(
+          (buffId) => buffId !== selectedReward.buffId
+        )
+      : runState.availableBuffIds,
+
+    activeRunBuffs: selectedReward
+      ? [...(runState.activeRunBuffs ?? []), cloneData(selectedReward)]
+      : runState.activeRunBuffs,
 
     pendingRewardSourceNodeId:
       null,
@@ -803,7 +775,8 @@ export function completeRunIfFinalStageCompleted(
 
 export function markRunDefeated(
   runState,
-  nodeId
+  nodeId,
+  resultSnapshot = null
 ) {
   if (
     !runState ||
@@ -858,6 +831,15 @@ export function markRunDefeated(
     pendingRewardSourceNodeId:
       null,
 
-    pendingRewardOptions: []
+    pendingRewardOptions: [],
+
+    lastBattleResult:
+      isMatchingRunBattleResult(
+        resultSnapshot,
+        nodeId,
+        "defeat"
+      )
+        ? cloneData(resultSnapshot)
+        : runState.lastBattleResult
   };
 }

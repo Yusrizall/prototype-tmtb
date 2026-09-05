@@ -705,7 +705,7 @@ if (isBattleResult) {
           "victory"
             ? (
                 "Enter / Space / E atau tombol " +
-                "= Continue to Map Selection"
+                "= Start Adventure"
               )
             : (
                 "Enter / Space / E atau tombol " +
@@ -716,10 +716,10 @@ if (isBattleResult) {
           isRunStageBattle
   ? (
       battleState.resultState ===
-"victory"
+      "victory"
   ? (
       "Enter / Space / E atau tombol " +
-      "= Continue to Reward"
+      "= Continue"
     )
   : (
       "Enter / Space / E atau tombol " +
@@ -824,8 +824,334 @@ if (isBattleResult) {
   `;
 }
 
-function renderBattleResultOverlay(
+function formatResultNodeType(nodeType) {
+  return String(nodeType ?? "battle")
+    .replaceAll("_", " ")
+    .toUpperCase();
+}
+
+function renderResultMetricIcon(type) {
+  if (type === "enemy") {
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M7 8a5 5 0 0 1 10 0v3a4 4 0 0 1-2 3.2V17h-2v-2h-2v2H9v-2.8A4 4 0 0 1 7 11V8Z" />
+        <path d="M9 9.5h2v2H9zm4 0h2v2h-2z" />
+      </svg>
+    `;
+  }
+
+  if (type === "turn") {
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+    `;
+  }
+
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m12 2 7 7-7 13L5 9l7-7Z" />
+      <path d="m5 9 7 3 7-3M12 2v10" />
+    </svg>
+  `;
+}
+
+function renderBattleResultParty(party) {
+  return party
+    .slice(0, 4)
+    .map((unit) => {
+      const startPercent =
+        unit.maxHP > 0
+          ? Math.round(
+              (unit.stageStartHP / unit.maxHP) *
+              100
+            )
+          : 0;
+
+      const finalPercent =
+        unit.maxHP > 0
+          ? Math.round(
+              (unit.currentHP / unit.maxHP) *
+              100
+            )
+          : 0;
+
+      const resultLabel =
+        unit.status === "defeated"
+          ? `<strong class="battle-result-unit-defeated">DEFEATED</strong>`
+          : unit.hpLost > 0
+            ? `<strong class="battle-result-hp-loss">-${unit.hpLost}</strong>`
+            : "";
+
+      return `
+        <article
+          class="battle-result-unit-row"
+          data-result-party-row
+        >
+          <div
+            class="battle-result-unit-portrait"
+            aria-hidden="true"
+          >
+            ${unit.name.slice(0, 1).toUpperCase()}
+          </div>
+
+          <div class="battle-result-unit-main">
+            <div class="battle-result-unit-heading">
+              <strong>${unit.name}</strong>
+
+              <span>
+                <strong
+                  data-result-hp-current
+                  data-start="${unit.stageStartHP}"
+                  data-target="${unit.currentHP}"
+                >${unit.stageStartHP}</strong>
+                / ${unit.maxHP}
+              </span>
+            </div>
+
+            <div
+              class="battle-result-hp-track"
+              role="progressbar"
+              aria-label="${unit.name} HP"
+              aria-valuemin="0"
+              aria-valuemax="${unit.maxHP}"
+              aria-valuenow="${unit.currentHP}"
+            >
+              <span
+                class="battle-result-hp-fill"
+                data-result-hp-fill
+                data-start-percent="${startPercent}"
+                data-target-percent="${finalPercent}"
+                style="width: ${startPercent}%"
+              ></span>
+            </div>
+          </div>
+
+          <div class="battle-result-unit-outcome">
+            ${resultLabel}
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderBattleActiveBuffAccess(
+  activeRunBuffs = [],
+  isOpen = false
+) {
+  const slots = Array.from({ length: 10 }, (_, index) => {
+    const buff = activeRunBuffs[index];
+    return buff
+      ? `<div class="active-buff-slot active-buff-filled buff-rarity-${buff.rarity}" title="${buff.name}: ${buff.description}"><span>${buff.icon}</span></div>`
+      : '<div class="active-buff-slot" aria-hidden="true"></div>';
+  }).join("");
+
+  return `
+    <div class="active-buff-access ${isOpen ? "active-buff-access-open" : ""}">
+      <button type="button" class="active-buff-toggle" data-action="toggle-active-buff-list" aria-expanded="${isOpen}" title="Active Buff List">
+        <span class="active-buff-toggle-icon">✦</span>
+        <strong>${activeRunBuffs.length}</strong>
+      </button>
+      <section class="active-buff-popover" aria-label="Active Buff List">
+        <header><strong>ACTIVE BUFFS</strong><span>${activeRunBuffs.length} / 10</span></header>
+        <div class="active-buff-grid">${slots}</div>
+        ${activeRunBuffs.length === 0 ? '<p>No active buffs yet.</p>' : ''}
+      </section>
+    </div>
+  `;
+}
+
+function renderRunVictoryResult(
+  battleState,
+  runUiState = null
+) {
+  const snapshot =
+    battleState.resultSnapshot;
+
+  if (!snapshot) {
+    return `
+      <section class="battle-result-overlay">
+        <div class="battle-result-card battle-result-defeat">
+          <h2>RESULT DATA ERROR</h2>
+          <p>Battle Result snapshot is unavailable.</p>
+        </div>
+      </section>
+    `;
+  }
+
+  const isReady =
+    battleState.resultPresentationReady ===
+      true;
+
+  return `
+    <section
+      class="battle-result-overlay battle-result-overlay-full"
+      data-battle-result-sequence
+      aria-live="polite"
+    >
+      <div
+        class="battle-result-card battle-result-card-expanded battle-result-victory"
+      >
+        ${renderBattleActiveBuffAccess(
+          runUiState?.activeRunBuffs,
+          runUiState?.activeBuffListOpen
+        )}
+        <header class="battle-result-stage-identity">
+          <div>
+            <span>STAGE</span>
+            <strong>${snapshot.stage.name}</strong>
+          </div>
+
+          <span class="battle-result-node-type">
+            ${formatResultNodeType(
+              snapshot.stage.nodeType
+            )}
+          </span>
+        </header>
+
+        <div class="battle-result-main-title">
+          <h2>VICTORY</h2>
+        </div>
+
+        <div class="battle-result-content-grid">
+          <section class="battle-result-left-column">
+            <div class="battle-result-summary">
+              <article title="Enemy Defeated">
+                <span class="battle-result-metric-icon">
+                  ${renderResultMetricIcon("enemy")}
+                </span>
+                <strong
+                  data-result-counter
+                  data-target="${snapshot.metrics.enemyDefeated}"
+                >0</strong>
+              </article>
+
+              <article title="Total Turn">
+                <span class="battle-result-metric-icon">
+                  ${renderResultMetricIcon("turn")}
+                </span>
+                <strong
+                  data-result-counter
+                  data-target="${snapshot.metrics.totalTurns}"
+                >0</strong>
+              </article>
+            </div>
+
+            <div class="battle-result-crystal">
+              <span class="battle-result-crystal-icon">
+                ${renderResultMetricIcon("crystal")}
+              </span>
+
+              <div>
+                <span>RUN CRYSTAL</span>
+                <strong>
+                  +<span
+                    data-result-counter
+                    data-target="${snapshot.metrics.crystalGained}"
+                  >0</span>
+                </strong>
+              </div>
+            </div>
+          </section>
+
+          <section class="battle-result-party-status">
+            <h3>PARTY STATUS</h3>
+
+            <div class="battle-result-party-list">
+              ${renderBattleResultParty(
+                snapshot.party
+              )}
+            </div>
+          </section>
+        </div>
+
+        <footer class="battle-result-actions">
+          <button
+            type="button"
+            class="main-menu-button battle-result-continue ${
+              isReady
+                ? "main-menu-button-active"
+                : "battle-result-continue-locked"
+            }"
+            data-action="battle-result-primary"
+            ${isReady ? "" : "disabled"}
+          >
+            <span>CONTINUE</span>
+            <small>Enter / E / Space</small>
+          </button>
+        </footer>
+      </div>
+    </section>
+  `;
+}
+
+function renderTutorialResult(
   battleState
+) {
+  const isVictory =
+    battleState.resultState ===
+      "victory";
+
+  const isTrainingFailed =
+    battleState.resultState ===
+      "training_failed";
+
+  const resultTitle = isVictory
+    ? "TUTORIAL COMPLETE"
+    : isTrainingFailed
+      ? "TRAINING FAILED"
+      : "DEFEAT";
+
+  const resultMessage = isVictory
+    ? (
+        "You have completed the tutorial. " +
+        "Your adventure is ready to begin."
+      )
+    : isTrainingFailed
+      ? "A required party member was defeated."
+      : "All of your units have been defeated.";
+
+  const actionLabel = isVictory
+    ? "START ADVENTURE"
+    : "RETRY";
+
+  return `
+    <section
+      class="battle-result-overlay tutorial-result-overlay"
+      aria-live="polite"
+    >
+      <div
+        class="tutorial-result-card ${
+          isVictory
+            ? "tutorial-result-complete"
+            : "tutorial-result-defeat"
+        }"
+      >
+        <p class="tutorial-result-kicker">
+          ${isVictory ? "TRAINING COMPLETE" : "TRY AGAIN"}
+        </p>
+
+        <h2>${resultTitle}</h2>
+        <p>${resultMessage}</p>
+
+        <button
+          type="button"
+          class="main-menu-button main-menu-button-active"
+          data-action="battle-result-primary"
+        >
+          <span>${actionLabel}</span>
+          <small>Enter / E / Space</small>
+        </button>
+      </div>
+    </section>
+  `;
+}
+
+export function renderBattleResultOverlay(
+  battleState,
+  runUiState = null
 ) {
   if (
     battleState.battleControlState !==
@@ -834,144 +1160,29 @@ function renderBattleResultOverlay(
     return "";
   }
 
-  const isVictory =
-    battleState.resultState ===
-    "victory";
-
-  const isTrainingFailed =
-    battleState.resultState ===
-    "training_failed";
-
   const isTutorialBattle =
     battleState.flowContext ===
     "tutorial";
 
-      const isRunStageBattle =
+  if (isTutorialBattle) {
+    return renderTutorialResult(
+      battleState
+    );
+  }
+
+  if (
     battleState.flowContext ===
-    "run_stage";
+      "run_stage" &&
+    battleState.resultState ===
+      "victory"
+  ) {
+    return renderRunVictoryResult(
+      battleState,
+      runUiState
+    );
+  }
 
-  const resultTitle =
-    isTrainingFailed
-      ? "TRAINING FAILED"
-      : isVictory
-        ? "VICTORY"
-        : "DEFEAT";
-
-  const resultClass =
-    isTrainingFailed
-      ? "battle-result-training-failed"
-      : isVictory
-        ? "battle-result-victory"
-        : "battle-result-defeat";
-
-  const resultDescription =
-    isTrainingFailed
-      ? (
-          "A required party member was defeated."
-        )
-      : isVictory
-      ? (
-          isTutorialBattle
-            ? (
-                "Tutorial Stage berhasil " +
-                "diselesaikan."
-              )
-            : (
-                "Objective selesai. Semua " +
-                "enemy telah dikalahkan."
-              )
-        )
-      : (
-          isTutorialBattle
-            ? (
-                "Tutorial Stage gagal. " +
-                "Coba kembali."
-              )
-            : (
-                "Semua unit player telah " +
-                "dikalahkan."
-              )
-        );
-
-   const primaryActionLabel =
-  isTutorialBattle
-    ? (
-        isTrainingFailed
-          ? "Retry"
-          : isVictory
-          ? "Continue to Map Selection"
-          : "Retry Tutorial"
-      )
-    : (
-        isRunStageBattle
-          ? (
-             isVictory
-  ? "Continue to Reward"
-  : "Continue to Run Result"
-            )
-          : "Continue"
-      );
-
-const primaryButtonClass =
-  "main-menu-button-active";
-
-const primaryButtonDisabled =
-  "";
-
-  return `
-    <section
-      class="battle-result-overlay"
-      aria-live="polite"
-    >
-      <div
-        class="
-          battle-result-card
-          ${resultClass}
-        "
-      >
-        <p class="battle-result-label">
-          ${
-            isTutorialBattle
-              ? "Tutorial Result"
-              : "Battle Result"
-          }
-        </p>
-
-        <h2>${resultTitle}</h2>
-
-        <p>
-          Objective:
-          ${battleState.objectiveType}
-        </p>
-
-        <p>${resultDescription}</p>
-
-        <p>
-          ${
-            battleState.feedbackMessage ??
-            ""
-          }
-        </p>
-
-        <button
-  type="button"
-  class="
-    main-menu-button
-    ${primaryButtonClass}
-  "
-  data-action="battle-result-primary"
-  ${primaryButtonDisabled}
->
-          <span>${primaryActionLabel}</span>
-        </button>
-
-        <p class="battle-result-note">
-          Enter / Space / E juga dapat
-          digunakan.
-        </p>
-      </div>
-    </section>
-  `;
+  return "";
 }
 
 
@@ -1035,7 +1246,8 @@ export function renderBattleHud(
   movementTiles = [],
   validAttackTargets = [],
   attackCandidates = [],
-  tutorialPhaseJumpUiState = null
+  tutorialPhaseJumpUiState = null,
+  runUiState = null
 ) {
   const actionMenuClass =
     battleState.battleControlState === "action_menu_open"
@@ -1071,7 +1283,7 @@ export function renderBattleHud(
 
       ${renderCommandBand(battleState)}
       ${renderInputHintBar(battleState)}
-      ${renderBattleResultOverlay(battleState)}
+      ${renderBattleResultOverlay(battleState, runUiState)}
       ${renderTutorialPhaseJumpOverlay(
         tutorialPhaseJumpUiState
       )}

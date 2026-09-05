@@ -167,6 +167,9 @@ function createBattleUnit(
     currentHP:
       derivedStats.maxHP,
 
+    stageStartHP:
+      derivedStats.maxHP,
+
     maxHP:
       derivedStats.maxHP,
 

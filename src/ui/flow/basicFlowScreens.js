@@ -916,7 +916,8 @@ export function renderRunOverviewScreen(
 
 export function renderMapSelectionScreen(
   profileState,
-  runState
+  runState,
+  activeBuffListOpen = false
 ) {
   const metaCrystal =
     profileState?.metaCrystal ?? 0;
@@ -957,6 +958,7 @@ export function renderMapSelectionScreen(
   return `
     <main class="flow-screen map-flow-screen">
       <section class="flow-card map-flow-card">
+        ${renderActiveBuffAccess(runState, activeBuffListOpen)}
         <header class="main-menu-header">
           <p class="eyebrow">
             Region 1 — Village
@@ -1219,7 +1221,8 @@ export function renderBattleIntroScreen(
   `;
 }
 export function renderRewardSelectionScreen(
-  runState
+  runState,
+  uiState = {}
 ) {
   const sourceNode =
     runState?.generatedNodes.find(
@@ -1238,7 +1241,7 @@ export function renderRewardSelectionScreen(
   if (
     !runState ||
     !sourceNode ||
-    rewardOptions.length !== 4
+    rewardOptions.length !== 2
   ) {
     return `
       <main class="flow-screen">
@@ -1256,50 +1259,56 @@ export function renderRewardSelectionScreen(
           <h1>Reward tidak tersedia</h1>
 
           <p class="description">
-            Reward Selection tidak memiliki
-            sumber stage atau empat opsi
-            reward yang valid.
+            Buff Selection tidak memiliki
+            sumber stage atau dua opsi
+            buff yang valid.
           </p>
         </section>
       </main>
     `;
   }
 
-    const rewardCards =
+  const selectedBuffId =
+    uiState.selectedBuffId ?? null;
+  const warningArmed =
+    uiState.warningArmed === true;
+  const isConfirming =
+    uiState.confirming === true;
+
+  const rewardCards =
     rewardOptions
       .map((reward, index) => {
+        const isSelected =
+          reward.buffId === selectedBuffId;
+
         return `
           <button
             type="button"
             class="
-              reward-card
-              reward-card-selectable
+              buff-choice-card
+              buff-rarity-${reward.rarity}
+              ${isSelected ? "buff-choice-selected" : ""}
+              ${isConfirming && isSelected ? "buff-choice-confirming" : ""}
             "
-            data-action="choose-run-reward"
-            data-reward-id="${reward.rewardId}"
+            data-action="toggle-buff-choice"
+            data-buff-id="${reward.buffId}"
+            aria-pressed="${isSelected}"
+            ${isConfirming ? "disabled" : ""}
           >
-            <span class="reward-card-number">
-              Option ${index + 1}
+            <span class="buff-card-corner-mark" aria-hidden="true">
+              ${index === 0 ? "A" : "B"}
             </span>
 
-            <strong class="reward-card-name">
-              ${reward.name}
-            </strong>
-
-            <span class="reward-card-category">
-              ${reward.category}
+            <span class="buff-card-icon" aria-hidden="true">
+              <span>${reward.icon}</span>
             </span>
 
-            <p>
-              ${reward.description}
-            </p>
+            <strong class="buff-card-name">${reward.name}</strong>
 
-            <span class="reward-card-status">
-              Effect Inactive
-            </span>
+            <p class="buff-card-effect">${formatBuffDescription(reward.description)}</p>
 
-            <span class="reward-card-select-prompt">
-              Click or press ${index + 1}
+            <span class="buff-card-select-prompt">
+              ${isSelected ? "SELECTED" : `SELECT ${index + 1}`}
             </span>
           </button>
         `;
@@ -1307,62 +1316,89 @@ export function renderRewardSelectionScreen(
       .join("");
 
   return `
-    <main class="flow-screen">
+    <main class="flow-screen buff-selection-screen">
       <section
         class="
-          flow-card
-          reward-selection-card
+          battle-result-card
+          buff-selection-card
         "
       >
-        <header class="reward-selection-header">
-          <div>
-            <p class="eyebrow">
-              Stage Victory Reward
-            </p>
+        ${renderActiveBuffAccess(runState, uiState.activeBuffListOpen)}
 
-            <h1>Choose a Reward</h1>
-
-            <p class="description">
-              ${sourceNode.shortLabel}
-              berhasil diselesaikan.
-            </p>
-          </div>
-
-          <div class="reward-crystal-summary">
-            <span>Run Crystal Earned</span>
-
-            <strong>
-              +${sourceNode.crystalReward}
-            </strong>
-
-            <small>
-              Total: ${runState.runCrystal}
-            </small>
-          </div>
+        <header class="buff-selection-header">
+          <p class="eyebrow">${sourceNode.shortLabel} REWARD</p>
+          <h1>MAKE YOUR CHOICE</h1>
+          <p>Choose one buff to shape this run.</p>
         </header>
 
-        <section class="reward-card-grid">
+        <section class="buff-choice-grid">
           ${rewardCards}
         </section>
 
-        <section class="reward-selection-notice">
-  <strong>
-    Reward effects are inactive.
-  </strong>
+        <footer class="buff-selection-footer">
+          <p
+            class="buff-skip-warning ${warningArmed ? "buff-skip-warning-visible" : ""}"
+            role="status"
+          >
+            No buff selected. Are you sure?
+          </p>
 
-  <p>
-    Pilih satu kartu untuk menyimpan
-    reward dan melanjutkan progression
-    region.
-  </p>
-</section>
-
-<p class="flow-screen-hint">
-  Klik kartu atau tekan angka 1–4.
-  Pilihan tidak dapat dibatalkan.
-</p>
+          <button
+            type="button"
+            class="main-menu-button main-menu-button-active buff-confirm-button"
+            data-action="confirm-buff-choice"
+            ${isConfirming ? "disabled" : ""}
+          >
+            <span>${isConfirming ? "ADDING BUFF..." : "CONFIRM CHOICE"}</span>
+            <small>Enter / E / Space</small>
+          </button>
+        </footer>
       </section>
     </main>
+  `;
+}
+
+function formatBuffDescription(description) {
+  return String(description)
+    .replace(/(Guard|Archer|All allies)/g, '<span class="buff-target-ally">$1</span>')
+    .replace(/(Max HP|ATK|DEF|Movement|Attack Range|Team AP Capacity)/g, '<span class="buff-effect-stat">$1</span>')
+    .replace(/(\+[0-9]+)/g, '<strong class="buff-effect-value">$1</strong>');
+}
+
+export function renderActiveBuffAccess(
+  runState,
+  isOpen = false
+) {
+  const activeBuffs = runState?.activeRunBuffs ?? [];
+  const slots = Array.from({ length: 10 }, (_, index) => {
+    const buff = activeBuffs[index];
+    return buff
+      ? `<div class="active-buff-slot active-buff-filled buff-rarity-${buff.rarity}" title="${buff.name}: ${buff.description}"><span>${buff.icon}</span></div>`
+      : '<div class="active-buff-slot" aria-hidden="true"></div>';
+  }).join("");
+
+  return `
+    <div class="active-buff-access ${isOpen ? "active-buff-access-open" : ""}">
+      <button
+        type="button"
+        class="active-buff-toggle"
+        data-action="toggle-active-buff-list"
+        aria-expanded="${isOpen}"
+        title="Active Buff List"
+      >
+        <span class="active-buff-toggle-icon">✦</span>
+        <strong>${activeBuffs.length}</strong>
+      </button>
+
+      <section class="active-buff-popover" aria-label="Active Buff List">
+        <header>
+          <strong>ACTIVE BUFFS</strong>
+          <span>${activeBuffs.length} / 10</span>
+        </header>
+        <div class="active-buff-grid">${slots}</div>
+        ${activeBuffs.length === 0 ? '<p>No active buffs yet.</p>' : ''}
+      </section>
+    </div>
   `;
 }
 

@@ -46,6 +46,9 @@ import {
   evaluateEliminateAllObjective
 } from "./logic/battle/objectiveLogic.js";
 import {
+  createBattleResultSnapshot
+} from "./logic/battle/battleResultState.js";
+import {
   assertTutorialBattlefieldState
 } from "./logic/battle/tacticalPositionLogic.js";
 import {
@@ -64,6 +67,9 @@ import {
   completeRunIfFinalStageCompleted,
   markRunDefeated
 } from "./logic/run/runState.js";
+import {
+  applyActiveRunBuffsToBattleState
+} from "./logic/run/buffSystem.js";
 import {
   recordTutorialLookMovement,
   recordTutorialUnitSelection,
@@ -161,7 +167,18 @@ let battleIntroNodeId = null;
 let battleState = null;
 let enemyPhaseTimerId = null;
 let tutorialBriefTimerId = null;
+let battleResultPresentationTimerIds = [];
+let buffConfirmationTimerId = null;
 let latestTutorialCheckpoint = null;
+
+let buffSelectionUiState = {
+  selectedBuffId: null,
+  warningArmed: false,
+  confirming: false,
+  activeBuffListOpen: false
+};
+
+let activeBuffListOpen = false;
 
 let tutorialPhaseJumpUiState = {
   open: false,
@@ -187,6 +204,11 @@ let currentScene = "title";
 const ENEMY_PHASE_DELAY_MS = 900;
 // PROTOTYPE ONLY Tutorial presentation timing.
 const TUTORIAL_BRIEF_DELAY_MS = 2000;
+const BATTLE_RESULT_COUNTER_DELAY_MS = 1000;
+const BATTLE_RESULT_CRYSTAL_DELAY_MS = 1600;
+const BATTLE_RESULT_PARTY_DELAY_MS = 2200;
+const BATTLE_RESULT_READY_DELAY_MS = 3200;
+const BATTLE_RESULT_NUMBER_DURATION_MS = 760;
 
 // TENTATIVE prototype validation value.
 const PLAYER_BASIC_ATTACK_AP_COST = 1;
@@ -875,20 +897,11 @@ function resolveEnemyPhaseActions() {
   }
 
   if (tutorialRequiredActorFailure) {
-    battleState = {
-      ...stateAfterEnemyActions,
-      phase: "battle_end",
-      battleControlState: "battle_result",
-      selectedUnitId: null,
-      actionMenuIndex: 0,
-      selectedAction: null,
-      targetIndex: 0,
-      targetType: null,
-      targetId: null,
-      resultState: "training_failed",
-      feedbackMessage:
-        "A required party member was defeated."
-    };
+    battleState = createBattleResultState(
+      stateAfterEnemyActions,
+      "training_failed",
+      "A required party member was defeated."
+    );
 
     clearEnemyPhaseTimer();
     renderApp();
@@ -968,30 +981,23 @@ function resolveEnemyPhaseActions() {
           )
         : "";
 
-    battleState = {
-      ...stateAfterEnemyActions,
+    battleState = createBattleResultState(
+      stateAfterEnemyActions,
+      "defeat",
+      `Enemy Phase selesai. ` +
+      `${enemyAttackCount} attack menghasilkan ` +
+      `${totalEnemyDamage} total damage.` +
+      `${defeatedText} ` +
+      `Semua unit player kalah.`
+    );
 
-      phase: "battle_end",
-      battleControlState: "battle_result",
-
-      selectedUnitId: null,
-
-      actionMenuIndex: 0,
-      selectedAction: null,
-
-      targetIndex: 0,
-      targetType: null,
-      targetId: null,
-
-      resultState: "defeat",
-
-      feedbackMessage:
-        `Enemy Phase selesai. ` +
-        `${enemyAttackCount} attack menghasilkan ` +
-        `${totalEnemyDamage} total damage.` +
-        `${defeatedText} ` +
-        `Semua unit player kalah.`
-    };
+    if (
+      battleState.flowContext ===
+        "run_stage"
+    ) {
+      openRunStageDefeatSummary();
+      return;
+    }
 
     renderApp();
     return;
@@ -1428,11 +1434,17 @@ function moveAttackTargetSelection(direction) {
   };
 }
 
-function createVictoryBattleState(
+function createBattleResultState(
   nextState,
-  previousMessage
+  resultState,
+  feedbackMessage
 ) {
-  return {
+  const usesSequentialPresentation =
+    nextState.flowContext ===
+      "run_stage" &&
+    resultState === "victory";
+
+  const resultBattleState = {
     ...nextState,
 
     phase: "battle_end",
@@ -1447,13 +1459,36 @@ function createVictoryBattleState(
     targetType: null,
     targetId: null,
 
-    resultState: "victory",
+    resultState,
 
-    feedbackMessage:
-      `${previousMessage} ` +
-      "Objective eliminate_all selesai. " +
-      "Semua enemy telah dikalahkan."
+    feedbackMessage,
+
+    resultPresentationReady:
+      !usesSequentialPresentation
   };
+
+  return {
+    ...resultBattleState,
+
+    resultSnapshot:
+      createBattleResultSnapshot(
+        resultBattleState
+      )
+  };
+}
+
+function createVictoryBattleState(
+  nextState,
+  previousMessage
+) {
+  return createBattleResultState(
+    nextState,
+    "victory",
+
+    `${previousMessage} ` +
+    "Objective eliminate_all selesai. " +
+    "Semua enemy telah dikalahkan."
+  );
 }
 
 function confirmBasicAttack() {
@@ -1682,6 +1717,213 @@ function clearTutorialBriefTimer() {
   tutorialBriefTimerId = null;
 }
 
+function clearBattleResultPresentationTimers() {
+  battleResultPresentationTimerIds
+    .forEach((timerId) => {
+      window.clearTimeout(timerId);
+    });
+
+  battleResultPresentationTimerIds = [];
+}
+
+function clearBuffConfirmationTimer() {
+  if (buffConfirmationTimerId === null) {
+    return;
+  }
+
+  window.clearTimeout(buffConfirmationTimerId);
+  buffConfirmationTimerId = null;
+}
+
+function queueBattleResultPresentationStep(
+  callback,
+  delay
+) {
+  const timerId = window.setTimeout(
+    callback,
+    delay
+  );
+
+  battleResultPresentationTimerIds.push(
+    timerId
+  );
+}
+
+function animateBattleResultNumber(
+  element,
+  startValue,
+  targetValue
+) {
+  const safeStart =
+    Math.max(0, Number(startValue) || 0);
+
+  const safeTarget =
+    Math.max(0, Number(targetValue) || 0);
+
+  const startedAt =
+    window.performance.now();
+
+  function updateValue(now) {
+    if (!element.isConnected) {
+      return;
+    }
+
+    const progress = Math.min(
+      1,
+      (
+        now - startedAt
+      ) / BATTLE_RESULT_NUMBER_DURATION_MS
+    );
+
+    const easedProgress =
+      1 - Math.pow(1 - progress, 3);
+
+    element.textContent = String(
+      Math.round(
+        safeStart +
+        (
+          safeTarget - safeStart
+        ) * easedProgress
+      )
+    );
+
+    if (progress < 1) {
+      window.requestAnimationFrame(
+        updateValue
+      );
+    }
+  }
+
+  window.requestAnimationFrame(
+    updateValue
+  );
+}
+
+function completeBattleResultPresentation() {
+  if (
+    !battleState ||
+    battleState.flowContext !==
+      "run_stage" ||
+    battleState.resultState !==
+      "victory" ||
+    battleState.battleControlState !==
+      "battle_result"
+  ) {
+    return;
+  }
+
+  battleState = {
+    ...battleState,
+    resultPresentationReady: true
+  };
+
+  const continueButton =
+    document.querySelector(
+      '[data-action="battle-result-primary"]'
+    );
+
+  if (continueButton) {
+    continueButton.disabled = false;
+    continueButton.classList.remove(
+      "battle-result-continue-locked"
+    );
+    continueButton.classList.add(
+      "main-menu-button-active"
+    );
+  }
+}
+
+function scheduleBattleResultPresentation() {
+  if (
+    !battleState ||
+    battleState.flowContext !==
+      "run_stage" ||
+    battleState.resultState !==
+      "victory" ||
+    battleState.battleControlState !==
+      "battle_result" ||
+    battleState.resultPresentationReady ||
+    battleResultPresentationTimerIds.length > 0
+  ) {
+    return;
+  }
+
+  const resultContainer =
+    document.querySelector(
+      "[data-battle-result-sequence]"
+    );
+
+  if (!resultContainer) {
+    return;
+  }
+
+  queueBattleResultPresentationStep(
+    () => {
+      resultContainer
+        .querySelectorAll(
+          ".battle-result-summary [data-result-counter]"
+        )
+        .forEach((element) => {
+          animateBattleResultNumber(
+            element,
+            0,
+            element.dataset.target
+          );
+        });
+    },
+    BATTLE_RESULT_COUNTER_DELAY_MS
+  );
+
+  queueBattleResultPresentationStep(
+    () => {
+      const crystalCounter =
+        resultContainer.querySelector(
+          ".battle-result-crystal [data-result-counter]"
+        );
+
+      if (crystalCounter) {
+        animateBattleResultNumber(
+          crystalCounter,
+          0,
+          crystalCounter.dataset.target
+        );
+      }
+    },
+    BATTLE_RESULT_CRYSTAL_DELAY_MS
+  );
+
+  queueBattleResultPresentationStep(
+    () => {
+      resultContainer
+        .querySelectorAll(
+          "[data-result-hp-current]"
+        )
+        .forEach((element) => {
+          animateBattleResultNumber(
+            element,
+            element.dataset.start,
+            element.dataset.target
+          );
+        });
+
+      resultContainer
+        .querySelectorAll(
+          "[data-result-hp-fill]"
+        )
+        .forEach((element) => {
+          element.style.width =
+            `${element.dataset.targetPercent ?? 0}%`;
+        });
+    },
+    BATTLE_RESULT_PARTY_DELAY_MS
+  );
+
+  queueBattleResultPresentationStep(
+    completeBattleResultPresentation,
+    BATTLE_RESULT_READY_DELAY_MS
+  );
+}
+
 function canUseTutorialPhaseJump() {
   return (
     currentScene === "battle" &&
@@ -1853,6 +2095,7 @@ function handleTutorialPhaseJumpKeyboardInput(
 }
 
 function openMainMenu() {
+  clearBuffConfirmationTimer();
   battleIntroNodeId = null;
 
   currentScene = "main_menu";
@@ -1862,6 +2105,8 @@ function openMainMenu() {
 
 function openRunOverview() {
   clearEnemyPhaseTimer();
+  clearBattleResultPresentationTimers();
+  clearBuffConfirmationTimer();
 
   runState = null;
   battleIntroNodeId = null;
@@ -1905,6 +2150,7 @@ currentScene = "main_menu";
 function startTutorialBattle() {
   clearEnemyPhaseTimer();
   clearTutorialBriefTimer();
+  clearBattleResultPresentationTimers();
   resetBattlefieldCameraState();
   latestTutorialCheckpoint = null;
   tutorialPhaseJumpUiState = {
@@ -2039,8 +2285,7 @@ function beginSelectedStageBattle() {
       stageNode.nodeId
     );
 
-  battleState =
-    refreshEnemyReadabilityState({
+  const baseRunBattleState = {
   ...createInitialBattleState(
     appData,
     profileState?.permanentUpgrades
@@ -2064,7 +2309,14 @@ function beginSelectedStageBattle() {
 
     nodeType:
       stageNode.nodeType
-  });
+  };
+
+  battleState = refreshEnemyReadabilityState(
+    applyActiveRunBuffsToBattleState(
+      baseRunBattleState,
+      runState.activeRunBuffs
+    )
+  );
 
   battleIntroNodeId = null;
   currentScene = "battle";
@@ -2083,6 +2335,7 @@ function beginSelectedStageBattle() {
 
 function openMapSelection() {
   clearEnemyPhaseTimer();
+  clearBattleResultPresentationTimers();
 
   if (!runState) {
     createNewRun();
@@ -2092,6 +2345,7 @@ function openMapSelection() {
   battleState = null;
 
   currentScene = "map_selection";
+  activeBuffListOpen = false;
 
   renderApp();
 }
@@ -2137,6 +2391,8 @@ function openRunStageRewardSelection() {
     return;
   }
 
+  clearBattleResultPresentationTimers();
+
   const stageNode =
     getRunNodeById(
       runState,
@@ -2150,7 +2406,8 @@ function openRunStageRewardSelection() {
   runState =
     prepareRunStageVictoryReward(
       runState,
-      stageNode.nodeId
+      stageNode.nodeId,
+      battleState.resultSnapshot
     );
 
   console.log(
@@ -2162,6 +2419,12 @@ function openRunStageRewardSelection() {
   );
 
   battleState = null;
+  buffSelectionUiState = {
+    selectedBuffId: null,
+    warningArmed: false,
+    confirming: false,
+    activeBuffListOpen: false
+  };
   currentScene =
     "reward_selection";
 
@@ -2255,6 +2518,8 @@ function openRunStageDefeatSummary() {
     return;
   }
 
+  clearBattleResultPresentationTimers();
+
   const defeatedNode =
     getRunNodeById(
       runState,
@@ -2268,7 +2533,8 @@ function openRunStageDefeatSummary() {
   const nextRunState =
     markRunDefeated(
       runState,
-      defeatedNode.nodeId
+      defeatedNode.nodeId,
+      battleState.resultSnapshot
     );
 
   if (nextRunState === runState) {
@@ -2453,9 +2719,7 @@ function finishPostRunShopToRunOverview() {
   openRunOverview();
 }
 
-function choosePendingRunReward(
-  rewardId
-) {
+function completePendingBuffChoice(buffId) {
   if (
     currentScene !==
       "reward_selection" ||
@@ -2464,14 +2728,15 @@ function choosePendingRunReward(
     return;
   }
 
-  const selectedReward =
-    runState.pendingRewardOptions
+  const selectedReward = buffId
+    ? runState.pendingRewardOptions
       ?.find((reward) => {
         return (
-          reward.rewardId ===
-          rewardId
+          reward.buffId ===
+          buffId
         );
-      });
+      })
+    : null;
 
   const sourceNodeId =
     runState
@@ -2480,7 +2745,7 @@ function choosePendingRunReward(
   const nextRunState =
     chooseRunReward(
       runState,
-      rewardId
+      buffId
     );
 
   if (nextRunState === runState) {
@@ -2493,7 +2758,7 @@ function choosePendingRunReward(
     );
 
   console.log(
-    "Run reward chosen:",
+    "Run buff choice resolved:",
     {
       sourceNodeId,
       selectedReward,
@@ -2512,12 +2777,125 @@ function choosePendingRunReward(
   openMapSelection();
 }
 
+function togglePendingBuffChoice(buffId) {
+  const isValidOption =
+    runState?.pendingRewardOptions?.some(
+      (buff) => buff.buffId === buffId
+    );
+
+  if (
+    currentScene !== "reward_selection" ||
+    buffSelectionUiState.confirming ||
+    !isValidOption
+  ) {
+    return;
+  }
+
+  buffSelectionUiState = {
+    ...buffSelectionUiState,
+    selectedBuffId:
+      buffSelectionUiState.selectedBuffId === buffId
+        ? null
+        : buffId,
+    warningArmed: false
+  };
+
+  renderApp();
+}
+
+function confirmPendingBuffChoice() {
+  if (
+    currentScene !== "reward_selection" ||
+    buffSelectionUiState.confirming
+  ) {
+    return;
+  }
+
+  const selectedBuffId =
+    buffSelectionUiState.selectedBuffId;
+
+  if (
+    !selectedBuffId &&
+    !buffSelectionUiState.warningArmed
+  ) {
+    buffSelectionUiState = {
+      ...buffSelectionUiState,
+      warningArmed: true
+    };
+    renderApp();
+    return;
+  }
+
+  if (!selectedBuffId) {
+    completePendingBuffChoice(null);
+    return;
+  }
+
+  buffSelectionUiState = {
+    ...buffSelectionUiState,
+    confirming: true,
+    warningArmed: false
+  };
+  renderApp();
+
+  buffConfirmationTimerId =
+    window.setTimeout(() => {
+      buffConfirmationTimerId = null;
+      completePendingBuffChoice(
+        selectedBuffId
+      );
+    }, 700);
+}
+
+function toggleActiveBuffList() {
+  if (currentScene === "reward_selection") {
+    buffSelectionUiState = {
+      ...buffSelectionUiState,
+      activeBuffListOpen:
+        !buffSelectionUiState.activeBuffListOpen
+    };
+  } else {
+    activeBuffListOpen =
+      !activeBuffListOpen;
+  }
+
+  if (currentScene === "battle") {
+    document.querySelector(
+      ".active-buff-access"
+    )?.classList.toggle(
+      "active-buff-access-open",
+      activeBuffListOpen
+    );
+    document.querySelector(
+      ".active-buff-toggle"
+    )?.setAttribute(
+      "aria-expanded",
+      String(activeBuffListOpen)
+    );
+    return;
+  }
+
+  renderApp();
+}
+
 function handleBattleResultPrimaryAction() {
   if (
     !battleState ||
     battleState.battleControlState !==
       "battle_result"
   ) {
+    return;
+  }
+
+  const isLockedRunVictory =
+    battleState.flowContext ===
+      "run_stage" &&
+    battleState.resultState ===
+      "victory" &&
+    battleState.resultPresentationReady !==
+      true;
+
+  if (isLockedRunVictory) {
     return;
   }
 
@@ -2769,7 +3147,7 @@ if (backRunOverviewButton) {
   }
     const rewardChoiceButtons =
     document.querySelectorAll(
-      '[data-action="choose-run-reward"]'
+      '[data-action="toggle-buff-choice"]'
     );
 
   rewardChoiceButtons.forEach(
@@ -2779,15 +3157,39 @@ if (backRunOverviewButton) {
         () => {
           const rewardId =
             rewardButton.dataset
-              .rewardId;
+              .buffId;
 
-          choosePendingRunReward(
+          togglePendingBuffChoice(
             rewardId
           );
         }
       );
     }
   );
+  const confirmBuffChoiceButton =
+    document.querySelector(
+      '[data-action="confirm-buff-choice"]'
+    );
+
+  if (confirmBuffChoiceButton) {
+    confirmBuffChoiceButton.addEventListener(
+      "click",
+      () => {
+        confirmPendingBuffChoice();
+      }
+    );
+  }
+
+  document.querySelectorAll(
+    '[data-action="toggle-active-buff-list"]'
+  ).forEach((button) => {
+    button.addEventListener(
+      "click",
+      () => {
+        toggleActiveBuffList();
+      }
+    );
+  });
     const runCompletionOverviewButton =
   document.querySelector(
     '[data-action="run-completion-overview"]'
@@ -2901,6 +3303,17 @@ if (shopRunOverviewButton) {
 }
 
 function attachBattleEvents() {
+  document.querySelectorAll(
+    '[data-action="toggle-active-buff-list"]'
+  ).forEach((button) => {
+    button.addEventListener(
+      "click",
+      () => {
+        toggleActiveBuffList();
+      }
+    );
+  });
+
   const tileButtons =
     document.querySelectorAll(
       ".map-tile"
@@ -3509,11 +3922,17 @@ document.querySelector(
   movementTiles,
   validAttackTargets,
   attackCandidates,
-  tutorialPhaseJumpUiState
+  tutorialPhaseJumpUiState,
+  {
+    activeRunBuffs:
+      runState?.activeRunBuffs ?? [],
+    activeBuffListOpen
+  }
 );
 
   attachBattleEvents();
   updateBattlefieldCamera();
+  scheduleBattleResultPresentation();
 
   if (!tutorialPhaseJumpUiState.open) {
     scheduleEnemyPhaseResolution();
@@ -3527,6 +3946,7 @@ function renderApp() {
   if (currentScene !== "battle") {
     clearEnemyPhaseTimer();
     clearTutorialBriefTimer();
+    clearBattleResultPresentationTimers();
   }
 
   if (currentScene === "title") {
@@ -3565,7 +3985,8 @@ function renderApp() {
     appElement.innerHTML =
   renderMapSelectionScreen(
     profileState,
-    runState
+    runState,
+    activeBuffListOpen
   );
 
     attachFlowEvents();
@@ -3592,7 +4013,8 @@ function renderApp() {
   ) {
     appElement.innerHTML =
       renderRewardSelectionScreen(
-        runState
+        runState,
+        buffSelectionUiState
       );
 
     attachFlowEvents();
@@ -4340,7 +4762,7 @@ function handleKeyboardInput(event) {
         rewardNumber
       ) &&
       rewardNumber >= 1 &&
-      rewardNumber <= 4;
+      rewardNumber <= 2;
 
     if (isRewardNumberInput) {
       event.preventDefault();
@@ -4351,10 +4773,22 @@ function handleKeyboardInput(event) {
           ?.[rewardNumber - 1];
 
       if (rewardOption) {
-        choosePendingRunReward(
-          rewardOption.rewardId
+        togglePendingBuffChoice(
+          rewardOption.buffId
         );
       }
+
+      return;
+    }
+
+    const isConfirmInput =
+      key === "enter" ||
+      key === "e" ||
+      event.code === "Space";
+
+    if (isConfirmInput) {
+      event.preventDefault();
+      confirmPendingBuffChoice();
     }
 
     return;
