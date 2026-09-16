@@ -16,10 +16,7 @@ export function calculateBasicAttackDamage(
     attacker.derivedStats.atk *
     (1 - coverPercentage);
 
-  const targetDefense =
-    options.ignoreDefense === true
-      ? 0
-      : target.derivedStats.def;
+  const targetDefense = 0; // DEF removed globally; retained result key for old logs.
 
   const damageBeforeFloor =
     Math.max(
@@ -117,7 +114,7 @@ export function resolveBasicAttackBetweenUnits(
       attackerUnitId
     );
 
-  const target =
+  let target =
     findBattleUnitById(
       battleState,
       targetUnitId
@@ -141,6 +138,12 @@ export function resolveBasicAttackBetweenUnits(
     };
   }
 
+  const originalTargetId = target.battleUnitId;
+  const guard = battleState.playerUnits.find(u => u.battleUnitId === target.interceptBy && u.currentHP > 0 && Math.hypot(u.tileX - target.tileX, u.tileY - target.tileY) <= 2);
+  if (attacker.side === 'enemy' && guard) {
+    battleState = { ...battleState, playerUnits: battleState.playerUnits.map(u => u.battleUnitId === originalTargetId ? { ...u, interceptBy: null } : u) };
+    target = guard;
+  }
   const damageData =
     calculateBasicAttackDamage(
       attacker,
@@ -153,11 +156,12 @@ export function resolveBasicAttackBetweenUnits(
       }
     );
 
+  const absorbed = Math.min(target.temporaryShield ?? 0, damageData.finalDamage);
   const targetHPAfter =
     Math.max(
       0,
       target.currentHP -
-        damageData.finalDamage
+        (damageData.finalDamage - absorbed)
     );
 
   const nextPlayerUnits =
@@ -179,12 +183,14 @@ export function resolveBasicAttackBetweenUnits(
   return {
     battleState: {
       ...battleState,
-      playerUnits: nextPlayerUnits,
+      playerUnits: nextPlayerUnits.map(u => u.battleUnitId === target.battleUnitId ? { ...u, temporaryShield: Math.max(0, (target.temporaryShield ?? 0) - absorbed) } : u),
       enemyUnits: nextEnemyUnits
     },
 
     attackResult: {
       ...damageData,
+      shieldAbsorbed: absorbed,
+      redirectedFrom: target.battleUnitId !== originalTargetId ? originalTargetId : null,
 
       attackerId:
         attacker.battleUnitId,

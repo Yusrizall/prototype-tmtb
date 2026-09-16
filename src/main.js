@@ -1,4 +1,9 @@
 import "./style.css";
+import { renderShop, createShopUi } from './ui/flow/shopScreen.js';
+import { renderSkillPanel } from './ui/battle/skillPanel.js';
+import { SKILLS, resolveSkill, finishSkillEnemyTurn } from './logic/battle/skillLogic.js';
+import { purchaseSkill } from './logic/profile/profileStorage.js';
+let shopUi = createShopUi();
 import { loadInitialPrototypeData } from "./logic/shared/dataLoader.js";
 import {
   createInitialBattleState,
@@ -1005,6 +1010,7 @@ function resolveEnemyPhaseActions() {
 
   // Jika masih ada player hidup,
   // siapkan Player Turn baru.
+  stateAfterEnemyActions = finishSkillEnemyTurn(stateAfterEnemyActions);
   const nextPlayerUnits =
     stateAfterEnemyActions.playerUnits.map(
       (unit) => {
@@ -1371,6 +1377,11 @@ function openAttackTargeting() {
   };
 }
 
+function closeSkillPanel() {
+  battleState = { ...battleState, battleControlState: battleState.battleControlState === 'skill_targeting' ? 'skill_menu' : 'action_menu_open', selectedSkill: null };
+  renderApp();
+}
+
 function confirmActionMenuSelection() {
   const selectedAction =
     ACTION_OPTIONS[battleState.actionMenuIndex];
@@ -1382,8 +1393,9 @@ function confirmActionMenuSelection() {
   if (selectedAction === "skill") {
   battleState = {
     ...battleState,
-    feedbackMessage:
-      "Skill belum diimplementasikan pada prototype."
+    battleControlState: 'skill_menu',
+    selectedSkill: null,
+    feedbackMessage: null
   };
 }
 }
@@ -2626,6 +2638,8 @@ function finishDefeatedRunToRunOverview() {
 }
 
 function openPostRunShop() {
+  if (currentScene !== 'run_overview') return;
+  shopUi = createShopUi();
   const isRunOverviewScene =
     currentScene ===
       "run_overview";
@@ -3219,6 +3233,20 @@ if (runDefeatOverviewButton) {
       }
     );
 }
+
+  const runSettlementMainMenuButton =
+    document.querySelector(
+      '[data-action="run-settlement-main-menu"]'
+    );
+
+  if (runSettlementMainMenuButton) {
+    runSettlementMainMenuButton.addEventListener(
+      "click",
+      () => {
+        openMainMenu();
+      }
+    );
+  }
 
   const runDefeatMainMenuButton =
   document.querySelector(
@@ -3930,6 +3958,34 @@ document.querySelector(
   }
 );
 
+  document.querySelector('#app').insertAdjacentHTML('beforeend', renderSkillPanel(getCurrentBattleMap(), battleState, profileState));
+  const skillPanel = document.querySelector('.skill-panel');
+  if (skillPanel) {
+    for (const child of document.querySelector('#app').children) if (child !== skillPanel) child.inert = true;
+    skillPanel.querySelector('button:not(:disabled)')?.focus({ preventScroll: true });
+  }
+  for (const unit of [...battleState.playerUnits, ...battleState.enemyUnits]) {
+    const labels = [unit.temporaryShield > 0 ? `SHIELD ${unit.temporaryShield}` : '', unit.interceptBy ? 'PROTECTED' : '', unit.pinnedEnemyTurns > 0 ? 'PINNED' : ''].filter(Boolean);
+    const tile = document.querySelector(`[data-tile-x="${unit.tileX}"][data-tile-y="${unit.tileY}"]`);
+    if (tile && labels.length) { const badge = document.createElement('span'); badge.className = 'skill-status-badge'; badge.textContent = labels.join(' · '); tile.append(badge); }
+  }
+  document.querySelectorAll('[data-skill-id]').forEach(button => button.addEventListener('click', () => {
+    battleState = { ...battleState, selectedSkill: button.dataset.skillId, battleControlState: 'skill_targeting' };
+    renderApp();
+  }));
+  document.querySelector('[data-skill-back]')?.addEventListener('click', closeSkillPanel);
+  document.querySelectorAll('[data-skill-target]').forEach(button => button.addEventListener('click', () => {
+    const previous = battleState;
+    const result = resolveSkill(getCurrentBattleMap(), battleState, profileState, battleState.selectedSkill, button.dataset.skillTarget);
+    battleState = result.error ? { ...battleState, feedbackMessage: result.error } : result.battleState;
+    if (!result.error) {
+      battleState = recordTutorialPhase8PlayerAttack(previous, battleState, { attackerId: previous.selectedUnitId, finalDamage: 0 });
+      battleState = refreshEnemyReadabilityState(battleState);
+      battleState = resolvePostAttackBattleOutcome(battleState);
+    }
+    renderApp();
+  }));
+
   attachBattleEvents();
   updateBattlefieldCamera();
   scheduleBattleResultPresentation();
@@ -4053,10 +4109,44 @@ function renderApp() {
     "post_run_shop"
   ) {
     appElement.innerHTML =
-      renderPostRunShopScreen(
-        profileState,
-        runState
-      );
+      renderShop(profileState, shopUi, appData.playerUnits);
+
+    document.querySelector('[data-shop-back]').addEventListener('click', finishPostRunShopToRunOverview);
+    document.querySelectorAll('[data-shop-unit]').forEach(b => b.addEventListener('click', () => {
+      shopUi = { ...shopUi, unit: b.dataset.shopUnit, tab: 'upgrades', item: 'maxHP', message: '' }; renderApp();
+    }));
+    document.querySelectorAll('[data-shop-tab]').forEach(b => b.addEventListener('click', () => {
+      shopUi = { ...shopUi, tab: b.dataset.shopTab, item: b.dataset.shopTab === 'upgrades' ? 'maxHP' : shopUi.unit === 'guard' ? 'fortify' : 'pinning_shot', message: '' }; renderApp();
+    }));
+    document.querySelectorAll('[data-shop-item]').forEach(b => b.addEventListener('click', () => {
+      shopUi = { ...shopUi, item: b.dataset.shopItem, message: '' }; renderApp();
+    }));
+    document.querySelector('[data-shop-buy]')?.addEventListener('click', (event) => {
+      if (Date.now() < shopUi.busyUntil) return;
+      shopUi.busyUntil = Date.now() + 450;
+      const before = profileState;
+      try {
+        profileState = SKILLS[shopUi.item] ? purchaseSkill(profileState, shopUi.item) : purchasePermanentUpgrade(profileState, shopUi.unit, shopUi.item, Number(event.currentTarget.dataset.level));
+        shopUi.message = before === profileState ? 'Not enough Meta Crystal or item unavailable.' : 'Saved.';
+      } catch {
+        shopUi.message = 'Could not save. Purchase cancelled. Check browser storage.';
+      }
+      renderApp();
+      document.querySelector('.shop-detail')?.classList.add(before === profileState ? 'shop-error' : 'shop-success');
+      if (before !== profileState) {
+        const balance = document.querySelector('.shop-balance');
+        const start = performance.now();
+        const after = profileState.metaCrystal;
+        const animate = now => {
+          if (!balance?.isConnected) return;
+          const t = Math.min(1, (now - start) / 350);
+          balance.textContent = `◆ ${Math.round(before.metaCrystal + (after - before.metaCrystal) * t)}`;
+          if (t < 1) requestAnimationFrame(animate);
+        };
+        requestAnimationFrame(animate);
+      }
+      document.querySelector('[data-shop-buy]:not(:disabled)')?.focus({ preventScroll: true });
+    });
 
     attachFlowEvents();
     return;
@@ -4806,7 +4896,7 @@ function handleKeyboardInput(event) {
   if (isReturnToOverviewInput) {
     event.preventDefault();
 
-    finishCompletedRunToRunOverview();
+    openMainMenu();
   }
 
   return;
@@ -4824,7 +4914,7 @@ function handleKeyboardInput(event) {
   if (isReturnToOverviewInput) {
     event.preventDefault();
 
-    finishDefeatedRunToRunOverview();
+    openMainMenu();
   }
 
   return;
@@ -4847,6 +4937,12 @@ function handleKeyboardInput(event) {
     currentScene !== "battle" ||
     !battleState
   ) {
+    return;
+  }
+
+  if (['skill_menu', 'skill_targeting'].includes(battleState.battleControlState)) {
+    if (key === 'escape' || key === 'z') { event.preventDefault(); closeSkillPanel(); }
+    // Native Tab / Enter / Space navigation remains available to dialog buttons.
     return;
   }
 

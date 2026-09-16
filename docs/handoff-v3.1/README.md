@@ -1,5 +1,7 @@
 # TMTB / BeCan — Handoff Package v3.1
 
+> Latest implementation delta: [Shop and four skills checkpoint](../supporting/TMTB_SHOP_AND_SKILLS_CHECKPOINT_v1.0.md). Read it before the historical baseline below. User decisions remove DEF globally and fix Shop access to Region Overview. Runtime validation of this delta is pending.
+
 **Project:** TMTB / BeCan  
 **Document Type:** Active Handoff Package Entry Point  
 **Handoff Package Version:** 3.1  

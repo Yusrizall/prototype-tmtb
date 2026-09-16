@@ -2,8 +2,7 @@ const MAX_SUPPORTED_UPGRADE_LEVEL = 4;
 
 const PERMANENT_UPGRADE_EFFECTS = {
   maxHPPerLevel: 2,
-  atkPerLevel: 1,
-  defPerLevel: 1
+  atkPerLevel: 1
 };
 
 function findSpawnPosition(
@@ -84,10 +83,6 @@ function createDerivedStats(
       permanentUpgradeLevels?.atk
     );
 
-  const defUpgradeLevel =
-    getSafeUpgradeLevel(
-      permanentUpgradeLevels?.def
-    );
 
   return {
     maxHP:
@@ -106,13 +101,6 @@ function createDerivedStats(
           .atkPerLevel
       ),
 
-    def:
-      unitDefinition.baseDEF +
-      (
-        defUpgradeLevel *
-        PERMANENT_UPGRADE_EFFECTS
-          .defPerLevel
-      ),
 
     move:
       unitDefinition.move,

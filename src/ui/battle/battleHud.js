@@ -463,7 +463,7 @@ function renderUnitDetailPanel(
         </p>
         ${getStunLabel(selectedUnit) ? `<p>Status: ${getStunLabel(selectedUnit)}</p>` : ""}
         <p>ATK: ${selectedUnit.derivedStats.atk}</p>
-        <p>DEF: ${selectedUnit.derivedStats.def}</p>
+        <p>Shield: ${selectedUnit.temporaryShield ?? 0}${selectedUnit.interceptBy ? ' · Protected by Guard' : ''}</p>
         <p>Move: ${selectedUnit.derivedStats.move}</p>
         <p>ATR: ${selectedUnit.derivedStats.atr}</p>
         <p>

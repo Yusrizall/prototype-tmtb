@@ -376,6 +376,8 @@ pendingRewardOptions: [],
 
 lastBattleResult: null,
 
+battleResultHistory: [],
+
 activeRunBuffs: []
   };
 }
@@ -570,7 +572,19 @@ export function prepareRunStageVictoryReward(
         "victory"
       )
         ? cloneData(resultSnapshot)
-        : runState.lastBattleResult
+        : runState.lastBattleResult,
+
+    battleResultHistory:
+      isMatchingRunBattleResult(
+        resultSnapshot,
+        nodeId,
+        "victory"
+      )
+        ? [
+            ...(runState.battleResultHistory ?? []),
+            cloneData(resultSnapshot)
+          ]
+        : runState.battleResultHistory
   };
 }
 
@@ -840,6 +854,18 @@ export function markRunDefeated(
         "defeat"
       )
         ? cloneData(resultSnapshot)
-        : runState.lastBattleResult
+        : runState.lastBattleResult,
+
+    battleResultHistory:
+      isMatchingRunBattleResult(
+        resultSnapshot,
+        nodeId,
+        "defeat"
+      )
+        ? [
+            ...(runState.battleResultHistory ?? []),
+            cloneData(resultSnapshot)
+          ]
+        : runState.battleResultHistory
   };
 }

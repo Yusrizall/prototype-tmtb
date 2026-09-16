@@ -18,12 +18,12 @@ const VALID_UPGRADE_UNITS = [
 
 const VALID_UPGRADE_STATS = [
   "maxHP",
-  "atk",
-  "def"
+  "atk"
 ];
 
 const DEFAULT_PROFILE_STATE = {
-  version: 1,
+  version: 2,
+  unlockedSkills: { guard: [], archer: [] },
 
   tutorialCompleted: false,
 
@@ -32,14 +32,12 @@ const DEFAULT_PROFILE_STATE = {
   permanentUpgrades: {
     guard: {
       maxHP: 0,
-      atk: 0,
-      def: 0
+      atk: 0
     },
 
     archer: {
       maxHP: 0,
-      atk: 0,
-      def: 0
+      atk: 0
     }
   }
 };
@@ -52,13 +50,13 @@ function createDefaultProfileState() {
   );
 }
 
-function normalizeProfileState(
+export function normalizeProfileState(
   savedProfile
 ) {
   const defaultProfile =
     createDefaultProfileState();
 
-  return {
+  const result = {
     ...defaultProfile,
     ...savedProfile,
 
@@ -84,6 +82,16 @@ function normalizeProfileState(
       }
     }
   };
+  result.version = 2;
+  result.metaCrystal = Math.max(0, Math.floor(Number(result.metaCrystal) || 0));
+  result.unlockedSkills = {};
+  for (const id of VALID_UPGRADE_UNITS) {
+    delete result.permanentUpgrades[id].def;
+    for (const stat of VALID_UPGRADE_STATS) result.permanentUpgrades[id][stat] = Math.min(4, Math.max(0, Math.floor(Number(result.permanentUpgrades[id][stat]) || 0)));
+    const allowed = id === 'guard' ? 'intercept' : 'volley';
+    result.unlockedSkills[id] = savedProfile?.unlockedSkills?.[id]?.includes(allowed) ? [allowed] : [];
+  }
+  return result;
 }
 
 export function saveProfileState(
@@ -202,7 +210,7 @@ export function addMetaCrystal(
 }
 
 export function getPermanentUpgradeCost(
-  currentLevel
+  currentLevel, statId = 'maxHP'
 ) {
   const numericLevel =
     Number(currentLevel);
@@ -217,7 +225,7 @@ export function getPermanentUpgradeCost(
     return null;
   }
 
-  return PERMANENT_UPGRADE_COSTS[
+  return (statId === 'atk' ? [40, 80, 130, 190] : PERMANENT_UPGRADE_COSTS)[
     numericLevel
   ];
 }
@@ -267,7 +275,7 @@ export function purchasePermanentUpgrade(
 
   const upgradeCost =
     getPermanentUpgradeCost(
-      currentLevel
+      currentLevel, statId
     );
 
   if (upgradeCost === null) {
@@ -316,4 +324,12 @@ export function purchasePermanentUpgrade(
   );
 
   return nextProfileState;
+}
+
+export function purchaseSkill(profile, skillId) {
+  const unit = skillId === 'intercept' ? 'guard' : skillId === 'volley' ? 'archer' : null;
+  if (!unit || profile.metaCrystal < 150 || profile.unlockedSkills?.[unit]?.includes(skillId)) return profile;
+  const next = { ...profile, metaCrystal: profile.metaCrystal - 150, unlockedSkills: { ...profile.unlockedSkills, [unit]: [...(profile.unlockedSkills?.[unit] ?? []), skillId] } };
+  saveProfileState(next);
+  return next;
 }

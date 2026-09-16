@@ -56,7 +56,7 @@ test("Hut is one entity with nine blocking footprint tiles", () => {
   assert.equal(hut.footprint.length, 9);
   assert.equal(hut.currentHP, 28);
   assert.equal(hut.maxHP, 28);
-  assert.equal(hut.derivedStats.def, 0);
+  assert.equal('def' in hut.derivedStats, false);
 
   const battleState = { structures: [hut] };
   assert.equal(findBattleStructureById(battleState, "tutorial_hut_1"), hut);

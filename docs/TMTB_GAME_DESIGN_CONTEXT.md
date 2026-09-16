@@ -5,8 +5,8 @@
 **Development Group:** BeCan
 **Primary Game:** 3D Turn-Based Tactics
 **Target Production Environment:** Unity
-**Version:** 3.3
-**Last Updated:** 19 August 2026
+**Version:** 3.4
+**Last Updated:** 6 September 2026
 **Status:** **CANONICAL LIVING GAME DESIGN DOCUMENT**
 
 ---
@@ -87,7 +87,7 @@ This document consolidates design context from:
 - the Tutorial T1–T3 / Prototype Validation Scope correction pass completed on 11 August 2026;
 - the reviewed Tutorial Phase 6–8 / Objective / progressive-battlefield design consolidation completed on 16 August 2026.
 
-This v3.3 document carries forward v3.2 and adds a targeted post-implementation Tutorial clarification migration based on explicit Game Designer decisions and runtime validation through 19 August 2026. It preserves the v3.2 canonical migration while correcting Tutorial Phase 6 sequencing, clarifying Phase 7 Charge teaching language, and clarifying Phase 8 graduation guidance after prototype validation. It updates Tutorial architecture, Structure/Objective direction, Spear Tutorial placement, controlled Status/Charge onboarding, Wave/graduation direction, and Tutorial casualty/orchestration policy while preserving detailed choreography, coordinates, PVS numbers, and implementation truth in supporting/implementation-facing documentation.
+This v3.4 document carries forward v3.3 and migrates the post-battle, Buff Selection, Run Settlement, permanent Shop, playable Skill, and global no-DEF decisions made through 6 September 2026. Detailed screen composition and exact prototype numbers remain supporting or implementation-facing material where they have not been promoted to production canon.
 
 Migration rules:
 
@@ -672,7 +672,13 @@ Status: **TENTATIVE BALANCING DIRECTION**
 
 Skill is an AP-consuming action category.
 
-Exact Skill costs, cooldowns, resources, and individual restrictions remain skill-specific and **OPEN** until those skills are designed.
+Each playable character begins with at least one core Skill that is not gated by permanent grind. Additional Skills may be unlocked permanently through the out-of-run Shop. Purchased Skills become permanent capabilities, remain AP-consuming in battle, and are presented in the character's Skill action list.
+
+Current direction does not use a permanent Skill-level upgrade track. Instead, temporary run Buffs may enhance a Skill by changing values such as target count, area, duration, or AP cost. Exact enhancement pools and interaction rules remain **PLANNED / OPEN**.
+
+Fortify and Pinning Shot are the current Guard and Archer core-skill baselines. Intercept and Volley are their first Shop-unlockable Skill baselines. Their exact numerical values and combat presentation remain **TENTATIVE / PROTOTYPE VALIDATION BASELINES**.
+
+Current working maximum is two active Skills per character, with all owned Skills directly available rather than configured through a separate loadout. This maximum remains **TENTATIVE**.
 
 ### Hold
 
@@ -957,13 +963,12 @@ Current working values:
 
 Current working damage formula:
 
-`Final Damage = floor(max(0, ATK × (1 - Cover Percentage) - DEF))`
+`Final Damage = floor(max(0, ATK × (1 - Cover Percentage)))`
 
 Conceptually:
 
 Attack Power
 → modified by Cover
-→ reduced by Defense
 → final non-negative damage
 
 ### Status
@@ -973,6 +978,7 @@ Attack Power
 - O30 / O70 values: **TENTATIVE**
 - Full Cover baseline model: **LOCKED CURRENT DESIGN**
 - Damage formula: **TENTATIVE WORKING BALANCE FORMULA**
+- DEF as a unit, Structure, damage, or permanent-upgrade statistic: **REMOVED / SUPERSEDED**
 
 ---
 
@@ -1053,7 +1059,6 @@ Current baseline:
 
 - HP: 25
 - ATK: 5
-- DEF: 4
 - Move: 3
 - ATR: 1.5
 
@@ -1070,7 +1075,6 @@ Current baseline:
 
 - HP: 18
 - ATK: 7
-- DEF: 1
 - Move: 4
 - ATR: 3.0
 
@@ -1290,7 +1294,6 @@ Current numerical baseline:
 
 - HP: 16
 - ATK: 6
-- DEF: 2
 - Move: 3
 - ATR: 1.5
 
@@ -2573,7 +2576,7 @@ Harder nodes are intended to have a higher chance of offering higher-rarity or h
 
 Unique Event, Rest, Shop, Treasure, or Story nodes may use different reward/consequence structures.
 
-The current prototype rule of exactly four reward cards is not full-game canon.
+The old prototype rule of exactly four reward cards is superseded. Current Buff Selection presents two offers and grants at most one Buff.
 
 ---
 
@@ -2678,11 +2681,14 @@ Active Run
 
 The current prototype converts after Region 1 because Region 1 acts as a temporary development settlement point.
 
+All Run Crystal collected in the run converts on both defeat and completion. Defeat does not discard a portion of earned Run Crystal. No additional completion bonus is currently included. The absence of a completion bonus remains a current baseline that may be revisited with full-run pacing.
+
 ### Status
 
 - Conversion at full run settlement: **LOCKED CONCEPT**
 - Conversion after Region 1 in prototype: **DEVELOPMENT EXCEPTION**
-- 100% conversion rate: **TENTATIVE BALANCE VALUE**
+- 100% conversion of collected Run Crystal on defeat and completion: **LOCKED CURRENT DIRECTION**
+- Additional full-run completion bonus: **NOT CURRENTLY USED / FUTURE BALANCING REVIEW**
 
 ---
 
@@ -2709,24 +2715,25 @@ Permanent progression remains part of the full-game loop.
 
 Conceptually:
 
-Full Run Resolution
-→ Settlement
-→ Run Crystal / Meta Crystal resolution
-→ Permanent Progression access
+Main Menu
+→ Region Overview
+→ Permanent Progression Shop
+→ Region Overview
 → Future Run
 
 The older milestone-unlocked **Main Menu Shop** remains **SUPERSEDED**.
 
-The exact full-game presentation/access point for the permanent progression shop is not fully locked.
+The Shop is an abstract 2D UI rather than a physical Camp, Guild, Armory, or Training Hall. It is outside the active run and outside Map Selection. Settlement returns to Main Menu, so the Player later re-enters Region Overview to visit the Shop.
 
-The current prototype may expose the Shop from the Run Overview / post-run flow for practical validation and navigation. That prototype access point does **not** automatically redefine full-game canon.
+Shop progression combines gradual power growth, permanent capability unlocks, and long-term expenditure goals. All purchases can ultimately coexist. There are no mutually exclusive permanent branches and no refund/respec system in the current direction.
 
 ### Status
 
 - Permanent progression shop/service: **CURRENT FULL-GAME DIRECTION**
 - Old milestone Main Menu Shop: **SUPERSEDED**
-- Exact full-game access/presentation: **OPEN / UIUX**
-- Current Run Overview access in prototype: **PROTOTYPE CURRENT FLOW**
+- Region Overview as the only permanent Shop access point: **LOCKED CURRENT DIRECTION**
+- Abstract 2D UI presentation: **LOCKED CURRENT DIRECTION**
+- Final visual composition and production UI treatment: **OPEN / UIUX**
 
 ## 65. In-Run Shop
 
@@ -2746,12 +2753,15 @@ Current foundational permanent stat categories:
 
 - Max HP
 - ATK
-- DEF
+- permanent Skill unlocks
 
 ### Status
 
 - Permanent progression: **LOCKED**
-- Max HP / ATK / DEF as foundation: **LOCKED DIRECTION**
+- Max HP / ATK as stat foundation: **LOCKED DIRECTION**
+- DEF: **REMOVED / SUPERSEDED**
+- Movement, ATR, and Team AP contribution as permanent Shop upgrades: **EXCLUDED CURRENT DIRECTION**
+- Permanent Skill capability unlocks: **LOCKED DIRECTION**
 - Exact growth values: **TENTATIVE**
 - Additional categories: **OPEN / EXPANDABLE**
 
@@ -2759,10 +2769,63 @@ Current prototype values:
 
 - Max HP: +2 per level
 - ATK: +1 per level
-- DEF: +1 per level
-- Costs: 30 / 60 / 100 / 150
+- Max HP costs: 30 / 60 / 100 / 150
+- ATK costs: 40 / 80 / 130 / 190
+- four levels per stat
+- first additional Guard/Archer Skill unlock: 150 Meta Crystal
 
-These are **TENTATIVE BALANCE VALUES**.
+These are **PROTOTYPE ONLY / TENTATIVE BALANCE VALUES**. Finite caps are current direction, but final maximum levels and prices require end-game threat and economy validation.
+
+## 66A. Character Access and Shop Pages
+
+The Shop is organized by playable character. Guard and Archer have current progression content. Support and Trickster remain visible but locked until their future region-based unlock conditions exist. A locked character cannot be upgraded.
+
+The current full-game direction is that Archer becomes permanently unlocked after the Player has entered Stage 3 at least once and can only be fielded from Stage 3 onward. This is **PLANNED** and remains a prototype exception because the current validation build exposes Guard and Archer from the start.
+
+A global Shop page is not part of the current baseline because no valid global inventory has been designed. Future Buff-pool unlocks or party-wide progression may justify such a page later.
+
+## 66B. Post-Battle and Run-Closure Screen Flow
+
+Current flow direction:
+
+```text
+Tutorial Phase 8 Victory
+→ Tutorial Complete
+→ Map Selection
+
+Tutorial Phase 8 full defeat
+→ Tutorial Defeat
+→ Retry Phase 8 checkpoint
+
+Normal Stage Victory
+→ Battle Result
+→ Buff Selection
+→ Map Selection
+
+Normal Stage Defeat
+→ Run Settlement: Run Failed
+→ Main Menu
+
+Prototype Stage 4 Victory
+→ Battle Result
+→ Buff Selection
+→ Run Settlement: Run Complete
+→ Main Menu
+```
+
+Battle Result reflects one battle. Buff Selection is a separate decision screen. Run Settlement reflects and closes one run. Tutorial success and failure use focused screens rather than the normal Battle Result or Settlement flow.
+
+## 66C. Buff Selection Baseline
+
+After a normal battle victory, the Player receives two independently generated Buff offers and may take one. Selecting the active card again deselects it; selecting the other card switches selection. A no-selection skip requires two confirm inputs so an accidental empty confirmation does not silently discard the reward.
+
+Buff rarity is communicated visually without a rarity text label. Buff cards show icon, name, and complete effect description. Buffs are temporary, normally `run_long`, and disappear when the run ends. Purchased permanent progression is not a Buff.
+
+Current rarity vocabulary is Common, Rare, and Epic. Each offer slot rolls rarity independently, so the two cards may share or differ in rarity. Node type/difficulty biases the rarity probability. The exact weights remain **TENTATIVE BALANCE VALUES**.
+
+All Buffs are currently available to the offer pool. Future permanent Shop unlocks may expand the Buff pool, but that inventory and progression layer remain **PLANNED / DEFERRED**.
+
+The current baseline has no Buff upgrade track, no general negative trade-off pattern, and no duplicate acquisition of an already selected Buff from the same run pool. Stacking, conflict resolution, and broader synergy rules remain **OPEN**.
 
 ---
 
@@ -3834,7 +3897,7 @@ Main-game Structure design still needs decisions on:
 
 - when a Structure is targetable;
 - how multi-tile Structures resolve targeting;
-- durability / DEF / damage model;
+- durability and damage model;
 - destruction and walkability;
 - enemy-vs-Structure Target Rules;
 - protect/destroy encounter-specific behaviour.
@@ -4148,7 +4211,7 @@ TMTB_TUTORIAL_PHASE8_VALIDATION_UPDATE_2026-08-19_v1.md
 
 ### Status
 
-**CURRENT CANONICAL TUTORIAL CONTEXT — v3.3**
+**CURRENT CANONICAL TUTORIAL CONTEXT, CARRIED INTO v3.4**
 
 ---
 
@@ -4203,8 +4266,8 @@ Whether it becomes part of the main Unity game depends on later UI/UX discussion
 
 ## Combat
 - exact Normal Attack AP cost if not retained at candidate 1 AP;
-- exact Skill system;
-- Skill resources/cooldowns/repeat restrictions;
+- exact future Skill roster and per-Skill tuning;
+- final Skill enhancement Buff pool and interaction rules;
 - exact Hold effect;
 - whether Hold is terminal or repeatable;
 - whether Hold locks movement;
@@ -4220,7 +4283,7 @@ Whether it becomes part of the main Unity game depends on later UI/UX discussion
 ## Units
 - Trickster identity;
 - Support identity;
-- individual playable Skills;
+- future playable Skills beyond Fortify, Pinning Shot, Intercept, and Volley;
 - future playable units.
 
 ## Enemy
@@ -4287,10 +4350,9 @@ Whether it becomes part of the main Unity game depends on later UI/UX discussion
 - reward content interacting with Shared AP / Status / Hold / positioning.
 
 ## Economy
-- final Crystal conversion rate;
-- defeat penalty or completion bonus;
+- future reconsideration of Crystal conversion and any completion bonus after full-run pacing exists;
 - In-Run Shop design;
-- exact full-game permanent-shop access/presentation;
+- final permanent-Shop visual presentation;
 - future permanent upgrade categories.
 
 ## Balancing
@@ -4424,7 +4486,7 @@ Final existence of an individual Wait command in another form remains open.
 
 **Old:** hidden or milestone-unlocked Main Menu Shop.
 
-**Current:** permanent progression remains tied to post-run/meta flow; exact final access presentation remains UI/UX open.
+**Current:** permanent progression Shop is accessed from Region Overview, outside the active run and Map Selection. Settlement returns to Main Menu rather than opening the Shop directly.
 
 **Status:** **SUPERSEDED**
 
@@ -4678,13 +4740,19 @@ This registry exists to make preservation explicit. Older details that were not 
 | Reward stacking | OPEN | Carried |
 | Run Crystal | LOCKED concept | Carried |
 | Meta Crystal | LOCKED concept | Carried |
-| 100% Crystal conversion | TENTATIVE | Carried |
+| 100% conversion of collected Run Crystal on defeat/completion | LOCKED current direction | Updated v3.4 |
 | Old Main Menu Shop | SUPERSEDED | Carried as history |
 | Permanent progression shop/service | Current direction | Clarified |
-| Prototype Run Overview Shop access | PROTOTYPE CURRENT FLOW | Reclassified |
+| Region Overview Shop access | LOCKED current direction | Updated v3.4 |
+| Abstract 2D Shop presentation | LOCKED current direction | Added v3.4 |
 | In-Run Shop | OPEN | Carried |
 | Permanent upgrades | LOCKED concept | Carried |
-| HP / ATK / DEF upgrade foundation | LOCKED direction | Carried |
+| Max HP / ATK upgrade foundation | LOCKED direction | Updated |
+| DEF stat and upgrade | SUPERSEDED / removed globally | Updated v3.4 |
+| Movement / ATR / Team AP permanent upgrades | Excluded current direction | Added v3.4 |
+| Core Skill free + additional Skill Shop unlock | LOCKED direction | Added v3.4 |
+| Skill enhancement through temporary Buff | PLANNED | Added v3.4 |
+| Fortify / Pinning Shot / Intercept / Volley numbers | TENTATIVE prototype baseline | Added v3.4 |
 | Current Player Capability | Working framework | Carried |
 | Stage Pressure | Core balancing principle | Carried |
 | Enemy Pressure | Working framework | Expanded |
@@ -4771,7 +4839,7 @@ A prototype implementation that conflicts with Game Design Context may represent
 
 This is a living canonical game-design document.
 
-Version 3.3 performs the targeted migration of the reviewed 16 August Tutorial/Objectives baseline into canonical context. It updates current Tutorial architecture and orchestration, Structure/Objective direction, Spear placement, Blue/Status/Charge Tutorial role, Wave/graduation direction, and Tutorial casualty policy while intentionally leaving exact choreography, map coordinates, PVS values, and implementation truth in supporting/implementation-facing documentation. The 18 August LOS decision is deliberately a hold: a future Tactical Space / LOS review is planned, while no new universal LOS rule is made in this revision.
+Version 3.4 carries the complete v3.3 Tutorial and combat context forward, then migrates the explicit September decisions for global DEF removal, post-battle and run-closure flow, Buff Selection, permanent Shop access and inventory boundaries, and the first playable Skill framework. Exact prototype Skill values, Shop prices, screen animation timings, and Stage reward values remain validation baselines rather than production balance locks. The deferred Tactical Space / LOS review and every unaffected OPEN, TENTATIVE, PLANNED, or HOLD direction remain preserved.
 
 Update it when:
 
@@ -4805,7 +4873,7 @@ When migrating from a working handoff:
 
 # Part XVIII — Post-Migration Documentation Boundary
 
-Version 3.3 carries forward the v3.2 migration and adds the targeted post-implementation Tutorial clarification pass completed on 19 August 2026.
+Version 3.4 carries forward the complete v3.3 migration and adds the reviewed End Screen, Buff Selection, Run Settlement, Shop, Skill, and no-DEF decisions confirmed through 6 September 2026.
 
 Canonical recovery should now be able to identify:
 
@@ -4819,6 +4887,11 @@ Phase 6 Spear / Defensive Cover / Objective role
 Phase 7 Blue Charge / controlled Stun Tutorial role
 Phase 8 Wave / graduation / free-play direction
 Tutorial casualty boundary
+global no-DEF combat direction
+Battle Result / Buff Selection / Run Settlement separation
+Region Overview permanent Shop access
+Max HP / ATK and permanent Skill progression boundaries
+first Guard / Archer Skill baselines
 ```
 
 Detailed Tutorial choreography, coordinates, PVS values, candidate Wave composition/timing, and validation-specific state remain owned by the supporting layer:

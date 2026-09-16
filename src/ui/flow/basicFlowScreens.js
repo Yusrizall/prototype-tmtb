@@ -2,6 +2,9 @@ import {
   PERMANENT_UPGRADE_COSTS,
   MAX_PERMANENT_UPGRADE_LEVEL
 } from "../../logic/profile/profileStorage.js";
+import {
+  renderRunSettlementScreen
+} from "./runSettlementScreen.js";
 const MAIN_MENU_ITEMS = [
     {
     id: "start_journey",
@@ -54,10 +57,6 @@ const POST_RUN_SHOP_GROUPS = [
       {
         statId: "atk",
         label: "ATK"
-      },
-      {
-        statId: "def",
-        label: "DEF"
       }
     ]
   },
@@ -73,10 +72,6 @@ const POST_RUN_SHOP_GROUPS = [
       {
         statId: "atk",
         label: "ATK"
-      },
-      {
-        statId: "def",
-        label: "DEF"
       }
     ]
   }
@@ -1402,7 +1397,7 @@ export function renderActiveBuffAccess(
   `;
 }
 
-export function renderRunCompletionScreen(
+function renderLegacyRunCompletionScreen(
   profileState,
   runState
 ) {
@@ -1655,7 +1650,7 @@ export function renderRunCompletionScreen(
   `;
 }
 
-export function renderRunDefeatScreen(
+function renderLegacyRunDefeatScreen(
   profileState,
   runState
 ) {
@@ -1902,6 +1897,20 @@ export function renderRunDefeatScreen(
       </section>
     </main>
   `;
+}
+
+export function renderRunCompletionScreen(
+  profileState,
+  runState
+) {
+  return renderRunSettlementScreen(runState);
+}
+
+export function renderRunDefeatScreen(
+  profileState,
+  runState
+) {
+  return renderRunSettlementScreen(runState);
 }
 
 export function renderPostRunShopScreen(

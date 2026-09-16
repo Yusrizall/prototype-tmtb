@@ -117,8 +117,8 @@ test("unit-vs-unit Basic Attack keeps existing damage result and explicit target
     clearPathResult
   );
 
-  assert.equal(result.attackResult.finalDamage, 5);
-  assert.equal(result.attackResult.targetHPAfter, 11);
+  assert.equal(result.attackResult.finalDamage, 7);
+  assert.equal(result.attackResult.targetHPAfter, 9);
   assert.equal(result.attackResult.targetType, "unit");
   assert.equal(result.attackResult.targetDestroyed, false);
   assert.equal(result.attackResult.targetDefeated, false);

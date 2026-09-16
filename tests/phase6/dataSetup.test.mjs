@@ -33,7 +33,6 @@ test("Phase 6 authored data matches approved PVS contract", () => {
     {
       hp: spear.maxHP,
       atk: spear.baseATK,
-      def: spear.baseDEF,
       move: spear.move,
       atr: spear.atr,
       attackType: spear.attackType,
@@ -43,7 +42,6 @@ test("Phase 6 authored data matches approved PVS contract", () => {
     {
       hp: 15,
       atk: 6,
-      def: 2,
       move: 4,
       atr: 3,
       attackType: "ranged",
@@ -56,7 +54,7 @@ test("Phase 6 authored data matches approved PVS contract", () => {
     (structure) => structure.structureDefId === "tutorial_hut"
   );
   assert.equal(hut.maxHP, 28);
-  assert.equal(hut.baseDEF, 0);
+  assert.equal('baseDEF' in hut, false);
   assert.equal(hut.targetable, true);
   assert.equal(hut.occupiesTacticalSpace, true);
 

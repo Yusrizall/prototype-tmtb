@@ -320,7 +320,7 @@ function chooseEnemyDestination(
         x: enemy.tileX,
         y: enemy.tileY
       },
-      enemy.derivedStats.move
+      enemy.pinnedEnemyTurns > 0 ? 0 : enemy.derivedStats.move
     );
 
   if (reachableTiles.length === 0) {

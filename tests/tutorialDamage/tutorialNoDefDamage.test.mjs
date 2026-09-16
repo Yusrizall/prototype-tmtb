@@ -76,7 +76,7 @@ test("Tutorial Partial Cover reduces ATK then floors damage without DEF subtract
   assert.equal(result.attackResult.targetHPAfter, 22);
 });
 
-test("non-Tutorial unit damage keeps the existing DEF subtraction", () => {
+test("non-Tutorial unit damage ignores legacy DEF after global removal", () => {
   const attacker = unit({ id: "attacker", side: "player", hp: 18, atk: 7, def: 1 });
   const target = unit({ id: "target", side: "enemy", hp: 16, atk: 6, def: 2 });
   const state = {
@@ -93,9 +93,9 @@ test("non-Tutorial unit damage keeps the existing DEF subtraction", () => {
     clearPath
   );
 
-  assert.equal(result.attackResult.finalDamage, 5);
-  assert.equal(result.attackResult.targetDefense, 2);
-  assert.equal(result.attackResult.targetHPAfter, 11);
+  assert.equal(result.attackResult.finalDamage, 7);
+  assert.equal(result.attackResult.targetDefense, 0);
+  assert.equal(result.attackResult.targetHPAfter, 9);
 });
 
 test("Candidate B preserves the required Phase 3-5 Sword damage choreography", () => {

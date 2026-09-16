@@ -76,9 +76,7 @@ export function createBattleStructure(
     height: placement.height,
     currentHP: definition.maxHP,
     maxHP: definition.maxHP,
-    derivedStats: {
-      def: definition.baseDEF
-    },
+    derivedStats: {},
     targetable: definition.targetable === true,
     occupiesTacticalSpace:
       definition.occupiesTacticalSpace === true

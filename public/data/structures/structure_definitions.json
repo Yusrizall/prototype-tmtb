@@ -4,7 +4,6 @@
       "structureDefId": "tutorial_hut",
       "name": "Hut",
       "maxHP": 28,
-      "baseDEF": 0,
       "targetable": true,
       "occupiesTacticalSpace": true
     }

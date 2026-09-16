@@ -40,9 +40,9 @@ const BUFF_DEFINITIONS = [
     icon: "P",
     rarity: "common",
     category: "party",
-    description: "All allies gain +1 DEF for this run.",
+    description: "All allies gain +2 Max HP for this run.",
     effects: [
-      { type: "stat_modifier", target: "party", stat: "def", amount: 1 }
+      { type: "stat_modifier", target: "party", stat: "maxHP", amount: 2 }
     ]
   },
   {
