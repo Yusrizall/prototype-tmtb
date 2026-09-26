@@ -156,7 +156,19 @@ export function resolveBasicAttackBetweenUnits(
       }
     );
 
-  const absorbed = Math.min(target.temporaryShield ?? 0, damageData.finalDamage);
+  const targetWasFortifiedAtHitStart =
+    battleState.flowContext === "stage1_redesign" &&
+    Number(target.fortifyShield ?? 0) > 0;
+  const fortifyShieldAbsorbed = Math.min(
+    target.fortifyShield ?? 0,
+    damageData.finalDamage
+  );
+  const remainingAfterFortify = damageData.finalDamage - fortifyShieldAbsorbed;
+  const temporaryShieldAbsorbed = Math.min(
+    target.temporaryShield ?? 0,
+    remainingAfterFortify
+  );
+  const absorbed = fortifyShieldAbsorbed + temporaryShieldAbsorbed;
   const targetHPAfter =
     Math.max(
       0,
@@ -183,13 +195,29 @@ export function resolveBasicAttackBetweenUnits(
   return {
     battleState: {
       ...battleState,
-      playerUnits: nextPlayerUnits.map(u => u.battleUnitId === target.battleUnitId ? { ...u, temporaryShield: Math.max(0, (target.temporaryShield ?? 0) - absorbed) } : u),
+      playerUnits: nextPlayerUnits.map(u => {
+        if (u.battleUnitId !== target.battleUnitId) return u;
+        const nextTarget = {
+          ...u,
+          temporaryShield: Math.max(0, (target.temporaryShield ?? 0) - temporaryShieldAbsorbed)
+        };
+        return battleState.flowContext === "stage1_redesign"
+          ? {
+              ...nextTarget,
+              fortifyShield: Math.max(0, (target.fortifyShield ?? 0) - fortifyShieldAbsorbed)
+            }
+          : nextTarget;
+      }),
       enemyUnits: nextEnemyUnits
     },
 
     attackResult: {
       ...damageData,
       shieldAbsorbed: absorbed,
+      fortifyShieldAbsorbed,
+      temporaryShieldAbsorbed,
+      targetWasFortifiedAtHitStart,
+      projectileStyle: attacker.usesProjectile === true || attacker.attackType === "ranged",
       redirectedFrom: target.battleUnitId !== originalTargetId ? originalTargetId : null,
 
       attackerId:

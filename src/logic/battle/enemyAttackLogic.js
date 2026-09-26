@@ -15,6 +15,9 @@ import {
   getEnemyCurrentIntent,
   resolveEnemyCurrentIntent
 } from "./enemyIntentLogic.js";
+import {
+  resolveStage1Knockback
+} from "./stage1RedesignLogic.js";
 
 
 function exhaustEnemyWithoutAttack(
@@ -310,6 +313,21 @@ export function resolveEnemyAttackPhase(
     nextBattleState =
       resolution.battleState;
 
+    let repelledEvent = null;
+    if (
+      resolution.attackResult.targetWasFortifiedAtHitStart === true &&
+      resolution.attackResult.projectileStyle !== true
+    ) {
+      const repelledResolution = resolveStage1Knockback(
+        mapData,
+        nextBattleState,
+        currentEnemy.battleUnitId,
+        resolution.attackResult.targetId
+      );
+      nextBattleState = repelledResolution.battleState;
+      repelledEvent = repelledResolution.event;
+    }
+
     if (
       resolution
         .attackResult
@@ -342,6 +360,10 @@ currentIntent: null
       ...resolution.attackResult,
 
       attacked: true,
+
+      repelledTriggered: Boolean(repelledEvent),
+
+      knockback: repelledEvent,
 
       distance:
         selectedTargetData.distance,

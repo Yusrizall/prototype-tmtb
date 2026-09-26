@@ -65,6 +65,14 @@ function createPartyResultEntry(unit) {
   };
 }
 
+function deepFreeze(value) {
+  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+    return value;
+  }
+  Object.values(value).forEach(deepFreeze);
+  return Object.freeze(value);
+}
+
 export function createBattleResultSnapshot(
   battleState
 ) {
@@ -97,7 +105,10 @@ export function createBattleResultSnapshot(
 
   const crystalGained =
     battleState.resultState === "victory" &&
-    battleState.flowContext === "run_stage"
+    (
+      battleState.flowContext === "run_stage" ||
+      battleState.flowContext === "stage1_redesign"
+    )
       ? toSafeNonNegativeInteger(
           battleState.crystalReward
         )
@@ -162,11 +173,36 @@ export function createBattleResultSnapshot(
       partyTotal:
         party.length,
 
-      crystalGained
+      crystalGained,
+
+      ...(battleState.flowContext === "stage1_redesign"
+        ? {
+            durationMs: Math.max(
+              0,
+              toSafeNonNegativeInteger(
+                battleState.stageEndedAt && battleState.stageStartedAt
+                  ? battleState.stageEndedAt - battleState.stageStartedAt
+                  : 0
+              )
+            ),
+            attemptNumber: Math.max(
+              1,
+              toSafeNonNegativeInteger(
+                battleState.stage1Session?.attemptNumber ?? 1
+              )
+            ),
+            finalGuardHP:
+              party.find((unit) => unit.unitDefId === "guard")?.currentHP ?? 0
+          }
+        : {})
     },
 
     party
   };
+}
+
+export function createImmutableBattleResultSnapshot(battleState) {
+  return deepFreeze(createBattleResultSnapshot(battleState));
 }
 
 export function isMatchingRunBattleResult(

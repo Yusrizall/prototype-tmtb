@@ -1,7 +1,7 @@
 import "./style.css";
 import { renderShop, createShopUi } from './ui/flow/shopScreen.js';
 import { renderSkillPanel } from './ui/battle/skillPanel.js';
-import { SKILLS, resolveSkill, finishSkillEnemyTurn } from './logic/battle/skillLogic.js';
+import { SKILLS, resolveSkill, finishSkillEnemyTurn, skillBlockReason } from './logic/battle/skillLogic.js';
 import { purchaseSkill } from './logic/profile/profileStorage.js';
 let shopUi = createShopUi();
 import { loadInitialPrototypeData } from "./logic/shared/dataLoader.js";
@@ -15,7 +15,8 @@ import {
 selectNextPlayerUnit
 } from "./logic/battle/movementLogic.js";
 import {
-  getBasicAttackCandidates
+  getBasicAttackCandidates,
+  getBasicAttackCandidatesForUnit
 } from "./logic/battle/atrLogic.js";
 import {
   getPlayerBasicAttackCandidates,
@@ -45,13 +46,52 @@ import {
   tickPlayerTurnStatuses
 } from "./logic/battle/statusLogic.js";
 import {
-  spawnTelegraphedWaves
+  spawnTelegraphedWaves,
+  hasPendingRequiredWave,
+  refreshWaveResolutionState
 } from "./logic/battle/waveLogic.js";
+import {
+  beginStage1PreparationTurn,
+  canEndStage1Turn,
+  createStage1RedesignBattleState,
+  createStage1RetryState,
+  createStage2PlaceholderBattleState,
+  createStage2RetryState,
+  isStage1RedesignBattle,
+  isStage2PlaceholderBattle,
+  resolveStage1RecoveryActivation,
+  settleStage1Reward,
+  spawnStage1Reinforcement,
+  updateStage1AfterSwordDefeat
+} from "./logic/battle/stage1RedesignLogic.js";
+import {
+  appendStage1TelemetryEvent,
+  createStage1SessionId,
+  normalizeParticipantCode
+} from "./logic/telemetry/stage1Telemetry.js";
+import {
+  VALIDATION_STAGE_1_ID,
+  VALIDATION_STAGE_2_ID,
+  captureStage2EntrySnapshot,
+  captureValidationBattleResult,
+  completeValidationBuffDecision,
+  createTwoStageValidationSession,
+  endTwoStageValidationSession,
+  prepareValidationBuffDecision,
+  recordValidationBuffSelection,
+  recordValidationExportFailed,
+  recordValidationExportRequested,
+  recordValidationExportSucceeded,
+  serializeTwoStageValidationSession,
+  setValidationAttemptNumber,
+  syncValidationBattleEvents
+} from "./logic/validation/twoStageValidationFlow.js";
 import {
   evaluateEliminateAllObjective
 } from "./logic/battle/objectiveLogic.js";
 import {
-  createBattleResultSnapshot
+  createBattleResultSnapshot,
+  createImmutableBattleResultSnapshot
 } from "./logic/battle/battleResultState.js";
 import {
   assertTutorialBattlefieldState
@@ -73,7 +113,8 @@ import {
   markRunDefeated
 } from "./logic/run/runState.js";
 import {
-  applyActiveRunBuffsToBattleState
+  applyActiveRunBuffsToBattleState,
+  generateBuffOffers
 } from "./logic/run/buffSystem.js";
 import {
   recordTutorialLookMovement,
@@ -155,6 +196,7 @@ import {
 import {
   renderTitleScreen,
   renderMainMenuScreen,
+  renderStage1RedesignEntryScreen,
   renderRunOverviewScreen,
   renderMapSelectionScreen,
   renderBattleIntroScreen,
@@ -170,11 +212,18 @@ let profileState = null;
 let runState = null;
 let battleIntroNodeId = null;
 let battleState = null;
+let validationSessionState = null;
+let validationRewardState = null;
 let enemyPhaseTimerId = null;
 let tutorialBriefTimerId = null;
 let battleResultPresentationTimerIds = [];
 let buffConfirmationTimerId = null;
 let latestTutorialCheckpoint = null;
+
+let stage1EntryUiState = {
+  participantCode: "",
+  errorMessage: null
+};
 
 let buffSelectionUiState = {
   selectedBuffId: null,
@@ -265,7 +314,76 @@ function getCurrentBattleMap() {
     return appData.tutorialMap;
   }
 
+  if (isStage1RedesignBattle(battleState)) {
+    return appData.stage1RedesignMap;
+  }
+
   return appData.stage1Map;
+}
+
+function recordStage1Movement(previousState, nextState) {
+  if (!isStage1RedesignBattle(nextState)) return nextState;
+  const before = previousState.playerUnits.find((unit) => unit.battleUnitId === previousState.selectedUnitId);
+  const after = nextState.playerUnits.find((unit) => unit.battleUnitId === previousState.selectedUnitId);
+  if (!before || !after || (before.tileX === after.tileX && before.tileY === after.tileY)) return nextState;
+  return appendStage1TelemetryEvent(nextState, "player_moved", {
+    actorId: after.battleUnitId,
+    payload: {
+      from: { x: before.tileX, y: before.tileY },
+      to: { x: after.tileX, y: after.tileY },
+      apBefore: previousState.teamApCurrent,
+      apAfter: nextState.teamApCurrent,
+      startGrid: after.startGrid
+    }
+  });
+}
+
+function getStage1FortifyThreatContext(sourceState) {
+  const sword = sourceState.enemyUnits.find((unit) => unit.currentHP > 0) ?? null;
+  const guard = sourceState.playerUnits.find((unit) => unit.currentHP > 0) ?? null;
+  if (!sword || !guard) {
+    return { swordCouldThreaten: false, swordId: sword?.battleUnitId ?? null };
+  }
+
+  const movementPreview = resolveEnemyMovementPhase(
+    getCurrentBattleMap(),
+    sourceState,
+    [sword.battleUnitId]
+  );
+  const movedSword = movementPreview.battleState.enemyUnits.find((unit) => (
+    unit.battleUnitId === sword.battleUnitId
+  ));
+  const swordCouldThreaten = getBasicAttackCandidatesForUnit(
+    getCurrentBattleMap(),
+    movedSword,
+    movementPreview.battleState.playerUnits
+  ).some((candidate) => (
+    candidate.unit.battleUnitId === guard.battleUnitId && candidate.actionValid
+  ));
+
+  return {
+    swordCouldThreaten,
+    swordId: sword.battleUnitId,
+    swordPosition: { x: sword.tileX, y: sword.tileY },
+    guardPosition: { x: guard.tileX, y: guard.tileY }
+  };
+}
+
+function getStage1LegalActionContext(sourceState) {
+  const legalActions = [];
+  if (getMovementTiles(getCurrentBattleMap(), sourceState).length > 0) {
+    legalActions.push("move");
+  }
+  if (
+    sourceState.teamApCurrent >= PLAYER_BASIC_ATTACK_AP_COST &&
+    getValidPlayerBasicAttackTargets(getCurrentBattleMap(), sourceState).length > 0
+  ) {
+    legalActions.push("attack");
+  }
+  if (!skillBlockReason(sourceState, profileState, "fortify")) {
+    legalActions.push("fortify");
+  }
+  return legalActions;
 }
 
 function getSelectedPlayerUnit() {
@@ -563,6 +681,37 @@ function endPlayerTurn() {
     return;
   }
 
+  const stage1TurnGate = canEndStage1Turn(battleState);
+  if (!stage1TurnGate.allowed) {
+    battleState = {
+      ...battleState,
+      feedbackMessage: stage1TurnGate.reason
+    };
+    renderApp();
+    return;
+  }
+
+  if (isStage1RedesignBattle(battleState)) {
+    const legalActions = getStage1LegalActionContext(battleState);
+    battleState = appendStage1TelemetryEvent(battleState, "turn_ended", {
+      actorId: battleState.selectedUnitId,
+      payload: {
+        apRemaining: battleState.teamApCurrent,
+        preparation: battleState.stage1Redesign.preparationActive,
+        legalActions
+      }
+    });
+
+    if (
+      battleState.stage1Redesign.reinforcementPending &&
+      !battleState.stage1Redesign.preparationActive
+    ) {
+      battleState = beginStage1PreparationTurn(getCurrentBattleMap(), battleState);
+      renderApp();
+      return;
+    }
+  }
+
   const previousBattleState =
     battleState;
 
@@ -632,6 +781,18 @@ function resolveEnemyPhaseActions() {
   let stateAfterEnemyActions =
     battleState;
 
+  if (
+    isStage1RedesignBattle(stateAfterEnemyActions) &&
+    stateAfterEnemyActions.stage1Redesign.preparationActive
+  ) {
+    const landing = spawnStage1Reinforcement(
+      appData.enemyUnits,
+      getCurrentBattleMap(),
+      stateAfterEnemyActions
+    );
+    stateAfterEnemyActions = refreshEnemyReadabilityState(landing.battleState);
+  }
+
   const movementEvents = [];
   const attackEvents = [];
   let tutorialRequiredActorFailure = null;
@@ -655,7 +816,7 @@ function resolveEnemyPhaseActions() {
   }
 
   const enemyOrder =
-    [...battleState.enemyUnits]
+    [...stateAfterEnemyActions.enemyUnits]
       .filter((enemy) => {
         return enemy.currentHP > 0;
       })
@@ -688,6 +849,25 @@ function resolveEnemyPhaseActions() {
       stateAfterEnemyActions.enemyUnits.find((enemy) => {
         return enemy.battleUnitId === enemyId;
       }) ?? null;
+
+    const recoveryResolution = resolveStage1RecoveryActivation(
+      stateAfterEnemyActions,
+      enemyId
+    );
+    if (recoveryResolution.recovered) {
+      stateAfterEnemyActions = recoveryResolution.battleState;
+      stateAfterEnemyActions = appendStage1TelemetryEvent(
+        stateAfterEnemyActions,
+        "enemy_activated",
+        {
+          actorId: enemyId,
+          payload: { activation: "recovery", moved: false, attacked: false }
+        }
+      );
+      movementEvents.push(recoveryResolution.event);
+      attackEvents.push(recoveryResolution.event);
+      continue;
+    }
 
     if (isBlueShockwaveEnemy(currentEnemy)) {
       const preparedBlueState =
@@ -753,6 +933,18 @@ function resolveEnemyPhaseActions() {
 
     stateAfterEnemyActions =
       intentResolution.battleState;
+
+    if (isStage1RedesignBattle(stateAfterEnemyActions)) {
+      stateAfterEnemyActions = appendStage1TelemetryEvent(
+        stateAfterEnemyActions,
+        "enemy_intent_updated",
+        {
+          actorId: enemyId,
+          targetId: currentTarget?.battleUnitId ?? null,
+          payload: { intent: intentResolution.intent }
+        }
+      );
+    }
 
     const currentIntent =
       intentResolution.intent;
@@ -839,6 +1031,34 @@ function resolveEnemyPhaseActions() {
       attackResolution
         .attackEvents[0] ??
       null;
+
+    if (isStage1RedesignBattle(stateAfterEnemyActions)) {
+      stateAfterEnemyActions = appendStage1TelemetryEvent(
+        stateAfterEnemyActions,
+        "enemy_activated",
+        {
+          actorId: enemyId,
+          targetId: currentTarget.battleUnitId,
+          payload: { movement: movementEvent, attack: attackEvent }
+        }
+      );
+      if (attackEvent?.attacked) {
+        stateAfterEnemyActions = appendStage1TelemetryEvent(
+          stateAfterEnemyActions,
+          "damage_resolved",
+          {
+            actorId: enemyId,
+            targetId: attackEvent.targetId,
+            payload: {
+              finalDamage: attackEvent.finalDamage,
+              shieldAbsorbed: attackEvent.shieldAbsorbed,
+              hpDamage: attackEvent.finalDamage - attackEvent.shieldAbsorbed,
+              targetHPAfter: attackEvent.targetHPAfter
+            }
+          }
+        );
+      }
+    }
 
     stateAfterEnemyActions =
       recordTutorialPhase6EnemyResolution(
@@ -1106,13 +1326,39 @@ function resolveEnemyPhaseActions() {
         `Player Turn baru dimulai.`
     });
 
+  let telemetryReadyPlayerTurnState = nextPlayerTurnState;
+  if (isStage1RedesignBattle(telemetryReadyPlayerTurnState)) {
+    for (const enemy of telemetryReadyPlayerTurnState.enemyUnits.filter((unit) => unit.currentHP > 0)) {
+      telemetryReadyPlayerTurnState = appendStage1TelemetryEvent(
+        telemetryReadyPlayerTurnState,
+        "enemy_intent_updated",
+        {
+          actorId: enemy.battleUnitId,
+          targetId: enemy.currentIntent?.targetId ?? null,
+          payload: { intent: enemy.currentIntent }
+        }
+      );
+    }
+  }
+
+  const telemetryPlayerTurnState = isStage1RedesignBattle(telemetryReadyPlayerTurnState)
+    ? appendStage1TelemetryEvent(telemetryReadyPlayerTurnState, "turn_started", {
+        payload: {
+          teamAp: telemetryReadyPlayerTurnState.teamApCurrent,
+          intents: telemetryReadyPlayerTurnState.enemyUnits
+            .filter((enemy) => enemy.currentHP > 0)
+            .map((enemy) => ({ enemyId: enemy.battleUnitId, intent: enemy.currentIntent }))
+        }
+      })
+    : telemetryReadyPlayerTurnState;
+
    const previousEnemyPhaseState =
     battleState;
 
   const phase3TutorialBattleState =
     recordTutorialEnemyResolution(
       previousEnemyPhaseState,
-      nextPlayerTurnState
+      telemetryPlayerTurnState
     );
 
   const phase5TutorialBattleState =
@@ -1400,6 +1646,38 @@ function confirmActionMenuSelection() {
 }
 }
 
+function commitActionMenuSelection(selectedAction = null) {
+  if (selectedAction) {
+    const selectedIndex = ACTION_OPTIONS.indexOf(selectedAction);
+    if (selectedIndex < 0) return null;
+    battleState = {
+      ...battleState,
+      actionMenuIndex: selectedIndex
+    };
+  }
+
+  const previousBattleState = battleState;
+  confirmActionMenuSelection();
+  const attackCandidates = getBasicAttackCandidates(
+    getCurrentBattleMap(),
+    battleState
+  );
+  const phase3TutorialBattleState = recordTutorialAttackTargeting(
+    previousBattleState,
+    battleState
+  );
+  const phase4AttemptBattleState = recordTutorialPhase4AttackAttempt(
+    previousBattleState,
+    phase3TutorialBattleState,
+    attackCandidates
+  );
+  battleState = recordTutorialPhase4AttackTargeting(
+    previousBattleState,
+    phase4AttemptBattleState
+  );
+  return battleState.tutorialState?.taskId ?? null;
+}
+
 function moveAttackTargetSelection(direction) {
   const validTargets =
     getValidPlayerBasicAttackTargets(
@@ -1456,7 +1734,7 @@ function createBattleResultState(
       "run_stage" &&
     resultState === "victory";
 
-  const resultBattleState = {
+  let resultBattleState = {
     ...nextState,
 
     phase: "battle_end",
@@ -1473,20 +1751,53 @@ function createBattleResultState(
 
     resultState,
 
+    stageEndedAt: Date.now(),
+
     feedbackMessage,
 
     resultPresentationReady:
       !usesSequentialPresentation
   };
 
-  return {
-    ...resultBattleState,
+  if (isStage1RedesignBattle(resultBattleState)) {
+    resultBattleState = settleStage1Reward(resultBattleState);
+  }
 
-    resultSnapshot:
-      createBattleResultSnapshot(
-        resultBattleState
-      )
+  const resultSnapshot =
+    isStage1RedesignBattle(resultBattleState)
+      ? createImmutableBattleResultSnapshot(resultBattleState)
+      : createBattleResultSnapshot(resultBattleState);
+
+  if (isStage1RedesignBattle(resultBattleState)) {
+    resultBattleState = appendStage1TelemetryEvent(
+      resultBattleState,
+      "stage_ended",
+      {
+        payload: {
+          result: resultSnapshot.result,
+          totalTurns: resultSnapshot.metrics.totalTurns,
+          finalGuardHP: resultSnapshot.metrics.finalGuardHP,
+          durationMs: resultSnapshot.metrics.durationMs,
+          reward: resultSnapshot.metrics.crystalGained
+        }
+      }
+    );
+  }
+
+  const completedState = {
+    ...resultBattleState,
+    resultSnapshot
   };
+
+  if (isStage1RedesignBattle(completedState)) {
+    validationSessionState =
+      captureValidationBattleResult(
+        validationSessionState,
+        completedState
+      );
+  }
+
+  return completedState;
 }
 
 function createVictoryBattleState(
@@ -1664,12 +1975,111 @@ function confirmBasicAttack() {
   return attackResult;
 }
 
+function commitSelectedBasicAttack() {
+  const previousBattleState = battleState;
+  const selectedTargetData = getPlayerBasicAttackCandidates(
+    getCurrentBattleMap(),
+    battleState
+  ).find((targetData) => (
+    targetData.targetType === battleState.targetType &&
+    targetData.targetId === battleState.targetId
+  )) ?? null;
+
+  const attackResult = confirmBasicAttack();
+  if (!attackResult) return false;
+
+  const phase3TutorialBattleState = recordTutorialBasicAttack(
+    previousBattleState,
+    battleState
+  );
+  const phase4TutorialBattleState = recordTutorialPhase4BasicAttack(
+    previousBattleState,
+    phase3TutorialBattleState,
+    selectedTargetData
+  );
+  const phase5TutorialBattleState = recordTutorialPhase5BasicAttack(
+    previousBattleState,
+    phase4TutorialBattleState
+  );
+  const phase6InitializedBattleState = initializeTutorialPhase6RuntimeIfNeeded(
+    phase5TutorialBattleState
+  );
+  const phase6TutorialBattleState = recordTutorialPhase6BasicAttack(
+    previousBattleState,
+    phase6InitializedBattleState,
+    attackResult
+  );
+  const phase7InitializedBattleState = initializeTutorialPhase7RuntimeIfNeeded(
+    phase6TutorialBattleState
+  );
+  const phase7AttackBattleState = recordTutorialPhase7PlayerAttack(
+    previousBattleState,
+    phase7InitializedBattleState,
+    attackResult
+  );
+
+  battleState = recordTutorialPhase8PlayerAttack(
+    previousBattleState,
+    phase7AttackBattleState,
+    attackResult
+  );
+
+  if (isStage1RedesignBattle(battleState)) {
+    battleState = appendStage1TelemetryEvent(battleState, "player_attacked", {
+      actorId: attackResult.attackerId,
+      targetId: attackResult.targetId,
+      payload: {
+        apBefore: previousBattleState.teamApCurrent,
+        apAfter: battleState.teamApCurrent,
+        damage: attackResult.finalDamage,
+        targetHPBefore: attackResult.targetHPBefore,
+        targetHPAfter: attackResult.targetHPAfter
+      }
+    });
+    battleState = appendStage1TelemetryEvent(battleState, "damage_resolved", {
+      actorId: attackResult.attackerId,
+      targetId: attackResult.targetId,
+      payload: {
+        finalDamage: attackResult.finalDamage,
+        shieldAbsorbed: attackResult.shieldAbsorbed ?? 0,
+        hpDamage: attackResult.finalDamage - (attackResult.shieldAbsorbed ?? 0),
+        targetHPAfter: attackResult.targetHPAfter
+      }
+    });
+
+    if (attackResult.targetDefeated) {
+      battleState = updateStage1AfterSwordDefeat(
+        battleState,
+        attackResult.targetId
+      ).battleState;
+    }
+  }
+
+  assertTutorialBattlefieldState(
+    getCurrentBattleMap(),
+    battleState
+  );
+  battleState = resolvePostAttackBattleOutcome(battleState);
+  return true;
+}
+
 function resolvePostAttackBattleOutcome(
   sourceState
 ) {
+  const refreshedSourceState = isStage1RedesignBattle(sourceState)
+    ? refreshWaveResolutionState(sourceState)
+    : sourceState;
+
+  if (
+    isStage1RedesignBattle(refreshedSourceState) &&
+    hasPendingRequiredWave(refreshedSourceState)
+  ) {
+    return refreshedSourceState;
+  }
+
   const objectiveEvaluation =
     evaluateEliminateAllObjective(
-      sourceState
+      refreshedSourceState
     );
 
   const objectiveVictory =
@@ -1678,22 +2088,22 @@ function resolvePostAttackBattleOutcome(
       "victory";
 
   if (!objectiveVictory) {
-    return sourceState;
+    return refreshedSourceState;
   }
 
   if (
-    sourceState.flowContext ===
+    refreshedSourceState.flowContext ===
       "tutorial" &&
     !isTutorialStageVictoryReady(
-      sourceState
+      refreshedSourceState
     )
   ) {
-    return sourceState;
+    return refreshedSourceState;
   }
 
   return createVictoryBattleState(
-    sourceState,
-    sourceState.feedbackMessage ?? ""
+    refreshedSourceState,
+    refreshedSourceState.feedbackMessage ?? ""
   );
 }
 
@@ -2115,6 +2525,173 @@ function openMainMenu() {
   renderApp();
 }
 
+function openStage1RedesignEntry() {
+  clearEnemyPhaseTimer();
+  clearTutorialBriefTimer();
+  clearBattleResultPresentationTimers();
+  battleState = null;
+  stage1EntryUiState = {
+    participantCode: "",
+    errorMessage: null
+  };
+  currentScene = "stage1_redesign_entry";
+  renderApp();
+}
+
+function startStage1Redesign() {
+  const participantCode = normalizeParticipantCode(
+    stage1EntryUiState.participantCode
+  );
+
+  if (!participantCode) {
+    stage1EntryUiState = {
+      ...stage1EntryUiState,
+      errorMessage: "Enter a non-personal participant code before starting."
+    };
+    renderApp();
+    return;
+  }
+
+  clearEnemyPhaseTimer();
+  clearTutorialBriefTimer();
+  clearBattleResultPresentationTimers();
+  resetBattlefieldCameraState();
+
+  const sessionId = createStage1SessionId();
+  validationSessionState =
+    createTwoStageValidationSession({
+      participantCode,
+      sessionId
+    });
+  validationRewardState = null;
+
+  battleState = refreshEnemyReadabilityState(
+    createStage1RedesignBattleState(appData, {
+      participantCode,
+      sessionId,
+      telemetryEvents:
+        validationSessionState.events
+    })
+  );
+
+  for (const enemy of battleState.enemyUnits.filter((unit) => unit.currentHP > 0)) {
+    battleState = appendStage1TelemetryEvent(
+      battleState,
+      "enemy_intent_updated",
+      {
+        actorId: enemy.battleUnitId,
+        targetId: enemy.currentIntent?.targetId ?? null,
+        payload: { intent: enemy.currentIntent }
+      }
+    );
+  }
+
+  validationSessionState =
+    syncValidationBattleEvents(
+      validationSessionState,
+      battleState
+    );
+
+  currentScene = "battle";
+  renderApp();
+}
+
+function retryValidationStage() {
+  if (!isStage1RedesignBattle(battleState)) return;
+  if (
+    battleState.battleControlState === "battle_result" &&
+    validationSessionState?.exportStatus !== "succeeded"
+  ) {
+    return;
+  }
+  clearEnemyPhaseTimer();
+  clearBattleResultPresentationTimers();
+  resetBattlefieldCameraState();
+
+  const isStage2 =
+    isStage2PlaceholderBattle(battleState);
+  const retrySourceState = {
+    ...battleState,
+    telemetryEvents:
+      validationSessionState?.events ??
+      battleState.telemetryEvents
+  };
+  battleState = refreshEnemyReadabilityState(
+    isStage2
+      ? createStage2RetryState(appData, retrySourceState)
+      : createStage1RetryState(appData, retrySourceState)
+  );
+  validationSessionState =
+    setValidationAttemptNumber(
+      validationSessionState,
+      battleState.stageId,
+      battleState.stage1Session.attemptNumber
+    );
+  validationSessionState =
+    syncValidationBattleEvents(
+      validationSessionState,
+      battleState
+    );
+  renderApp();
+}
+
+function exportValidationTelemetry() {
+  if (!isStage1RedesignBattle(battleState)) return;
+
+  const battleStateBeforeExport = battleState;
+  validationSessionState =
+    recordValidationExportRequested(
+      validationSessionState
+    );
+
+  try {
+    const succeededSession =
+      recordValidationExportSucceeded(
+        validationSessionState
+      );
+    const serialized =
+      serializeTwoStageValidationSession(
+        succeededSession
+      );
+    JSON.parse(serialized);
+    const blob = new Blob([serialized], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `tmtb-validation-${validationSessionState.sessionId}.json`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    validationSessionState = succeededSession;
+  } catch (error) {
+    validationSessionState =
+      recordValidationExportFailed(
+        validationSessionState,
+        error?.message ?? "unknown browser error"
+      );
+  }
+
+  battleState = battleStateBeforeExport;
+
+  renderApp();
+}
+
+function returnValidationToMainMenu() {
+  if (!isStage1RedesignBattle(battleState)) return;
+  if (validationSessionState?.exportStatus !== "succeeded") return;
+  clearEnemyPhaseTimer();
+  clearBattleResultPresentationTimers();
+  validationSessionState =
+    endTwoStageValidationSession(
+      validationSessionState,
+      battleState.resultState
+    );
+  battleState = null;
+  validationRewardState = null;
+  openMainMenu();
+}
+
 function openRunOverview() {
   clearEnemyPhaseTimer();
   clearBattleResultPresentationTimers();
@@ -2443,6 +3020,110 @@ function openRunStageRewardSelection() {
   renderApp();
 }
 
+function openValidationBuffSelection() {
+  if (
+    !isStage1RedesignBattle(battleState) ||
+    isStage2PlaceholderBattle(battleState) ||
+    battleState.resultState !== "victory"
+  ) {
+    return;
+  }
+
+  clearBattleResultPresentationTimers();
+  const offers = generateBuffOffers({
+    nodeType: "stage",
+    partyUnitIds: ["guard"],
+    offerCount: 2
+  });
+
+  validationSessionState =
+    prepareValidationBuffDecision(
+      validationSessionState,
+      offers
+    );
+  validationRewardState = {
+    generatedNodes: [{
+      nodeId: VALIDATION_STAGE_1_ID,
+      shortLabel: "STAGE 1",
+      name: "Stage 1 Redesign"
+    }],
+    pendingRewardSourceNodeId:
+      VALIDATION_STAGE_1_ID,
+    pendingRewardOptions: offers,
+    activeRunBuffs: []
+  };
+  battleState = null;
+  buffSelectionUiState = {
+    selectedBuffId: null,
+    warningArmed: false,
+    confirming: false,
+    activeBuffListOpen: false
+  };
+  currentScene = "reward_selection";
+  renderApp();
+}
+
+function startStage2ValidationPlaceholder() {
+  const carriedGuardHP =
+    validationSessionState?.stage1FinalHP;
+  if (!Number.isFinite(carriedGuardHP)) return;
+
+  const entryState = {
+    stageId: VALIDATION_STAGE_2_ID,
+    stage1Session: { attemptNumber: 1 },
+    playerUnits: [{
+      unitDefId: "guard",
+      currentHP: carriedGuardHP,
+      maxHP: 25,
+      tileX: 2,
+      tileY: 10
+    }]
+  };
+  validationSessionState =
+    captureStage2EntrySnapshot(
+      validationSessionState,
+      entryState
+    );
+
+  const entrySnapshot =
+    validationSessionState.stage2EntrySnapshot;
+  battleState = refreshEnemyReadabilityState(
+    createStage2PlaceholderBattleState(appData, {
+      participantCode:
+        validationSessionState.participantCode,
+      sessionId:
+        validationSessionState.sessionId,
+      attemptNumber: 1,
+      telemetryEvents:
+        validationSessionState.events,
+      carriedGuardHP,
+      entrySnapshot
+    })
+  );
+
+  for (const enemy of battleState.enemyUnits.filter((unit) => unit.currentHP > 0)) {
+    battleState = appendStage1TelemetryEvent(
+      battleState,
+      "enemy_intent_updated",
+      {
+        actorId: enemy.battleUnitId,
+        targetId: enemy.currentIntent?.targetId ?? null,
+        payload: { intent: enemy.currentIntent }
+      }
+    );
+  }
+
+  validationSessionState =
+    syncValidationBattleEvents(
+      validationSessionState,
+      battleState
+    );
+  clearBattleResultPresentationTimers();
+  resetBattlefieldCameraState();
+  currentScene = "battle";
+  renderApp();
+}
+
 function openCompletedRunSummary() {
   if (
     !runState ||
@@ -2734,16 +3415,20 @@ function finishPostRunShopToRunOverview() {
 }
 
 function completePendingBuffChoice(buffId) {
+  const isValidationChoice =
+    Boolean(validationRewardState);
+  const rewardState =
+    validationRewardState ?? runState;
   if (
     currentScene !==
       "reward_selection" ||
-    !runState
+    !rewardState
   ) {
     return;
   }
 
   const selectedReward = buffId
-    ? runState.pendingRewardOptions
+    ? rewardState.pendingRewardOptions
       ?.find((reward) => {
         return (
           reward.buffId ===
@@ -2753,8 +3438,23 @@ function completePendingBuffChoice(buffId) {
     : null;
 
   const sourceNodeId =
-    runState
+    rewardState
       .pendingRewardSourceNodeId;
+
+  if (isValidationChoice) {
+    validationSessionState =
+      completeValidationBuffDecision(
+        validationSessionState,
+        buffId
+      );
+    validationRewardState = {
+      ...validationRewardState,
+      activeRunBuffs:
+        selectedReward ? [selectedReward] : []
+    };
+    startStage2ValidationPlaceholder();
+    return;
+  }
 
   const nextRunState =
     chooseRunReward(
@@ -2792,8 +3492,10 @@ function completePendingBuffChoice(buffId) {
 }
 
 function togglePendingBuffChoice(buffId) {
+  const rewardState =
+    validationRewardState ?? runState;
   const isValidOption =
-    runState?.pendingRewardOptions?.some(
+    rewardState?.pendingRewardOptions?.some(
       (buff) => buff.buffId === buffId
     );
 
@@ -2813,6 +3515,14 @@ function togglePendingBuffChoice(buffId) {
         : buffId,
     warningArmed: false
   };
+
+  if (validationRewardState) {
+    validationSessionState =
+      recordValidationBuffSelection(
+        validationSessionState,
+        buffSelectionUiState.selectedBuffId
+      );
+  }
 
   renderApp();
 }
@@ -2910,6 +3620,16 @@ function handleBattleResultPrimaryAction() {
       true;
 
   if (isLockedRunVictory) {
+    return;
+  }
+
+  if (isStage1RedesignBattle(battleState)) {
+    if (
+      !isStage2PlaceholderBattle(battleState) &&
+      battleState.resultState === "victory"
+    ) {
+      openValidationBuffSelection();
+    }
     return;
   }
 
@@ -3059,6 +3779,26 @@ if (startRunFromOverviewButton) {
       }
     );
   }
+
+  document.querySelector('[data-action="open-stage1-redesign"]')?.addEventListener(
+    "click",
+    openStage1RedesignEntry
+  );
+
+  const stage1ParticipantInput = document.querySelector(
+    "[data-stage1-participant-code]"
+  );
+  stage1ParticipantInput?.addEventListener("input", (event) => {
+    stage1EntryUiState = {
+      participantCode: event.target.value,
+      errorMessage: null
+    };
+  });
+
+  document.querySelector('[data-action="start-stage1-redesign"]')?.addEventListener(
+    "click",
+    startStage1Redesign
+  );
     const resetDataButton =
     document.querySelector(
       '[data-action="reset-data"]'
@@ -3342,6 +4082,19 @@ function attachBattleEvents() {
     );
   });
 
+  document.querySelectorAll("[data-action-choice]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (battleState.battleControlState !== "action_menu_open") return;
+      const tutorialTaskId = commitActionMenuSelection(
+        button.dataset.actionChoice
+      );
+      renderApp();
+      if (tutorialTaskId === "explain_archer_atr") {
+        scheduleTutorialBriefAdvance();
+      }
+    });
+  });
+
   const tileButtons =
     document.querySelectorAll(
       ".map-tile"
@@ -3352,6 +4105,30 @@ function attachBattleEvents() {
       tileButton.addEventListener(
         "click",
         () => {
+          const x = Number(tileButton.dataset.tileX);
+          const y = Number(tileButton.dataset.tileY);
+
+          if (battleState.battleControlState === "attack_targeting") {
+            if (!isTutorialInputAllowed(battleState, "confirm_action")) return;
+            const clickedTarget = getValidPlayerBasicAttackTargets(
+              getCurrentBattleMap(),
+              battleState
+            ).find((targetData) => (
+              targetData.entity?.tileX === x &&
+              targetData.entity?.tileY === y
+            ));
+
+            if (!clickedTarget) return;
+            battleState = {
+              ...battleState,
+              targetType: clickedTarget.targetType,
+              targetId: clickedTarget.targetId
+            };
+            commitSelectedBasicAttack();
+            renderApp();
+            return;
+          }
+
           if (
   !isTutorialInputAllowed(
     battleState,
@@ -3367,14 +4144,6 @@ function attachBattleEvents() {
           ) {
             return;
           }
-
-          const x = Number(
-            tileButton.dataset.tileX
-          );
-
-          const y = Number(
-            tileButton.dataset.tileY
-          );
 
           const previousBattleState =
             battleState;
@@ -3392,6 +4161,10 @@ function attachBattleEvents() {
               previousBattleState,
               movedBattleState
             );
+          battleState = recordStage1Movement(
+            previousBattleState,
+            battleState
+          );
 
           renderApp();
         }
@@ -3461,6 +4234,23 @@ function attachBattleEvents() {
       }
     );
   }
+
+  document.querySelector('[data-action="validation-continue-buffs"]')?.addEventListener(
+    "click",
+    openValidationBuffSelection
+  );
+  document.querySelector('[data-action="validation-export"]')?.addEventListener(
+    "click",
+    exportValidationTelemetry
+  );
+  document.querySelector('[data-action="validation-retry"]')?.addEventListener(
+    "click",
+    retryValidationStage
+  );
+  document.querySelector('[data-action="validation-main-menu"]')?.addEventListener(
+    "click",
+    returnValidationToMainMenu
+  );
   const endPlayerTurnButton =
   document.querySelector(
     '[data-action="end-player-turn"]'
@@ -3953,8 +4743,13 @@ document.querySelector(
   tutorialPhaseJumpUiState,
   {
     activeRunBuffs:
+      validationRewardState?.activeRunBuffs ??
       runState?.activeRunBuffs ?? [],
-    activeBuffListOpen
+    activeBuffListOpen,
+    validationExportStatus:
+      validationSessionState?.exportStatus ?? null,
+    validationExportFeedback:
+      validationSessionState?.exportFeedback ?? null
   }
 );
 
@@ -3965,7 +4760,13 @@ document.querySelector(
     skillPanel.querySelector('button:not(:disabled)')?.focus({ preventScroll: true });
   }
   for (const unit of [...battleState.playerUnits, ...battleState.enemyUnits]) {
-    const labels = [unit.temporaryShield > 0 ? `SHIELD ${unit.temporaryShield}` : '', unit.interceptBy ? 'PROTECTED' : '', unit.pinnedEnemyTurns > 0 ? 'PINNED' : ''].filter(Boolean);
+    const labels = [
+      unit.fortifyShield > 0 ? `FORTIFIED · SHIELD ${unit.fortifyShield}` : '',
+      unit.temporaryShield > 0 ? `SHIELD ${unit.temporaryShield}` : '',
+      unit.stage1RecoveryState === 'pending' ? 'STUNNED · RECOVERY' : '',
+      unit.interceptBy ? 'PROTECTED' : '',
+      unit.pinnedEnemyTurns > 0 ? 'PINNED' : ''
+    ].filter(Boolean);
     const tile = document.querySelector(`[data-tile-x="${unit.tileX}"][data-tile-y="${unit.tileY}"]`);
     if (tile && labels.length) { const badge = document.createElement('span'); badge.className = 'skill-status-badge'; badge.textContent = labels.join(' · '); tile.append(badge); }
   }
@@ -3976,9 +4777,24 @@ document.querySelector(
   document.querySelector('[data-skill-back]')?.addEventListener('click', closeSkillPanel);
   document.querySelectorAll('[data-skill-target]').forEach(button => button.addEventListener('click', () => {
     const previous = battleState;
+    const stage1ThreatContext = isStage1RedesignBattle(previous)
+      ? getStage1FortifyThreatContext(previous)
+      : null;
     const result = resolveSkill(getCurrentBattleMap(), battleState, profileState, battleState.selectedSkill, button.dataset.skillTarget);
     battleState = result.error ? { ...battleState, feedbackMessage: result.error } : result.battleState;
     if (!result.error) {
+      if (isStage1RedesignBattle(battleState) && previous.selectedSkill === 'fortify') {
+        battleState = appendStage1TelemetryEvent(battleState, 'fortify_used', {
+          actorId: previous.selectedUnitId,
+          targetId: button.dataset.skillTarget,
+          payload: {
+            apBefore: previous.teamApCurrent,
+            apAfter: battleState.teamApCurrent,
+            shield: 6,
+            ...stage1ThreatContext
+          }
+        });
+      }
       battleState = recordTutorialPhase8PlayerAttack(previous, battleState, { attackerId: previous.selectedUnitId, finalDamage: 0 });
       battleState = refreshEnemyReadabilityState(battleState);
       battleState = resolvePostAttackBattleOutcome(battleState);
@@ -4018,6 +4834,15 @@ function renderApp() {
       renderMainMenuScreen();
 
     attachFlowEvents();
+    return;
+  }
+
+  if (currentScene === "stage1_redesign_entry") {
+    appElement.innerHTML = renderStage1RedesignEntryScreen(
+      stage1EntryUiState
+    );
+    attachFlowEvents();
+    document.querySelector("[data-stage1-participant-code]")?.focus();
     return;
   }
 
@@ -4069,7 +4894,7 @@ function renderApp() {
   ) {
     appElement.innerHTML =
       renderRewardSelectionScreen(
-        runState,
+        validationRewardState ?? runState,
         buffSelectionUiState
       );
 
@@ -4198,90 +5023,10 @@ function handleAttackTargetingInput(event, key) {
 
   if (key === "e") {
     event.preventDefault();
-
-    const previousBattleState =
-      battleState;
-
-    const selectedTargetData =
-      getPlayerBasicAttackCandidates(
-        getCurrentBattleMap(),
-        battleState
-      ).find((targetData) => {
-        return (
-          targetData.targetType ===
-            battleState.targetType &&
-          targetData.targetId ===
-            battleState.targetId
-        );
-      }) ?? null;
-
-    const attackResult =
-      confirmBasicAttack();
-
-    if (!attackResult) {
+    if (!commitSelectedBasicAttack()) {
       renderApp();
       return;
     }
-
-    const phase3TutorialBattleState =
-      recordTutorialBasicAttack(
-        previousBattleState,
-        battleState
-      );
-
-    const phase4TutorialBattleState =
-      recordTutorialPhase4BasicAttack(
-        previousBattleState,
-        phase3TutorialBattleState,
-        selectedTargetData
-      );
-
-    const phase5TutorialBattleState =
-      recordTutorialPhase5BasicAttack(
-        previousBattleState,
-        phase4TutorialBattleState
-      );
-
-    const phase6InitializedBattleState =
-      initializeTutorialPhase6RuntimeIfNeeded(
-        phase5TutorialBattleState
-      );
-
-    const phase6TutorialBattleState =
-      recordTutorialPhase6BasicAttack(
-        previousBattleState,
-        phase6InitializedBattleState,
-        attackResult
-      );
-
-    const phase7InitializedBattleState =
-      initializeTutorialPhase7RuntimeIfNeeded(
-        phase6TutorialBattleState
-      );
-
-    const phase7AttackBattleState =
-      recordTutorialPhase7PlayerAttack(
-        previousBattleState,
-        phase7InitializedBattleState,
-        attackResult
-      );
-
-    battleState =
-      recordTutorialPhase8PlayerAttack(
-        previousBattleState,
-        phase7AttackBattleState,
-        attackResult
-      );
-
-    assertTutorialBattlefieldState(
-      getCurrentBattleMap(),
-      battleState
-    );
-
-    battleState =
-      resolvePostAttackBattleOutcome(
-        battleState
-      );
 
     const tutorialTaskId =
       battleState.tutorialState?.taskId;
@@ -4329,41 +5074,7 @@ function handleActionMenuInput(event, key) {
 
       if (key === "e") {
     event.preventDefault();
-
-    const previousBattleState =
-      battleState;
-
-    confirmActionMenuSelection();
-
-    const attackCandidates =
-      getBasicAttackCandidates(
-        getCurrentBattleMap(),
-        battleState
-      );
-
-    const phase3TutorialBattleState =
-      recordTutorialAttackTargeting(
-        previousBattleState,
-        battleState
-      );
-
-    const phase4AttemptBattleState =
-      recordTutorialPhase4AttackAttempt(
-        previousBattleState,
-        phase3TutorialBattleState,
-        attackCandidates
-      );
-
-    battleState =
-      recordTutorialPhase4AttackTargeting(
-        previousBattleState,
-        phase4AttemptBattleState
-      );
-
-    const tutorialTaskId =
-      battleState
-        .tutorialState
-        ?.taskId;
+    const tutorialTaskId = commitActionMenuSelection();
 
     renderApp();
 
@@ -4576,6 +5287,11 @@ battleState =
     phase7InitializedBattleState
   );
 
+battleState = recordStage1Movement(
+  previousBattleState,
+  battleState
+);
+
 if (isTutorialPhase7CheckpointReady(battleState)) {
   latestTutorialCheckpoint =
     captureTutorialCheckpoint(
@@ -4742,6 +5458,12 @@ function handleKeyboardInput(event) {
   if (
     currentScene === "main_menu"
   ) {
+    if (key === "p") {
+      event.preventDefault();
+      openStage1RedesignEntry();
+      return;
+    }
+
     if (key === "r") {
       event.preventDefault();
 
@@ -4760,6 +5482,25 @@ function handleKeyboardInput(event) {
       startJourney();
     }
 
+    return;
+  }
+
+  if (currentScene === "stage1_redesign_entry") {
+    const isBeginInput =
+      key === "enter" ||
+      key === "e" ||
+      event.code === "Space";
+    const isBackInput = key === "escape" || key === "z";
+
+    if (isBeginInput) {
+      event.preventDefault();
+      startStage1Redesign();
+      return;
+    }
+    if (isBackInput) {
+      event.preventDefault();
+      openMainMenu();
+    }
     return;
   }
 
@@ -4858,7 +5599,7 @@ function handleKeyboardInput(event) {
       event.preventDefault();
 
       const rewardOption =
-        runState
+        (validationRewardState ?? runState)
           ?.pendingRewardOptions
           ?.[rewardNumber - 1];
 
@@ -5002,6 +5743,13 @@ if (
       .battleControlState ===
     "battle_result"
   ) {
+    if (
+      isStage1RedesignBattle(battleState) &&
+      event.target?.closest?.('[data-action^="validation-"]')
+    ) {
+      return;
+    }
+
     const isResultConfirmInput =
       key === "enter" ||
       key === "e" ||

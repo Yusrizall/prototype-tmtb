@@ -6,10 +6,16 @@ import {
   renderRunSettlementScreen
 } from "./runSettlementScreen.js";
 const MAIN_MENU_ITEMS = [
-    {
+  {
     id: "start_journey",
     label: "Play",
     action: "start-journey",
+    enabled: true
+  },
+  {
+    id: "stage1_redesign_playtest",
+    label: "Stage 1 Redesign Playtest",
+    action: "open-stage1-redesign",
     enabled: true
   },
   {
@@ -700,6 +706,57 @@ export function renderMainMenuScreen() {
           Enter / Space / E = Play
 · R = Reset Data
         </p>
+      </section>
+    </main>
+  `;
+}
+
+export function renderStage1RedesignEntryScreen(uiState = {}) {
+  const value = String(uiState.participantCode ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+  const feedback = uiState.errorMessage
+    ? `<p class="stage1-entry-error" role="alert">${uiState.errorMessage}</p>`
+    : "";
+
+  return `
+    <main class="flow-screen">
+      <section class="flow-card stage1-entry-card">
+        <header class="main-menu-header">
+          <p class="eyebrow">LOCAL VALIDATION ROUTE</p>
+          <h1>Stage 1 Redesign Playtest</h1>
+          <p class="description">
+            Uses the established battle screen and controls. Stage 2 is not included.
+          </p>
+        </header>
+
+        <label class="stage1-entry-field">
+          <span>Participant code</span>
+          <input
+            type="text"
+            maxlength="48"
+            value="${value}"
+            data-stage1-participant-code
+            autocomplete="off"
+            placeholder="Example: P-001"
+          />
+          <small>Use a non-personal study code. Do not enter an email or name.</small>
+        </label>
+
+        ${feedback}
+
+        <div class="battle-intro-actions">
+          <button type="button" class="main-menu-button main-menu-button-active" data-action="start-stage1-redesign">
+            <span>Begin Stage 1</span>
+            <small>Enter / E / Space</small>
+          </button>
+          <button type="button" class="main-menu-button main-menu-button-active" data-action="back-main-menu">
+            <span>Back to Main Menu</span>
+            <small>Z / Escape</small>
+          </button>
+        </div>
       </section>
     </main>
   `;

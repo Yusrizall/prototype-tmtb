@@ -6,7 +6,7 @@ test("main runtime integrates systemic Status tick, Blue special activation, CP7
  const source=fs.readFileSync("src/main.js","utf8");
  assert.equal(source.includes("tickPlayerTurnStatuses"),true);
  assert.equal(source.includes("resolveBlueShockwaveActivation"),true);
- assert.equal(source.includes('captureTutorialCheckpoint(\n      "cp7"'),true);
+ assert.match(source,/captureTutorialCheckpoint\(\s*["']cp7["']\s*,/);
  assert.equal(source.includes("recordTutorialPhase7PlayerAttack"),true);
  assert.equal(source.includes("isTutorialPhase7BasicAttackTargetAllowed"),true);
 });

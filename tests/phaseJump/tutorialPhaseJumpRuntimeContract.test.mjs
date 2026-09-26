@@ -11,8 +11,13 @@ test("main runtime owns a cancellable Tutorial brief timer", () => {
 });
 
 test("Phase Jump input is intercepted before normal Tutorial Input Gate", () => {
-  const popupHandlerIndex = mainSource.indexOf("handleTutorialPhaseJumpKeyboardInput");
-  const normalGateIndex = mainSource.indexOf("isTutorialInputAllowed(\n    battleState,\n    tutorialInputType");
+  const keyboardHandlerStart = mainSource.indexOf("function handleKeyboardInput");
+  const keyboardHandlerSource = mainSource.slice(keyboardHandlerStart);
+  const popupHandlerMatch = keyboardHandlerSource.match(/handleTutorialPhaseJumpKeyboardInput\s*\(\s*event\s*,\s*key\s*\)/);
+  const normalGateMatch = keyboardHandlerSource.match(/isTutorialInputAllowed\s*\(\s*battleState\s*,\s*tutorialInputType\s*\)/);
+  const popupHandlerIndex = popupHandlerMatch?.index ?? -1;
+  const normalGateIndex = normalGateMatch?.index ?? -1;
+  assert.notEqual(keyboardHandlerStart, -1);
   assert.notEqual(popupHandlerIndex, -1);
   assert.notEqual(normalGateIndex, -1);
   assert.ok(popupHandlerIndex < normalGateIndex);
@@ -32,9 +37,14 @@ test("battle renderer receives transient Phase Jump UI state", () => {
 
 test("Phase Jump popup blocks Tutorial mouse-look mutation", () => {
   const mouseHandlerStart = mainSource.indexOf("function handleTutorialMouseMove");
-  const mouseGateIndex = mainSource.indexOf("isTutorialInputAllowed(\n      battleState,\n      \"mouse_look\"", mouseHandlerStart);
-  const popupGuardIndex = mainSource.indexOf("tutorialPhaseJumpUiState.open", mouseHandlerStart);
+  const mouseHandlerEnd = mainSource.indexOf("function handleKeyboardInput", mouseHandlerStart);
+  const mouseHandlerSource = mainSource.slice(mouseHandlerStart, mouseHandlerEnd);
+  const mouseGateMatch = mouseHandlerSource.match(/isTutorialInputAllowed\s*\(\s*battleState\s*,\s*"mouse_look"\s*\)/);
+  const popupGuardMatch = mouseHandlerSource.match(/tutorialPhaseJumpUiState\.open/);
+  const mouseGateIndex = mouseGateMatch?.index ?? -1;
+  const popupGuardIndex = popupGuardMatch?.index ?? -1;
   assert.notEqual(mouseHandlerStart, -1);
+  assert.notEqual(mouseHandlerEnd, -1);
   assert.notEqual(mouseGateIndex, -1);
   assert.notEqual(popupGuardIndex, -1);
   assert.ok(popupGuardIndex < mouseGateIndex);

@@ -13,6 +13,16 @@ function getStunLabel(unit) {
   return stun ? `STUN ${stun.remainingPlayerTurns}` : null;
 }
 
+function getShieldValue(unit) {
+  return (unit?.temporaryShield ?? 0) + (unit?.fortifyShield ?? 0);
+}
+
+function getStage1StateLabel(unit) {
+  if ((unit?.fortifyShield ?? 0) > 0) return "FORTIFIED";
+  if (unit?.stage1RecoveryState === "pending") return "STUNNED · RECOVERY";
+  return null;
+}
+
 function isTutorialPhase4(
   battleState
 ) {
@@ -151,7 +161,9 @@ function renderEnemyIntentSummary(
           enemy.currentIntent?.intentType === "blue_charge" ||
           enemy.currentIntent?.intentType === "blue_shockwave";
 
-        const intentLabel = isBluePattern
+        const intentLabel = enemy.currentIntent?.intentType === "recovery"
+          ? "RECOVERY"
+          : isBluePattern
           ? (enemy.currentIntent?.intentLabel ?? "NONE")
           : enemy.currentIntent?.intentType === "basic_attack"
             ? "ATTACK"
@@ -202,6 +214,8 @@ function renderRosterPanel(battleState) {
         <div class="roster-card ${selectedClass}">
           <strong>${unit.name}</strong>
           <span>HP ${unit.currentHP}/${unit.maxHP}</span>
+          ${getShieldValue(unit) > 0 ? `<span>SHIELD ${getShieldValue(unit)}</span>` : ""}
+          ${getStage1StateLabel(unit) ? `<span>${getStage1StateLabel(unit)}</span>` : ""}
           ${getStunLabel(unit) ? `<span>${getStunLabel(unit)}</span>` : ""}
           <span>
   StartGrid: ${unit.startGrid.x},${unit.startGrid.y}
@@ -256,6 +270,7 @@ function renderTargetPreview(
       "attack_targeting" &&
     selectedTargetData
   ) {
+    const stage1Redesign = battleState.flowContext === "stage1_redesign";
     const target =
       selectedTargetData.entity;
     const pathResult =
@@ -282,7 +297,9 @@ function renderTargetPreview(
         ? "None"
         : crossedObstacles
             .map((obstacle) => {
-              return `${obstacle.tileCode} at ${obstacle.x},${obstacle.y}`;
+              return stage1Redesign
+                ? `Solid obstacle at ${obstacle.x},${obstacle.y}`
+                : `${obstacle.tileCode} at ${obstacle.x},${obstacle.y}`;
             })
             .join(" | ");
 
@@ -306,7 +323,7 @@ function renderTargetPreview(
         `;
 
     const coverReductionPreview =
-      tutorialPhase4
+      tutorialPhase4 || stage1Redesign
         ? ""
         : `
           <p>
@@ -386,7 +403,9 @@ function renderTargetPreview(
           Path Outcome:
           <strong>
             ${
-              pathLabels[pathResult?.outcome] ??
+              stage1Redesign
+                ? (selectedTargetData.actionPathValid ? "CLEAR" : "BLOCKED")
+                : pathLabels[pathResult?.outcome] ??
               "UNKNOWN"
             }
           </strong>
@@ -463,7 +482,8 @@ function renderUnitDetailPanel(
         </p>
         ${getStunLabel(selectedUnit) ? `<p>Status: ${getStunLabel(selectedUnit)}</p>` : ""}
         <p>ATK: ${selectedUnit.derivedStats.atk}</p>
-        <p>Shield: ${selectedUnit.temporaryShield ?? 0}${selectedUnit.interceptBy ? ' · Protected by Guard' : ''}</p>
+        <p>Shield: ${getShieldValue(selectedUnit)}${selectedUnit.interceptBy ? ' · Protected by Guard' : ''}</p>
+        ${getStage1StateLabel(selectedUnit) ? `<p>Status: ${getStage1StateLabel(selectedUnit)}</p>` : ""}
         <p>Move: ${selectedUnit.derivedStats.move}</p>
         <p>ATR: ${selectedUnit.derivedStats.atr}</p>
         <p>
@@ -537,6 +557,20 @@ function renderTutorialPrompt(
   `;
 }
 
+function renderStage1Notice(battleState) {
+  if (
+    battleState.flowContext !== "stage1_redesign" ||
+    !battleState.stage1Redesign?.notice
+  ) return "";
+
+  return `
+    <section class="stage1-context-notice" aria-live="polite">
+      <span>STAGE 1 READOUT</span>
+      <strong>${battleState.stage1Redesign.notice}</strong>
+    </section>
+  `;
+}
+
 function renderBattleTopBar(battleState) {
   const objectiveLabel =
     battleState.flowContext ===
@@ -544,7 +578,7 @@ function renderBattleTopBar(battleState) {
       ? getObjectivePresentationLabel(
           battleState
         )
-      : battleState.objectiveType;
+      : battleState.objectiveLabel ?? battleState.objectiveType;
 
   return `
     <header class="battle-top-bar">
@@ -637,6 +671,7 @@ function renderCommandBand(battleState) {
         <button
           type="button"
           class="${selectedClass}"
+          data-action-choice="${ACTION_LABELS[index].toLowerCase()}"
           ${disabledAttribute}
         >
           ${label}
@@ -698,7 +733,9 @@ if (isBattleResult) {
     battleState.flowContext ===
     "run_stage";
 
-    const resultActionText =
+    const resultActionText = battleState.flowContext === "stage1_redesign"
+      ? "Use the available validation-flow action below"
+      :
     isTutorialBattle
       ? (
           battleState.resultState ===
@@ -770,6 +807,11 @@ if (isBattleResult) {
 }
 
   if (isAttackTargeting) {
+    const attackPreviewHint = battleState.flowContext === "stage1_redesign"
+      ? "Preview uses ATR, LOS, and solid-obstacle paths"
+      : tutorialPhase4
+        ? "Preview memakai ATR, path, dan Cover"
+        : "Preview memakai ATR, LOS, path, dan cover";
     return `
       <section class="input-hint-bar">
         <span>
@@ -778,11 +820,7 @@ if (isBattleResult) {
         <span>E = Confirm Attack</span>
         <span>Z = Back to Action Menu</span>
         <span>
-  ${
-    tutorialPhase4
-      ? "Preview memakai ATR, path, dan Cover"
-      : "Preview memakai ATR, LOS, path, dan cover"
-  }
+          ${attackPreviewHint}
 </span>
       </section>
     `;
@@ -857,7 +895,13 @@ function renderResultMetricIcon(type) {
   `;
 }
 
-function renderBattleResultParty(party) {
+function renderBattleResultParty(
+  party,
+  {
+    animateFromStageStart = true,
+    showHpLossUnit = false
+  } = {}
+) {
   return party
     .slice(0, 4)
     .map((unit) => {
@@ -881,8 +925,14 @@ function renderBattleResultParty(party) {
         unit.status === "defeated"
           ? `<strong class="battle-result-unit-defeated">DEFEATED</strong>`
           : unit.hpLost > 0
-            ? `<strong class="battle-result-hp-loss">-${unit.hpLost}</strong>`
+            ? `<strong class="battle-result-hp-loss">-${unit.hpLost}${showHpLossUnit ? " HP" : ""}</strong>`
             : "";
+      const displayedHP = animateFromStageStart
+        ? unit.stageStartHP
+        : unit.currentHP;
+      const displayedPercent = animateFromStageStart
+        ? startPercent
+        : finalPercent;
 
       return `
         <article
@@ -905,7 +955,7 @@ function renderBattleResultParty(party) {
                   data-result-hp-current
                   data-start="${unit.stageStartHP}"
                   data-target="${unit.currentHP}"
-                >${unit.stageStartHP}</strong>
+                >${displayedHP}</strong>
                 / ${unit.maxHP}
               </span>
             </div>
@@ -923,7 +973,7 @@ function renderBattleResultParty(party) {
                 data-result-hp-fill
                 data-start-percent="${startPercent}"
                 data-target-percent="${finalPercent}"
-                style="width: ${startPercent}%"
+                style="width: ${displayedPercent}%"
               ></span>
             </div>
           </div>
@@ -1149,6 +1199,74 @@ function renderTutorialResult(
   `;
 }
 
+function renderValidationResult(battleState, validationUiState = null) {
+  const snapshot = battleState.resultSnapshot;
+  const victory = battleState.resultState === "victory";
+  if (!snapshot) return "";
+  const isStage2 = snapshot.stage.id === "r1_stage2_validation_placeholder_v0_1";
+  const exportSucceeded = validationUiState?.validationExportStatus === "succeeded";
+  const exportFeedback = validationUiState?.validationExportFeedback ?? (
+    !isStage2 && victory
+      ? "Continue to Buff Selection. Complete-session export is required after Stage 2."
+      : "Export JSON is required before Retry or Main Menu."
+  );
+  let actionButtons = "";
+
+  if (!isStage2 && victory) {
+    actionButtons = `
+      <button type="button" class="main-menu-button main-menu-button-active" data-action="validation-continue-buffs">
+        <span>CONTINUE TO BUFF SELECTION</span>
+      </button>
+    `;
+  } else if (!isStage2) {
+    actionButtons = `
+      <button type="button" class="main-menu-button main-menu-button-active" data-action="validation-export"><span>EXPORT JSON</span></button>
+      <button type="button" class="main-menu-button main-menu-button-active" data-action="validation-retry" ${exportSucceeded ? "" : "disabled"}><span>RETRY STAGE 1</span></button>
+      <button type="button" class="main-menu-button main-menu-button-active" data-action="validation-main-menu" ${exportSucceeded ? "" : "disabled"}><span>MAIN MENU</span></button>
+    `;
+  } else if (victory) {
+    actionButtons = `
+      <button type="button" class="main-menu-button main-menu-button-active" data-action="validation-export"><span>EXPORT COMPLETE SESSION JSON</span></button>
+      <button type="button" class="main-menu-button main-menu-button-active" data-action="validation-main-menu" ${exportSucceeded ? "" : "disabled"}><span>RUN COMPLETE / MAIN MENU</span></button>
+    `;
+  } else {
+    actionButtons = `
+      <button type="button" class="main-menu-button main-menu-button-active" data-action="validation-export"><span>EXPORT JSON</span></button>
+      <button type="button" class="main-menu-button main-menu-button-active" data-action="validation-retry" ${exportSucceeded ? "" : "disabled"}><span>RETRY STAGE 2</span></button>
+      <button type="button" class="main-menu-button main-menu-button-active" data-action="validation-main-menu" ${exportSucceeded ? "" : "disabled"}><span>MAIN MENU</span></button>
+    `;
+  }
+
+  return `
+    <section class="battle-result-overlay battle-result-overlay-full stage1-result-overlay" aria-live="polite">
+      <div class="battle-result-card battle-result-card-expanded ${victory ? "battle-result-victory" : "battle-result-defeat"}">
+        <header class="battle-result-stage-identity">
+          <div><span>VALIDATION SLICE</span><strong>${snapshot.stage.name}</strong></div>
+          <span class="battle-result-node-type">ATTEMPT ${snapshot.metrics.attemptNumber}</span>
+        </header>
+        <div class="battle-result-main-title"><h2>${victory ? "VICTORY" : "DEFEAT"}</h2></div>
+        <div class="battle-result-content-grid">
+          <section class="battle-result-left-column">
+            <div class="battle-result-summary stage1-result-summary">
+              <article><span>ENEMIES</span><strong>${snapshot.metrics.enemyDefeated}</strong></article>
+              <article><span>TURNS</span><strong>${snapshot.metrics.totalTurns}</strong></article>
+              <article><span>REWARD</span><strong>${snapshot.metrics.crystalGained}</strong></article>
+            </div>
+          </section>
+          <section class="battle-result-party-status">
+            <h3>FINAL GUARD STATUS</h3>
+            <div class="battle-result-party-list">${renderBattleResultParty(snapshot.party, { animateFromStageStart: false, showHpLossUnit: true })}</div>
+          </section>
+        </div>
+        <p class="stage1-export-feedback">${exportFeedback}</p>
+        <footer class="battle-result-actions stage1-result-actions">
+          ${actionButtons}
+        </footer>
+      </div>
+    </section>
+  `;
+}
+
 export function renderBattleResultOverlay(
   battleState,
   runUiState = null
@@ -1168,6 +1286,10 @@ export function renderBattleResultOverlay(
     return renderTutorialResult(
       battleState
     );
+  }
+
+  if (battleState.flowContext === "stage1_redesign") {
+    return renderValidationResult(battleState, runUiState);
   }
 
   if (
@@ -1261,6 +1383,8 @@ export function renderBattleHud(
       ${renderTutorialPrompt(
         battleState
       )}
+
+      ${renderStage1Notice(battleState)}
 
       <section class="battle-layout">
         ${renderRosterPanel(battleState)}

@@ -1,0 +1,35 @@
+{
+  "encounterId": "r1_stage1_redesign_v0_2",
+  "name": "Stage 1 Redesign Playtest",
+  "stageSlot": "stage_1_validation",
+  "mapId": "r1_stage1_redesign_v0_2",
+  "objectiveType": "eliminate_all",
+  "objectiveLabel": "Eliminate All Required Enemies",
+  "victoryCondition": "all_required_enemies_defeated",
+  "defeatCondition": "guard_defeated",
+  "playerSpawns": [
+    {
+      "unitId": "guard",
+      "spawnLabel": "P1"
+    }
+  ],
+  "enemySpawns": [
+    {
+      "unitId": "sword_enemy",
+      "spawnLabel": "E1"
+    }
+  ],
+  "waves": [
+    {
+      "waveId": "stage1_sword_2",
+      "required": true,
+      "unitId": "sword_enemy",
+      "battleUnitId": "enemy_sword_2",
+      "spawnLabel": "E2",
+      "telegraphLabel": "SWORD 2"
+    }
+  ],
+  "crystalReward": 20,
+  "difficultyTag": "Stage 1 Validation",
+  "notes": "Guard-only Stage 1 redesign validation slice. No Stage 2, Buff, or Shop effects."
+}

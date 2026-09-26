@@ -73,7 +73,11 @@ export function initializeWaveState(mapData, battleState, waveConfigs = []) {
   };
 }
 
-export function telegraphWave(battleState, waveId) {
+export function telegraphWave(
+  battleState,
+  waveId,
+  { allowPlayerOccupation = false } = {}
+) {
   const wave = getWaveById(battleState, waveId);
   if (!wave) {
     throw new Error(`Wave tidak ditemukan: ${waveId}`);
@@ -83,7 +87,18 @@ export function telegraphWave(battleState, waveId) {
     return battleState;
   }
 
-  assertReservationAvailable(battleState, wave);
+  if (allowPlayerOccupation) {
+    const enemyOccupiesReservation = (battleState.enemyUnits ?? []).some((unit) => (
+      unit.currentHP > 0 &&
+      unit.tileX === wave.spawnPosition.x &&
+      unit.tileY === wave.spawnPosition.y
+    ));
+    if (enemyOccupiesReservation) {
+      assertReservationAvailable(battleState, wave);
+    }
+  } else {
+    assertReservationAvailable(battleState, wave);
+  }
 
   return {
     ...battleState,

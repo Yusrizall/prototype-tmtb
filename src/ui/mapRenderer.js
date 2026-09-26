@@ -13,9 +13,21 @@ import {
 import {
   getActiveWaveReservations
 } from "../logic/battle/waveLogic.js";
+import {
+  getReachableTilesForUnit
+} from "../logic/battle/movementLogic.js";
 
-function getTileLabel(tileCode) {
+function isStage1Redesign(battleState) {
+  return battleState?.flowContext === "stage1_redesign";
+}
+
+function getTileLabel(tileCode, battleState) {
   if (tileCode === ".") return "";
+
+  if (
+    isStage1Redesign(battleState) &&
+    ["O30", "O70", "OF", "LOS"].includes(tileCode)
+  ) return "";
 
   // P1/P2/E1/E2 adalah marker spawn di Map Definition.
   // Marker tidak perlu terlihat setelah battle runtime dibuat.
@@ -29,14 +41,18 @@ function getTileLabel(tileCode) {
   return tileCode;
 }
 
-function getTileClass(tileCode) {
+function getTileClass(tileCode, battleState) {
   if (tileCode === ".") return "tile-empty";
   if (
   tileCode.startsWith("P") ||
   tileCode.startsWith("E")
-) {
+  ) {
   return "tile-empty";
 }
+  if (
+    isStage1Redesign(battleState) &&
+    ["O30", "O70", "OF", "LOS"].includes(tileCode)
+  ) return "tile-stage1-obstacle";
   if (tileCode === "O30") return "tile-cover-30";
   if (tileCode === "O70") return "tile-cover-70";
   if (tileCode === "OF") return "tile-full-cover";
@@ -548,6 +564,19 @@ function renderStructureToken(
 function renderMapLegend(
   battleState
 ) {
+  if (isStage1Redesign(battleState)) {
+    return `
+      <div class="map-legend stage1-map-legend">
+        <p><strong>Green</strong> = Guard</p>
+        <p><strong>Red</strong> = Sword Enemy</p>
+        <p><strong>Cyan</strong> = Movement Area</p>
+        <p><strong>Purple Dashed</strong> = StartGrid</p>
+        <p><strong>Amber</strong> = Sword threat range</p>
+        <p><strong>Solid Blocks</strong> = cannot cross or occupy</p>
+      </div>
+    `;
+  }
+
   if (
     isTutorialPhase4(
       battleState
@@ -658,6 +687,51 @@ export function renderMapGrid(
   validAttackTargets = [],
   attackCandidates = []
 ) {
+  const stage1ThreatKeys = new Set();
+  if (isStage1Redesign(battleState) && battleState.phase === "player_phase") {
+    const activeThreatSources = battleState.enemyUnits.filter((unit) => (
+      unit.currentHP > 0 && unit.stage1RecoveryState !== "pending"
+    ));
+    const incomingThreatSources = battleState.stage1Redesign?.preparationActive
+      ? getActiveWaveReservations(battleState).map((reservation) => ({
+          battleUnitId: `incoming_${reservation.waveId}`,
+          currentHP: 1,
+          side: "enemy",
+          tileX: reservation.x,
+          tileY: reservation.y,
+          derivedStats: { move: 3, atr: 1.5 }
+        }))
+      : [];
+
+    for (const enemy of [...activeThreatSources, ...incomingThreatSources]) {
+      const reachableOrigins = getReachableTilesForUnit(
+        mapData,
+        battleState,
+        enemy,
+        { x: enemy.tileX, y: enemy.tileY },
+        enemy.derivedStats.move
+      );
+      const origins = [
+        { x: enemy.tileX, y: enemy.tileY },
+        ...reachableOrigins
+      ];
+      for (const origin of origins) {
+        for (let y = 0; y < mapData.height; y += 1) {
+          for (let x = 0; x < mapData.width; x += 1) {
+            const tileCode = mapData.tiles?.[y]?.[x];
+            const solid = ["X", "O30", "O70", "OF", "LOS"].includes(tileCode);
+            if (
+              !solid &&
+              Math.hypot(x - origin.x, y - origin.y) <= enemy.derivedStats.atr
+            ) {
+              stage1ThreatKeys.add(`${x},${y}`);
+            }
+          }
+        }
+      }
+    }
+  }
+
   const shockwaveThreatKeys = new Set(
     (battleState?.enemyUnits ?? [])
       .filter((enemy) => enemy.currentHP > 0 && isBlueShockwaveEnemy(enemy))
@@ -696,10 +770,10 @@ export function renderMapGrid(
         }
 
         const tileClass =
-          getTileClass(tileCode);
+          getTileClass(tileCode, battleState);
 
         const tileLabel =
-          getTileLabel(tileCode);
+          getTileLabel(tileCode, battleState);
 
         const unit =
           findUnitAtTile(
@@ -856,6 +930,11 @@ const startGridMarker =
             ? `<span class="wave-reservation-marker">INCOMING ${waveReservation.label}</span>`
             : "";
 
+        const stage1ThreatClass =
+          stage1ThreatKeys.has(`${x},${y}`)
+            ? "tile-stage1-threat"
+            : "";
+
         return `
           <button
             class="
@@ -872,6 +951,7 @@ const startGridMarker =
               ${structureDestroyedClass}
               ${shockwaveThreatClass}
               ${waveReservationClass}
+              ${stage1ThreatClass}
             "
             data-tile-x="${x}"
             data-tile-y="${y}"

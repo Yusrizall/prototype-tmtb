@@ -52,7 +52,14 @@ export function resolveEnemyCurrentIntent(
       : null;
 
   const nextIntent =
-    blueReadable?.intentType
+    enemy.stage1RecoveryState === "pending"
+      ? {
+          intentType: "recovery",
+          intentLabel: "RECOVERY",
+          stateLabel: "STUNNED",
+          targetId: null
+        }
+      : blueReadable?.intentType
       ? {
           intentType: blueReadable.intentType,
           intentLabel: blueReadable.intentLabel,

@@ -6,13 +6,13 @@ const main=fs.readFileSync("src/main.js","utf8");
 test("main runtime wires P7→P8, CP8, Wave spawn, Phase8 attack completion, and Jump8 retry state",()=>{
   for(const token of [
     "initializeTutorialPhase8RuntimeIfNeeded",
-    "captureTutorialCheckpoint(\n      \"cp8\"",
     "spawnTelegraphedWaves(",
-    "refreshEnemyReadabilityState(\n      waveSpawnResolution.battleState",
     "recordTutorialPhase8PlayerTurnStart(",
     "recordTutorialPhase8PlayerAttack(",
     "createTutorialPhase8RetryCheckpointState(appData)"
   ]) assert.equal(main.includes(token),true,token);
+  assert.match(main,/captureTutorialCheckpoint\(\s*["']cp8["']\s*,/);
+  assert.match(main,/refreshEnemyReadabilityState\(\s*waveSpawnResolution\.battleState\s*\)/);
 });
 
 test("Wave spawn hook occurs after the existing enemy activation loop so spawned enemies get no attached action",()=>{

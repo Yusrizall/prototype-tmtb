@@ -41,6 +41,18 @@ const tutorialEncounter = await loadJson(
   "data/encounters/tutorial_phase_1_5.json"
 );
 
+const stage1RedesignMap = await loadJson(
+  "data/maps/r1_stage1_redesign_v0_2.json"
+);
+
+const stage1RedesignEncounter = await loadJson(
+  "data/encounters/r1_stage1_redesign_v0_2.json"
+);
+
+const stage2ValidationEncounter = await loadJson(
+  "data/encounters/r1_stage2_validation_placeholder_v0_1.json"
+);
+
   return {
   playerUnits,
   enemyUnits,
@@ -50,6 +62,10 @@ const tutorialEncounter = await loadJson(
   stage1Encounter,
 
   tutorialMap,
-  tutorialEncounter
+  tutorialEncounter,
+
+  stage1RedesignMap,
+  stage1RedesignEncounter,
+  stage2ValidationEncounter
 };
 }
